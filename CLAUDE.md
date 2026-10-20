@@ -655,6 +655,28 @@ no new tokens (all eight tabled).
   (13–17 px slivers, port == webkit); firefox rounds sage's canvas-top
   background a level (port == webkit).
 
+### h8-fix-values (WebKit dash-length drift; no app-code change)
+
+- WebKit's Canvas drifts dash phase on long paths: on the ~9900 px dashed
+  original (2 px `[6,6]` from 3), WebKit renders every dash ~+2.5 CSS px
+  down-path of the spec position at along-path ~4550 (tangent-ray profiles
+  at dash [4557,4563]; 90 canvas flat>2 px in 58 1–4 px micro-clusters, max
+  117, all on the steep runs), while the port, Blink and Gecko agree to
+  ≤1 px (native-vs-ref-chromium blob ends identical 10/10; rc-vs-rf 0
+  flat). Same JS in all engines, yet ref-webkit-vs-ref-chromium is 347
+  flat px apart (max 221): the engines differ on identical content, so the
+  residual is category (e), recorded here with the measurement. Short-path
+  dashes (drop lines `[5,4]`) match everywhere, so offsets are honored and
+  the drift is length-dependent (~6e-4 relative), not an ignored offset;
+  f32-vs-f64 accumulation was measured at 0.006 px and ruled out. Matching
+  WebKit would break the spec/Blink/Gecko match, so the port keeps the
+  spec math. h6-curve's 27 px dash-phase cluster at CSS (788.5,102.5) is
+  the top of this same strip.
+- SwiftShader AA at curve-stroke edges peaks at 41 on isolated pixels
+  (marker-p-values: exactly 2 px >15 whole-frame — (1599,331) at 41,
+  (1730,817) at 40, both single AA pixels on drifted dash ends, 0 flat),
+  the h7-plane-recorded (d) family (their 2 px at 41; h6 accepted to 33).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
