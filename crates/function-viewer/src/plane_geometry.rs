@@ -30,6 +30,10 @@ pub const SQUARE_RADIUS: f64 = 3.0;
 /// stroke rect insets by half of it.
 pub const HANDLE_STROKE: f64 = 2.5;
 
+/// The arrow shaft's width, in px (`look.width`, owned by h6-handles'
+/// painter): the shaft shortens its own width past the head.
+pub const ARROW_WIDTH: f64 = 2.5;
+
 /// The arrowhead's length along the shaft, in px (`arrowHeadLength`).
 pub const ARROW_HEAD_LENGTH: f64 = 9.8;
 
@@ -184,7 +188,7 @@ pub fn line_path(kind: LineKind, from: [f64; 2], to: [f64; 2]) -> Option<LinePat
     // The arrow shaft stops its own width short of the tip (`look.width`,
     // owned by h6-handles' painter); every other look runs end to end.
     let short = match kind {
-        LineKind::Arrow => length.min(2.5),
+        LineKind::Arrow => length.min(ARROW_WIDTH),
         LineKind::Dashed | LineKind::Measured => 0.0,
     };
     let (start_half, end_half) = line_tick_halves(kind);

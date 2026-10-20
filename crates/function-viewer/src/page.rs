@@ -134,7 +134,7 @@ fn plane_box(app: &App) -> Option<clay::BoundingBox> {
 /// after the layout (the button's box derives from the canvas's), before the
 /// regions resolve.
 fn declare_plane_button(app: &mut App) {
-    if !crate::overlay::button_visible() {
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
         return;
     }
     let Some(canvas) = plane_box(app) else {
@@ -159,7 +159,7 @@ fn declare_plane_button(app: &mut App) {
 /// legend on the content box, then the overlay's brackets and button. Runs
 /// after the Clay commands (over the page background), before the
 /// transition's fade.
-fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
         return;
     };
@@ -169,10 +169,20 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // `cur` at publish, which the React draw reads as props).
     let (center, scale) = (app.camera.center, app.camera.scale);
     let colors = crate::plane::plane_colors(theme);
-    // The plotted function from the picker's switch state (h3's curves,
-    // through `plot.rs`): the whole curve at rest, the old fading under the
-    // drawing new one mid-switch.
-    let curves = crate::plot::curves(&app.shown);
+    // The plotted curves under the shown transform (h6-curve's `Plot`): the
+    // switch's curves (`plot.rs`) through `transform_curves`, the dashed
+    // original behind each transformed one; the flip's spring blends the
+    // shown values. At rest with no values the curves pass through whole.
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let switch = crate::plot::curves(&app.shown);
+    let curves = crate::transform_curves::transform_curves(&switch, shown);
+    // The shift and scale handles and the lit parameter's lines, from the
+    // same shown transform (h6-handles' two call lines).
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let handles = crate::transform_curves::transform_handles(slug, unit, shown);
+    let lines = crate::transform_curves::transform_lines(app.state.lit(), slug, unit, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -185,6 +195,10 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         true,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
+        theme.colors[mv_theme::Token::ForegroundMuted],
+        &handles,
+        &lines,
+        theme.colors[mv_theme::Token::Primary],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -193,10 +207,33 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         &crate::overlay::corner_boxes(&overlay),
         ocolors.chrome,
     );
+    // The button and its tip show off the default camera only (`moved`).
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+        return;
+    }
     let button = crate::overlay::overlay_button_box(&canvas);
     let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
     crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
+    // The tooltip's hover clock: armed while the pointer is on the button,
+    // dropped the moment it leaves (the CSS `:hover` rule). The timer keeps
+    // the app's turns coming until the delay is over, as the scrub rest
+    // tip's does.
+    if hovered {
+        if app.overlay_tip_since.is_none() {
+            app.overlay_tip_since = Some(now);
+            app.timers[crate::app_loop::Timer::OverlayTip] =
+                now + crate::overlay::TIP_DELAY_MS * crate::app_loop::MS;
+        }
+    } else {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+    }
+    if crate::overlay::tip_visible(app.overlay_tip_since, focused, app.input.focus_visible, now) {
+        crate::overlay::paint_tip(&mut app.fonts, &mut app.vg, &button, &ocolors);
+    }
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -220,6 +257,27 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
+    // The scrub tips float above the rows (the DOM's `z-index: 1` on `.tip`):
+    // the commands a laid-out tip's box holds walk after the rows' post-pass
+    // rings, which would otherwise print over them (h5-fix-tip: k's inset
+    // ring over a's tip). The walks keep Clay's order within each layer; a
+    // neighbour's text fully inside the tip keeps its place ahead of the
+    // tip's plate in both, so it paints the same.
+    let tip_ids = crate::scrub_value::tip_box_ids();
+    let mut tip_rects: Vec<clay::BoundingBox> = Vec::new();
+    for command in &commands {
+        if command.commandType == clay::RenderCommandType::Rectangle
+            && tip_ids.contains(&command.id)
+        {
+            tip_rects.push(command.boundingBox);
+        }
+    }
+    let (tips, rest): (Vec<clay::RenderCommand>, Vec<clay::RenderCommand>) =
+        commands.into_iter().partition(|command| {
+            tip_rects
+                .iter()
+                .any(|tip| contains_box(*tip, &command.boundingBox))
+        });
     // The canvas first, then the overlay button, so the button wins their
     // overlap at equal z.
     crate::plane_input::declare_plane_region(app);
@@ -232,8 +290,8 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
-    draw_commands(app, density, &commands);
-    draw_plane(app, &theme);
+    draw_commands(app, density, &rest);
+    draw_plane(app, &theme, now);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
@@ -246,6 +304,12 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
+    // The tip layer above the rings (partitioned above): the tip's plate,
+    // caps and words cover whatever ring segments run beneath them, as the
+    // DOM paints the positioned tip over the boxes. The arrows land on the
+    // caps last, as `paint_rows` held them.
+    draw_commands(app, density, &tips);
+    crate::scrub_value::paint_extras(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }
@@ -310,6 +374,17 @@ fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
         .expect("clay context initialised")
         .get_element_data(id);
     data.found.then_some(data.boundingBox)
+}
+
+/// Whether the tip's box holds the command's box: the tip's own plate and
+/// border share its box exactly, its caps and words sit strictly inside.
+/// Neighbour boxes only overlap it (their far edges stick out), so exact
+/// comparison needs no slack.
+fn contains_box(tip: clay::BoundingBox, inner: &clay::BoundingBox) -> bool {
+    tip.x <= inner.x
+        && tip.y <= inner.y
+        && inner.x + inner.width <= tip.x + tip.width
+        && inner.y + inner.height <= tip.y + tip.height
 }
 
 /// Paints a 0 6 px 18 px shadow behind the box.

@@ -1,0 +1,19 @@
+# flip-typed-mid (H6): a value typed 300 ms into the flip's turn shows at
+# once. The click flips a=2 to -2; 300 ms in the plane shows about -1.04;
+# typing -1 into a's box (centre 331.5, 450.5, probed) and Enter shows
+# a=-1.00 at once while the turn runs out. Behaviour: url line a=-1 after
+# Enter; views shown line {a:-1, ...} at once.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2
+wait 2000
+click 218 450.5
+wait 300
+click 331.5 450.5
+type "-1"
+key Enter
+wait 800
+shot flip-typed-mid
