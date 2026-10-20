@@ -490,7 +490,14 @@ fn state_scripts_parse() {
 fn expect_parse(dir: &str, minimum: usize) {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
     let mut scripts = 0;
-    let entries = std::fs::read_dir(format!("{root}/{dir}")).unwrap();
+    // Git keeps no empty directory, so `tools/live` is missing (not empty)
+    // until the loop milestone reseeds it: a missing dir parses as no
+    // scripts, which meets a zero minimum.
+    let entries = match std::fs::read_dir(format!("{root}/{dir}")) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound && minimum == 0 => return,
+        Err(e) => panic!("{dir}: {e}"),
+    };
     for entry in entries {
         let entry = entry.unwrap();
         let path = entry.path();

@@ -128,6 +128,8 @@ pub struct Hit {
 pub enum HitKind {
     #[default]
     None,
+    /// The plane's return-to-centre button (h2-plane's overlay).
+    ReturnToCenter,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures

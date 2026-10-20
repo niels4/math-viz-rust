@@ -30,6 +30,8 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod overlay;
+pub mod plane;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -41,6 +43,7 @@ pub mod platform_web;
 #[cfg(windows)]
 pub mod platform_windows;
 pub mod prefs;
+pub mod scale_legend;
 pub mod scroll;
 pub mod svgpath;
 pub mod typography;
