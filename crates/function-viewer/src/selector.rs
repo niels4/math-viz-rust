@@ -14,7 +14,7 @@
 use mv_sys::clay;
 
 use crate::app::App;
-use crate::functions::{FunctionSlug, FUNCTION_SLUGS};
+use crate::functions::{FUNCTION_SLUGS, FunctionSlug};
 use crate::input::{Cursor, Hit, HitKind};
 
 /// The card: `--card`, radius `--radius-card`, padding
@@ -78,14 +78,13 @@ pub fn option_runs(slug: FunctionSlug) -> &'static [(RunStyle, &'static str)] {
     }
 }
 
-/// The run's text style.
-// STANDIN (phase 2): `Type::Body` stands in for the appended types -
-// `Heading` for the legend, `Maths`/`MathsItalic` for the runs - so the
-// files compile before h1-settings merges. Fixed-height wrappers keep every
-// asserted box exact meanwhile; only glyph paint differs.
+/// The run's text style: upright runs in the maths face, `x` in its italic.
 #[must_use]
-pub fn run_type(_style: RunStyle) -> crate::typography::Type {
-    crate::typography::Type::Body
+pub fn run_type(style: RunStyle) -> crate::typography::Type {
+    match style {
+        RunStyle::Up => crate::typography::Type::Maths,
+        RunStyle::Italic => crate::typography::Type::MathsItalic,
+    }
 }
 
 /// The option's index in picker order.
@@ -146,23 +145,21 @@ pub fn function_card(app: &mut App, current: FunctionSlug) {
     });
 }
 
-/// The legend's block: a fixed 28 px wrap (the CSS line box) holding the
-/// title text. The wrap goes away with the `Heading` type, whose own line
-/// box is 28 px.
+/// The legend: a block spanning the card, 28 px tall, in the heading style.
 fn legend(app: &mut App, foreground: clay::Color) {
-    let mut wrap = crate::ui::empty_decl();
-    wrap.layout.sizing = clay::Sizing {
+    let mut block = crate::ui::empty_decl();
+    block.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
-        height: mv_clay::sizing_fixed(TITLE_HEIGHT),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
     };
-    crate::ui::ui_scope(app, mv_clay::id("FunctionTitle", 0), &wrap, |app| {
+    crate::ui::ui_scope(app, mv_clay::id("FunctionTitle", 0), &block, |app| {
         crate::typography::text(
             app,
             mv_clay::id("FunctionTitleText", 0),
-            crate::typography::Type::Body,
+            crate::typography::Type::Heading,
             TITLE,
             foreground,
-            false,
+            true,
         );
     });
 }
@@ -317,6 +314,122 @@ fn runs(app: &mut App, slug: FunctionSlug, index: usize, foreground: clay::Color
     );
 }
 
+/// Seeds the picker's param and shown function from the page query at start
+/// (`--query` natively, the hash on the web): a link's function shows whole,
+/// with no animation. Runs once in each `build()` after `app.url` is set;
+/// `App::zeroed` already holds the URL defaults for headless tests.
+pub fn init_func_from_url(app: &mut App) {
+    app.func_param = crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, app.url.query());
+    let slug = *app.func_param.get();
+    app.shown = crate::plot::Shown::new(crate::functions::base(slug));
+    app.plot_frame_at = None;
+}
+
+/// Picks the option: the URL at once (the hook's `setFunc` with
+/// `{ flush: true }`), the switch animation unless reduced motion shows the
+/// new curve whole, and keyboard focus on the cell (unseen, as the
+/// reference's outline on its 0x0 input is).
+pub fn pick_function(app: &mut App, slug: FunctionSlug, index: usize) {
+    app.func_param.set_flushed(&mut app.url, slug);
+    let next = crate::functions::base(slug);
+    // `switch_to` no-ops on the shown function; the held turn is only for a
+    // real switch (a no-op mid-switch must not pause the running one).
+    if !std::ptr::fn_addr_eq(next, app.shown.func) {
+        app.shown.switch_to(next, !app.reduced_motion);
+        app.plot_frame_at = None;
+        #[cfg(target_os = "emscripten")]
+        crate::platform_web::platform_write_hash(&app.url.full_hash());
+    }
+    crate::input::set_focus(app, cell_hit(index), false);
+    app.dirty = true;
+}
+
+/// Routes a click: the release whose down-hit and up-hit agree on a cell.
+pub fn click(app: &mut App, down: Hit) {
+    let up = app.input.hover;
+    if down != up || down.kind != HitKind::Selector {
+        return;
+    }
+    let index = down.index as usize;
+    if let Some(slug) = FUNCTION_SLUGS.get(index) {
+        pick_function(app, *slug, index);
+    }
+}
+
+/// An arrow key within the group: the neighbouring option, wrapping round.
+#[must_use]
+pub fn arrow_slug(current: usize, len: usize, left: bool) -> usize {
+    if left {
+        current.checked_sub(1).unwrap_or(len - 1)
+    } else {
+        (current + 1) % len
+    }
+}
+
+/// Routes a key: the arrows move and check within the focused group, as the
+/// DOM radio group does. Space and Enter on a radio change nothing (arrows
+/// check; there is nothing to confirm). Returns whether consumed.
+pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
+    use sdl3::keyboard::Keycode;
+    if !event.down || event.repeat {
+        return false;
+    }
+    if app.input.focus.kind != HitKind::Selector {
+        return false;
+    }
+    let at = app.input.focus.index as usize;
+    if at >= FUNCTION_SLUGS.len() {
+        return false;
+    }
+    match event.key {
+        Keycode::Left | Keycode::Up | Keycode::Right | Keycode::Down => {
+            let left = matches!(event.key, Keycode::Left | Keycode::Up);
+            let next = arrow_slug(at, FUNCTION_SLUGS.len(), left);
+            pick_function(app, FUNCTION_SLUGS[next], next);
+            crate::input::set_focus(app, cell_hit(next), true);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// One plot frame on the app's clock: while a switch runs, advance it. The
+/// switch's own turn holds the render-phase curves (elapsed 0, as
+/// `switch_to` leaves them for the first paint); the loop steps from the
+/// turn after, the first step carrying the hook's first-frame gap.
+pub fn plot_step(app: &mut App, now: crate::app_loop::Time) {
+    if !app.shown.is_switching() {
+        return;
+    }
+    let Some(last) = app.plot_frame_at else {
+        app.plot_frame_at = Some(now);
+        return;
+    };
+    let dt = (now - last) as f64 / crate::app_loop::MS as f64;
+    crate::plot::step(&mut app.shown, dt);
+    app.plot_frame_at = Some(now);
+    if !app.shown.is_switching() {
+        app.plot_frame_at = None;
+    }
+    app.dirty = true;
+}
+
+/// An outside edit flowing in (the `hash` verb, the web `hashchange`): the
+/// param syncs, and a newly named function is adopted as a switch. Focus
+/// stays where it was, as a hash edit moves no DOM focus.
+pub fn external_func_synced(app: &mut App) -> bool {
+    if !app.func_param.sync(&app.url) {
+        return false;
+    }
+    let next = crate::functions::base(*app.func_param.get());
+    if !std::ptr::fn_addr_eq(next, app.shown.func) {
+        app.shown.switch_to(next, !app.reduced_motion);
+        app.plot_frame_at = None;
+    }
+    app.dirty = true;
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,5 +560,164 @@ mod tests {
             }
             assert!(width > 0.0, "option {i} spans width");
         }
+        // The runs' rows: 25 px line boxes (the maths types), adjacent runs
+        // with no gap, the span centred in the runs box's content.
+        let runs_origin = |i: usize| {
+            let content = at(mv_clay::id("FunctionRuns", i as u32));
+            (content.x + CELL_PAD_X, content.width - 2.0 * CELL_PAD_X)
+        };
+        for (i, slug) in FUNCTION_SLUGS.iter().enumerate() {
+            let (left, content) = runs_origin(i);
+            let mut width = 0.0;
+            for (j, _) in option_runs(*slug).iter().enumerate() {
+                let b = at(mv_clay::id("FunctionRun", (i * 8 + j) as u32));
+                assert!(
+                    (b.height - 25.0).abs() <= 0.5,
+                    "run {i}/{j}: line box {h}, reference 25",
+                    h = b.height
+                );
+                if j > 0 {
+                    let prev = at(mv_clay::id("FunctionRun", (i * 8 + j - 1) as u32));
+                    assert!(
+                        (b.x - (prev.x + prev.width)).abs() <= 0.5,
+                        "run {i}/{j} starts where run {k} ends",
+                        k = j - 1
+                    );
+                }
+                width += b.width;
+            }
+            let first = at(mv_clay::id("FunctionRun", (i * 8) as u32));
+            assert!(
+                (first.x - (left + (content - width) / 2.0)).abs() <= 0.5,
+                "option {i}: span starts at {x}, centred {c}",
+                x = first.x,
+                c = left + (content - width) / 2.0
+            );
+        }
+    }
+
+    /// Ports `SideBar.test.tsx`'s "puts the picked function in the URL, and
+    /// leaves x out of it": a fresh page graphs x; picking x2 checks it and
+    /// writes `func=x2`; picking x again takes `func` out of the URL.
+    #[test]
+    fn picking_x2_writes_func_and_picking_x_removes_it() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        // A fresh page graphs x.
+        assert_eq!(*app.func_param.get(), FunctionSlug::X1);
+        assert_eq!(app.url.query(), "");
+        // Picking x2 checks it and writes func=x2, starting the switch.
+        pick_function(&mut app, FunctionSlug::X2, 1);
+        assert_eq!(*app.func_param.get(), FunctionSlug::X2);
+        assert_eq!(app.url.query(), "func=x2");
+        assert!(app.shown.is_switching());
+        assert_eq!(app.input.focus, cell_hit(1));
+        // Picking x again takes func out of the URL.
+        pick_function(&mut app, FunctionSlug::X1, 0);
+        assert_eq!(*app.func_param.get(), FunctionSlug::X1);
+        assert_eq!(app.url.query(), "");
+    }
+
+    /// Ports `SideBar.test.tsx`'s "checks the function a link names": a link
+    /// with `func=sinx` opens on sin x, whole, with no switch to run.
+    #[test]
+    fn a_link_naming_sinx_checks_sin_x() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.url = crate::url::Url::from_query("func=sinx");
+        init_func_from_url(&mut app);
+        assert_eq!(*app.func_param.get(), FunctionSlug::SinX);
+        assert!(!app.shown.is_switching());
+        assert!(std::ptr::fn_addr_eq(
+            app.shown.func,
+            crate::functions::base(FunctionSlug::SinX)
+        ));
+    }
+
+    /// The arrows wrap round the group, as the DOM radio group does.
+    #[test]
+    fn arrows_wrap_round_the_group() {
+        assert_eq!(arrow_slug(0, 4, true), 3);
+        assert_eq!(arrow_slug(3, 4, false), 0);
+        assert_eq!(arrow_slug(1, 4, false), 2);
+        assert_eq!(arrow_slug(2, 4, true), 1);
+    }
+
+    /// An arrow key moves and checks within the focused group at once.
+    #[test]
+    fn arrow_right_from_x_checks_x2() {
+        use sdl3::keyboard::{Keycode, Mod};
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        crate::input::set_focus(&mut app, cell_hit(0), true);
+        let right = crate::input::KeyEvent {
+            key: Keycode::Right,
+            mods: Mod::empty(),
+            down: true,
+            repeat: false,
+        };
+        assert!(key(&mut app, &right));
+        assert_eq!(*app.func_param.get(), FunctionSlug::X2);
+        assert_eq!(app.url.query(), "func=x2");
+        assert_eq!(app.input.focus, cell_hit(1));
+        // Off the group the arrows go elsewhere.
+        crate::input::set_focus(&mut app, Hit::default(), false);
+        assert!(!key(&mut app, &right));
+    }
+
+    /// The switch's own turn holds the render-phase curves; the loop steps
+    /// from the turn after, ending whole past the draw duration.
+    #[test]
+    fn plot_step_holds_the_switch_turn_then_advances() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        pick_function(&mut app, FunctionSlug::X2, 1);
+        // The switch's turn: held, the new curve still at draw 0.
+        plot_step(&mut app, 16_000_000);
+        assert!(app.shown.is_switching());
+        assert_eq!(crate::plot::curves(&app.shown)[1].draw_to, 0.0);
+        // The next turn steps with the hook's first-frame gap.
+        plot_step(&mut app, 32_000_000);
+        assert_eq!(app.shown.elapsed, crate::plot::FIRST_FRAME_MS);
+        // Past the draw duration the switch ends whole.
+        let mut now = 32_000_000;
+        while app.shown.is_switching() {
+            now += 16_000_000;
+            plot_step(&mut app, now);
+        }
+        assert_eq!(
+            crate::plot::curves(&app.shown),
+            vec![crate::plot::PlotCurve {
+                func: crate::functions::base(FunctionSlug::X2),
+                alpha: 1.0,
+                draw_to: 1.0,
+            }]
+        );
+        assert!(app.plot_frame_at.is_none());
+    }
+
+    /// An outside edit naming another function is adopted as a switch.
+    #[test]
+    fn external_hash_edit_adopts_the_named_function() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.url = crate::url::Url::from_query("func=x3");
+        assert!(external_func_synced(&mut app));
+        assert_eq!(*app.func_param.get(), FunctionSlug::X3);
+        assert!(app.shown.is_switching());
+        // Nothing new: no adoption, no dirtying.
+        app.dirty = false;
+        assert!(!external_func_synced(&mut app));
+        assert!(!app.dirty);
     }
 }

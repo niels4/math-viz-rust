@@ -49,7 +49,9 @@ pub mod plot;
 pub mod prefs;
 pub mod scale_legend;
 pub mod scroll;
+pub mod selector;
 pub mod settings;
+pub mod sidebar;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;
@@ -960,8 +962,10 @@ impl Main {
         crate::prefs::take_prefs_themes(&mut app);
         // The page query at start: `--query` (empty without it).
         app.url = crate::url::Url::from_query(&options.query);
-        // The camera and its params start from that query (h2-input).
+        // The camera and its params start from that query (h2-input); the
+        // picked function and its shown curve start there too (h3).
         crate::plane_input::init_camera_from_url(&mut app);
+        crate::selector::init_func_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1107,8 +1111,10 @@ impl Main {
         // The page query at start: the hash's query part, if the page was
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
         app.url = crate::url::Url::new(&platform_read_hash());
-        // The camera and its params start from that query (h2-input).
+        // The camera and its params start from that query (h2-input); the
+        // picked function and its shown curve start there too (h3).
         crate::plane_input::init_camera_from_url(&mut app);
+        crate::selector::init_func_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],

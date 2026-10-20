@@ -10,8 +10,10 @@ use mv_sys::clay;
 use crate::app::App;
 use crate::functions::FunctionSlug;
 
-/// The gap between the sidebar's cards (`--space-section`).
-pub const CARD_GAP: f32 = 16.0;
+/// The gap between the sidebar's cards (`--space-inset`, measured at the
+/// h4 hash; unobservable while the column holds one card, and h4 owns it
+/// from its Transform card on).
+pub const CARD_GAP: f32 = 12.0;
 
 /// Lays out the sidebar's cards in the open sidebar scope. `current` is the
 /// picked function.
@@ -33,7 +35,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cards_stand_a_section_apart() {
-        assert_eq!(CARD_GAP, 16.0);
+    fn cards_stand_an_inset_apart() {
+        assert_eq!(CARD_GAP, 12.0);
     }
 }

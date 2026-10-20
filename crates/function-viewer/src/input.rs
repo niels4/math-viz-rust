@@ -138,6 +138,9 @@ pub enum HitKind {
     ReturnToCenter,
     /// The Cartesian plane's canvas (h2-input; h2-input declares the region).
     Plane,
+    /// A function-picker option; `Hit.index` names the option in picker
+    /// order (h3's selector declares the regions).
+    Selector,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -490,6 +493,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 }
                 release(app);
                 crate::settings::click(app, down);
+                crate::selector::click(app, down);
                 // The overlay button's click (the press started and the
                 // release lands on it, as the button's `onClick` needs both):
                 // the camera back to its defaults, flushed.
@@ -528,7 +532,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.mods = event.mods;
             // The page milestones route their keys from here.
-            crate::settings::key(app, &event);
+            if !crate::settings::key(app, &event) {
+                crate::selector::key(app, &event);
+            }
         }
         Input::Text(event) => {
             if crate::trace() {

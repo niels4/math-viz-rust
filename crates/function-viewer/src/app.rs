@@ -85,6 +85,17 @@ pub struct App {
     /// When the camera last stepped, on the app's clock; 0 when it is still
     /// (h2-input; the next step's `dt` measures from here).
     pub camera_frame_at: crate::app_loop::Time,
+    /// The plotted function switch: the shown and fading functions with the
+    /// ms since the switch began (h3; `plot.rs` owns the state machine).
+    pub shown: crate::plot::Shown,
+    /// The `func` page param: the live value with its flush (h3; `url.rs`
+    /// owns the state machine; the pick writes it at once, as the hook's
+    /// `setFunc` with `{ flush: true }` does).
+    pub func_param: crate::url::QueryParam<crate::functions::FunctionSlug>,
+    /// When the switch last stepped, on the app's clock; `None` while at
+    /// rest and on the switch's own turn (h3; the turn draws the
+    /// render-phase curves, the loop steps from the turn after).
+    pub plot_frame_at: Option<crate::app_loop::Time>,
 }
 
 impl App {
@@ -221,6 +232,14 @@ impl App {
             center_param: crate::url::QueryParam::new(&crate::plane_input::CENTER_DEF, ""),
             scale_param: crate::url::QueryParam::new(&crate::plane_input::SCALE_DEF, ""),
             camera_frame_at: 0,
+            // The picker graphs x at the URL default; each `build()`
+            // re-seeds the param and the shown function from the real page
+            // query (`selector::init_func_from_url`).
+            func_param: crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, ""),
+            shown: crate::plot::Shown::new(crate::functions::base(
+                crate::functions::FunctionSlug::X1,
+            )),
+            plot_frame_at: None,
         }
     }
 }

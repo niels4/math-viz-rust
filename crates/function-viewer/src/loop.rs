@@ -170,6 +170,11 @@ pub fn iterate(app: &mut App) -> bool {
     // debounce and external sync, the web hash mirror. Before the draw, so
     // the frame draws what the camera moved to.
     crate::plane_input::frame_step(app, now);
+    // The picker's plot step (h3): the switch's frame, then an outside edit
+    // flowing in. Before the draw, so the frame draws what the switch drew
+    // to.
+    crate::selector::plot_step(app, now);
+    crate::selector::external_func_synced(app);
     let mut drawn = false;
     // The theme fade redraws until done: no timer arms its frames, so the
     // turn does while one is in flight (its last frame clears the active).
