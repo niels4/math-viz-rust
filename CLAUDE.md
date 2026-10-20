@@ -160,6 +160,21 @@ reads `app.clay` in place). The return-to-centre release routes to
 `write_pair` set collapses duplicate keys. Don't run repo-wide
 `tools/format` (pinned versions only).
 
+### h7-p-plane (the grid carried on the layout)
+
+- Since `1cfd34a` the grid is laid out once per camera update: `GridLayout`
+  stores the `width`, `height` and `scale` it was computed for (appended
+  fields, not TS order), and `x_label_lines` / `layout_labels` / the legend
+  entry read them from the grid instead of taking them as args.
+  `layout_grid` keeps its `(center, scale, width, height, margin)` arg order.
+- `labelMargin` moved from a local in `drawCartesianPlane.ts` to an export
+  in `constants.ts` in the stretch; in Rust it stays `plane::LABEL_MARGIN`
+  (already public) — a deliberate non-move.
+- `hitTest`'s handler filter (`handlers?.[action] === undefined` skips the
+  handle) is vacuous at this hash — both handles carry all five handlers —
+  and is left out; `plot::PlotHandle { kind, at }` stays, handlers dispatch
+  in the app.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

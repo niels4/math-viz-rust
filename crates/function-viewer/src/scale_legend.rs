@@ -2,14 +2,16 @@
 //! bottom-right corner.
 //!
 //! Ported from `src/components/views/CartesianPlane/drawScaleLegend.ts` at
-//! c409aad. The geometry is pure ([`legend_geometry`], tested against the
-//! reference's draw records); [`paint_legend`] draws it through NanoVG and
-//! the text crate. The bar is always [`BAR_WIDTH`] wide: it is
-//! `unscaledUnitSize`, never zoom-scaled.
+//! 251c080: since `1cfd34a` the entry takes the grid (`{ width, height,
+//! scale }`), like the painters. The geometry is pure ([`legend_geometry`],
+//! tested against the reference's draw records); [`paint_legend`] draws it
+//! through NanoVG and the text crate. The bar is always [`BAR_WIDTH`] wide:
+//! it is `unscaledUnitSize`, never zoom-scaled.
 
 use mv_text::{Face, Features, Style};
 
 use crate::camera::UNSCALED_UNIT_SIZE;
+use crate::grid::GridLayout;
 
 /// The plate sits this far left of the canvas's right edge.
 pub const PLATE_RIGHT: f64 = 28.0;
@@ -60,11 +62,13 @@ pub struct LegendGeometry {
 }
 
 /// Lays out the legend live: `text_width` is the label's measured advance.
-pub fn legend_geometry(width: f64, height: f64, text_width: f64, scale: f64) -> LegendGeometry {
-    let text = legend_text(scale);
+/// The canvas dims and the scale come from the grid, which `1cfd34a` lays
+/// out once per camera update.
+pub fn legend_geometry(grid: &GridLayout, text_width: f64) -> LegendGeometry {
+    let text = legend_text(grid.scale);
     let plate_width = 2.0 * PAD_X + BAR_WIDTH + TEXT_GAP + text_width;
-    let x = width - PLATE_RIGHT - plate_width;
-    let y = height - PLATE_BOTTOM - WINDOW_HEIGHT;
+    let x = grid.width - PLATE_RIGHT - plate_width;
+    let y = grid.height - PLATE_BOTTOM - WINDOW_HEIGHT;
     let middle_y = y + WINDOW_HEIGHT / 2.0;
     let bar_x = x + PAD_X;
     let bar_y = middle_y - BAR_HEIGHT / 2.0;
@@ -150,6 +154,12 @@ pub fn paint_legend(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grid::layout_grid;
+
+    /// The legend's grid: the 990 by 786 probe canvas, no margin.
+    fn probe_grid(scale: f64) -> GridLayout {
+        layout_grid([0.0, 0.0], scale, 990.0, 786.0, 0.0)
+    }
 
     /// The label reads `formatFixed(2, scale)` plus `" u"` at every H2 scale.
     #[test]
@@ -170,7 +180,7 @@ mod tests {
     /// 8.4 px, the mono advance the grid tests pin).
     #[test]
     fn legend_geometry_matches_probe() {
-        let geometry = legend_geometry(990.0, 786.0, 50.41, 0.5);
+        let geometry = legend_geometry(&probe_grid(0.5), 50.41);
         let [x, y, w, h] = geometry.plate;
         assert!((x - 850.59).abs() < 0.02, "plate x {x}");
         assert!((y - 730.0).abs() < 0.01, "plate y {y}");
@@ -189,8 +199,8 @@ mod tests {
     /// plate x 833.79, w 128.21 for `"100.00 u"`).
     #[test]
     fn legend_geometry_grows_with_text() {
-        let narrow = legend_geometry(990.0, 786.0, 50.41, 0.5);
-        let wide = legend_geometry(990.0, 786.0, 50.41 + 8.4 * 2.0, 100.0);
+        let narrow = legend_geometry(&probe_grid(0.5), 50.41);
+        let wide = legend_geometry(&probe_grid(100.0), 50.41 + 8.4 * 2.0);
         assert_eq!(wide.text, "100.00 u");
         assert!(
             (wide.plate[2] - narrow.plate[2] - 16.8).abs() < 1e-9,
