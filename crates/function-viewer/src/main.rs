@@ -34,6 +34,7 @@ pub mod live;
 pub mod overlay;
 pub mod page;
 pub mod plane;
+pub mod plane_geometry;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -49,9 +50,11 @@ pub mod prefs;
 pub mod scale_legend;
 pub mod scroll;
 pub mod settings;
+pub mod shown_transform;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;
+pub mod transform_curves;
 pub mod transition;
 pub mod typography;
 pub mod ui;
