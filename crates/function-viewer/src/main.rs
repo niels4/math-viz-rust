@@ -21,6 +21,7 @@ pub mod app;
 pub mod app_loop;
 pub mod camera;
 pub mod draw;
+pub mod fit;
 pub mod fixture;
 pub mod flex;
 pub mod flip;
