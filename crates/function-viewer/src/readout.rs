@@ -25,9 +25,16 @@ use crate::functions::FunctionSlug;
 use crate::state::TransformParam;
 use mv_sys::clay;
 
-/// The readout row: flex, vertically centred, at least 60 px tall with the
-/// card's inset above it (`FunctionReadout.module.css`: `.readout`).
-pub const READOUT_MIN_HEIGHT: f32 = 60.0;
+/// The readout row: flex, vertically centred, at least 78 px tall with the
+/// card's inset above it (`FunctionReadout.module.css`: `.readout` — 78 px
+/// since `2e6069e`, reserving the division bar's space so a horizontal scale
+/// stacking a fraction never moves the row).
+///
+/// Fix-forward for h5-buttons (their `readout.rs` height and
+/// `readout-b-height` state, which keep the tests and judgment): the h5
+/// reference moved the constant, and every sidebar box below the Function
+/// card — the whole Transform card — stands 18 px off without it.
+pub const READOUT_MIN_HEIGHT: f32 = 78.0;
 /// `margin-top: var(--space-inset)`.
 pub const READOUT_MARGIN_TOP: f32 = 12.0;
 /// The line's side padding (`.line`: `padding: 0 4px`).

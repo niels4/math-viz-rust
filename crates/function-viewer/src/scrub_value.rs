@@ -1926,8 +1926,8 @@ mod tests {
     #[test]
     fn tip_lays_out_like_the_reference() {
         for (typing, want) in [
-            (false, [-1.390_625, 100.0, 357.390_625, 31.0]),
-            (true, [13.078_125, 100.0, 342.921_875, 37.0]),
+            (false, [-1.390_625, 100.0, 357.390_63, 31.0]),
+            (true, [13.078_125, 100.0, 342.921_88, 37.0]),
         ] {
             let _guard = mv_clay::tests_lock();
             let mut app = crate::fixture::headless_app();
