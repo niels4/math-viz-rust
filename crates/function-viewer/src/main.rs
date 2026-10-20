@@ -21,6 +21,7 @@ pub mod app;
 pub mod app_loop;
 pub mod camera;
 pub mod draw;
+pub mod fit_scale;
 pub mod fixture;
 pub mod flex;
 pub mod flip;
@@ -80,6 +81,7 @@ pub mod typography;
 pub mod ui;
 pub mod url;
 pub mod visible_range;
+pub mod welcome_loop;
 pub mod x_field;
 
 use std::sync::Mutex;
@@ -128,6 +130,10 @@ pub struct Options {
     /// The page query at start (`App.url`): `--query` natively, the hash on
     /// the web. The harness writes it to `views.json` whenever it changes.
     pub query: String,
+    /// The page route at start: `--route` natively (welcome unless the flag
+    /// says viewer), the hash on the web. Reading it into the app is
+    /// h10-page's: until then the viewer still draws for every route.
+    pub route: String,
     pub slug: Option<mv_theme::Slug>,
     pub mode: Option<mv_theme::Mode>,
     pub space: Option<mv_theme::Space>,
@@ -147,10 +153,17 @@ pub struct Options {
 /// that theme and `--mode` sets the stored mode; `--space srgb|p3` sets the
 /// colour space the frames are drawn in (a script says all three itself).
 /// `--query STRING` sets the page query at start (`App.url`).
+/// `--route welcome|function-viewer` sets the page route at start (welcome unless the flag says
+/// viewer: the browser's `/`); the harness passes it from the script's `route` line on every
+/// scripted run, as it passes `--query`.
 /// Failures print `[ERROR]` (which the harness counts as a problem) and
 /// return `false`.
 fn parse_options(args: &[String]) -> (Options, bool) {
-    let mut options = Options::default();
+    // The binary run by hand opens where the browser's `/` does (plan §3.7 Routes).
+    let mut options = Options {
+        route: "welcome".to_string(),
+        ..Options::default()
+    };
     let mut script_path = String::new();
     let mut live_path = String::new();
     let mut png = String::new();
@@ -203,6 +216,17 @@ fn parse_options(args: &[String]) -> (Options, bool) {
             },
             "--prefs" => options.prefs = value.to_string(),
             "--query" => options.query = value.to_string(),
+            "--route" => match one_of(&[value], &mv_script::ROUTE_WORDS, arg) {
+                Ok(route) => options.route = mv_script::ROUTE_WORDS[route].to_string(),
+                Err(message) => {
+                    eprintln!(
+                        "[ERROR] --- [{}:{}] {message}, not {value:?}",
+                        file!(),
+                        line!()
+                    );
+                    return (Options::default(), false);
+                }
+            },
             "--theme" => match one_of(&[value], &mv_theme::SLUG_WORDS, arg) {
                 Ok(slug) => options.slug = Some(slug),
                 Err(message) => {
@@ -382,6 +406,12 @@ fn parse_options(args: &[String]) -> (Options, bool) {
         start.dark_theme = prefs.dark;
         start.light_theme = prefs.light;
         start.space = options.space.unwrap_or_else(platform_default_space);
+        // The route the page opens on: --route (the binary's own default welcome).
+        start.route = if options.route == "welcome" {
+            mv_script::Route::Welcome
+        } else {
+            mv_script::Route::FunctionViewer
+        };
         // One shot named for the file, in its directory, at rest: once the
         // first frames have run their course.
         let (dir, file) = match png.rfind('/') {
@@ -730,6 +760,69 @@ mod options_tests {
         let (options, ok) = parse_options(&args(&["function-viewer"]));
         assert!(ok);
         assert!(options.query.is_empty());
+    }
+
+    #[test]
+    fn route_defaults_to_welcome() {
+        // The binary run by hand opens where the browser's `/` does (plan §3.7 Routes).
+        let (options, ok) = parse_options(&args(&["function-viewer"]));
+        assert!(ok);
+        assert_eq!(options.route, "welcome");
+        let (options, ok) = parse_options(&args(&["function-viewer", "--route", "welcome"]));
+        assert!(ok);
+        assert_eq!(options.route, "welcome");
+        let (options, ok) =
+            parse_options(&args(&["function-viewer", "--route", "function-viewer"]));
+        assert!(ok);
+        assert_eq!(options.route, "function-viewer");
+        let (_, ok) = parse_options(&args(&["function-viewer", "--route", "nowhere"]));
+        assert!(!ok);
+    }
+
+    #[test]
+    fn route_rides_with_a_script() {
+        // run_native passes --route from the script on every invocation (act.py), as --query.
+        let (options, ok) = parse_options(&args(&[
+            "function-viewer",
+            "--script",
+            "../../tools/states/default.act",
+            "--out",
+            "/tmp/i0-script-out",
+            "--route",
+            "function-viewer",
+        ]));
+        assert!(ok);
+        assert_eq!(options.route, "function-viewer");
+    }
+
+    #[test]
+    fn png_takes_its_route_from_the_flag() {
+        let (options, ok) = parse_options(&args(&[
+            "function-viewer",
+            "--png",
+            "a.png",
+            "--space",
+            "srgb",
+        ]));
+        assert!(ok);
+        assert_eq!(
+            options.script.expect("a script").start.route,
+            mv_script::Route::Welcome
+        );
+        let (options, ok) = parse_options(&args(&[
+            "function-viewer",
+            "--png",
+            "a.png",
+            "--space",
+            "srgb",
+            "--route",
+            "function-viewer",
+        ]));
+        assert!(ok);
+        assert_eq!(
+            options.script.expect("a script").start.route,
+            mv_script::Route::FunctionViewer
+        );
     }
 
     #[test]

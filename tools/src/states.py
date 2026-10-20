@@ -25,7 +25,17 @@ DEFAULT_JOBS = 8
 # The scripts of states in another theme (state_script), where the native build can read them.
 VARIANTS = REPO / ".local" / "states-variants"
 # The lines that say how a page opens, before a script's first action.
-START_WORDS = ("size", "density", "scheme", "mode", "theme", "reduced-motion", "space", "query")
+START_WORDS = (
+    "size",
+    "density",
+    "scheme",
+    "mode",
+    "theme",
+    "reduced-motion",
+    "space",
+    "query",
+    "route",
+)
 
 
 def state_script(name: str) -> Script:

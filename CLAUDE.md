@@ -79,6 +79,16 @@ at `#function-viewer?<query>` (a `?query` search was silently dropped: nothing r
 `LiveWhat::Hash` (the loop milestone's); dev tools pinned `==` in `tools/pyproject.toml`
 (black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414: newest with a minimal canonical
 reflow — black 25.12 drifts 7 files, 25.1.0 23; bisect in scratch, never in the worktree).
+h10-t-route's entries: `route welcome|function-viewer` opens the page on its route (script
+default `function-viewer`, so every existing script is unchanged; the native binary's own
+default `welcome`, as the browser's `/`); `hash_route` in each reader gives the hash route
+(`welcome` → `""`, `function-viewer` → `"function-viewer"`); `act.py`'s `url_for` always
+carries the hash (`/#`, `/#function-viewer`), the `Hash` verb keeps the script's route, and
+`run_native` passes `--route` on every invocation (recorded in `report.json`'s `detail.command`);
+`loop.py`'s `--live` runs pass it from the live script (the idle/signals launches take the
+binary's default). The `route` views reader (`port_route`/`reference_route`) reads the last
+`route` line against `location.hash`'s route; until h10-page writes the line, "no route line"
+is a check that can't run, not a failure.
 
 ## The references and the bar
 
@@ -854,6 +864,33 @@ no new tokens (all eight tabled).
 - Probe (`.local/probe_params.py`, report in `.local/shots/h10-seam/`):
   welcome `/` vs viewer `/#function-viewer` `--param-a/k/b/h` in all six
   themes equal, 24/24 in WebKit (seeding math-viz2's keys as `act.py` does).
+
+### h10-p-loop (the welcome loop and the fit-to-window scale)
+
+- `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
+  `STEPS` in source order, 451 frames) with `LOOP_MS` computed as the
+  source computes it (`total_frames * 1000 / FPS` via `const fn`, so a
+  step edit moves the constant). `LoopState` is flat (`func, a, b, h, k`),
+  not `{ func } & Transform`; `Easing` is a four-value struct evaluated
+  by `ease_drag` because a closure is neither const-buildable nor `Copy`
+  (clippy's `double_must_use` also bars `#[must_use]` on
+  `cubic_bezier`, whose `impl Fn` return is already must-use).
+  `dragged` delegates to `scrub::scrubbed` (no re-rounding; the −1.19 /
+  2.44 / 1.74 / 1.15 literals fall out of its `quantize`).
+- JS `%` on a non-negative float is Rust's `%` (both keep the dividend's
+  sign); `loop_at` keeps `%` as the source has it and documents the
+  negative-`ms` case rather than switching to `rem_euclid`.
+- `WelcomeClock` is the rAF accumulator as a step function in the same
+  file (first frame adds `plot::FIRST_FRAME_MS` regardless of the gap,
+  later frames `min(now - last, 50)`); `state(false)` is the still and
+  `is_animating(false)` is false, so the coder's frame loop schedules no
+  frames under reduced motion.
+- `fit_scale.rs`: `fit_scale` returns `1.0` on a non-positive side — the
+  hook instead keeps its previous value, so the caller retains its stored
+  fit and only calls this once laid out (said in the doc). `paper_fit`
+  is the `WelcomePage.tsx` line verbatim, `1e-9` included. Verified
+  against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
+  (53/100); at dpr 1 it is 0.52.
 
 ## Long runs
 

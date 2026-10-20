@@ -4,9 +4,9 @@ crates/mv-script/src/script.rs reads the same language for the native build: cha
 together.
 
 A line is a verb and its arguments, and '#' starts a comment. Lines before the first action say
-how the page opens (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space` and
-`query`); after it, size, scheme and reduced-motion change it live, and `hash` edits the page's
-hash query mid-run. Positions are logical pixels,
+how the page opens (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`,
+`query` and `route`); after it, size, scheme and reduced-motion change it live, and `hash`
+edits the page's hash query mid-run. Positions are logical pixels,
 times milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every surface:
 appended to the reference and web URLs, passed as --query natively."""
 
@@ -22,6 +22,17 @@ THEMES = (
     "sage-editorial",
 )
 DARK_THEMES = THEMES[:3]
+
+# The page routes the harness opens: the welcome page, or the Function Viewer. A script's
+# `route` line (default `function-viewer`, so every existing script is unchanged); `hash_route`
+# gives the hash route a word opens.
+ROUTES = ("welcome", "function-viewer")
+
+
+def hash_route(word: str) -> str:
+    """The hash route a `route` word opens: welcome is the bare `#`, function-viewer its page."""
+    return {"welcome": "", "function-viewer": "function-viewer"}[word]
+
 
 # The colour spaces the port draws in (plan call 2): a script's `space`, sRGB unless it says p3.
 SPACES = ("srgb", "p3")
@@ -56,7 +67,8 @@ MODIFIERS = {"shift": "Shift", "ctrl": "Control", "alt": "Alt", "meta": "Meta"}
 class Start:
     """How the page opens: math-viz2's defaults (src/state/useAppTheme.ts) on a dark system, the
     port drawing in sRGB (every capture of the reference is sRGB); `query` the page's hash query
-    (?key=value&...), opening on every surface."""
+    (?key=value&...), opening on every surface; `route` the page route it opens on (welcome or
+    function-viewer, the viewer unless the script says welcome)."""
 
     size: tuple[int, int] = (1440, 900)
     density: float = 2
@@ -67,6 +79,7 @@ class Start:
     reduced_motion: bool = False
     space: str = "srgb"
     query: str = ""  # the page's hash query (?key=value&...), opening on every surface
+    route: str = "function-viewer"  # the page route: welcome or function-viewer
 
     @property
     def theme_shown(self) -> str:
@@ -354,6 +367,9 @@ def _line(start: Start, started: bool, text: str, surface: str = "all") -> Verb 
             if len(fields) != 1:
                 raise _LineError("query takes the page's hash query, e.g. query center=1,2&scale=2")
             start.query = fields[0]
+        case "route":
+            _before_actions(started, word)
+            start.route = _one_of(fields, ROUTES, "route")
         case "move":
             if len(fields) != 2 and not (len(fields) == 4 and fields[2] == "over"):
                 raise _LineError("move takes X Y [over MS]")
