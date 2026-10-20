@@ -1,0 +1,18 @@
+# handle-drag-no-pan (h7-plane): a press on the diamond moved 150 px right
+# in 5 px steps (30 steps, every one hits), held: h = 4.0, the centre
+# unchanged — no center key in the URL. Ends held (up with no read).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 200
+down
+wait 150
+move 1128 640 over 480
+wait 300
+shot handle-drag-no-pan
+up

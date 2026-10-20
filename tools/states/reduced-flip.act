@@ -1,0 +1,13 @@
+# reduced-flip (H6): with reduced motion, flipping a=2 shows a=-2 at
+# once: no turn, no frames to run.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+query func=x2&a=2
+wait 2000
+click 218 450.5
+wait 500
+shot reduced-flip

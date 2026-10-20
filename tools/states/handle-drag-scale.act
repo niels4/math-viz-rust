@@ -1,0 +1,18 @@
+# handle-drag-scale (h7-plane): the square pressed on-centre and moved
+# -40,+60 px in (-4,+6) steps, held: b = 0.2, a = 0.8, grab-active, the a
+# and b rows lit with their rulers out.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 1028 540
+wait 200
+down
+wait 150
+move 988 600 over 160
+wait 300
+shot handle-drag-scale
+up

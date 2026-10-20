@@ -30,8 +30,14 @@ header = "#root > div > div"
 title = "h1"
 gear = "button"
 # H2 at c409aad: the return-to-centre button over the canvas (CSS-module hashes
-# make class selectors unusable, so the accessible name selects it).
-overlay_button = "button[aria-label=\"Return to center\"]"
+# make class selectors unusable, so the accessible name selects it). Renamed
+# at 5cef052 (the tooltip commit) to "Reset view to origin"; the tooltip is
+# the button's span (h6-handles' selector). The judged tip region is the
+# union across engines: WebKit [1205.296875, 783, 147.203125, 31] against
+# Chromium [1205.875, 783, 146.625, 31] (their shapers disagree by 0.58 px),
+# i.e. [1205.296875, 783, 147.703125, 31].
+overlay_button = "button[aria-label=\"Reset view to origin\"]"
+overlay_tip = "button[aria-label=\"Reset view to origin\"] span"
 # H3 at 3560eb2: the sidebar column, the Function card (the sidebar's first
 # div child), and the four option labels (the buttons div's children).
 # CSS-module hashes make class selectors unusable; structural selectors
@@ -83,3 +89,8 @@ flip_b = "div[data-param=\"b\"] [aria-pressed]"
 # box, and the tape is the ruler's first div child.
 ruler_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"]"
 tape_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"] > div"
+# H7 at 251c080: the rulers under the h and k rows while a shift-handle drag
+# holds them (rows-lit-hk-drag keeps the press held at its shot), same shape
+# as h5's ruler_a.
+ruler_h = "div[data-param=\"h\"] > div[aria-hidden=\"true\"]"
+ruler_k = "div[data-param=\"k\"] > div[aria-hidden=\"true\"]"
