@@ -1,0 +1,9 @@
+# welcome-default-clean-teal (h10-page): the welcome page at rest in clean-teal, reduced motion.
+size 1440 900
+density 2
+scheme light
+mode light
+theme clean-teal
+reduced-motion on
+wait 2000
+shot welcome-default-clean-teal

@@ -1,0 +1,9 @@
+# welcome-default-tron-cyan (h10-page): the welcome page at rest in tron-cyan, reduced motion.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme tron-cyan
+reduced-motion on
+wait 2000
+shot welcome-default-tron-cyan

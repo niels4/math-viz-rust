@@ -189,6 +189,9 @@ FIXTURE_STATES = (
     # pins the error tone's wider tip.
     "field-open",
     "field-invalid",
+    # h10-page: the welcome page's layout at rest (reduced motion, so the
+    # hero is the still), read on the welcome route.
+    "welcome-default",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

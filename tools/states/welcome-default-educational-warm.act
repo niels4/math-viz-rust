@@ -1,0 +1,9 @@
+# welcome-default-educational-warm (h10-page): the welcome page at rest in educational-warm, reduced motion.
+size 1440 900
+density 2
+scheme light
+mode light
+theme educational-warm
+reduced-motion on
+wait 2000
+shot welcome-default-educational-warm

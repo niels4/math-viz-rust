@@ -1,0 +1,9 @@
+# welcome-default-midnight-violet (h10-page): the welcome page at rest in midnight-violet, reduced motion.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme midnight-violet
+reduced-motion on
+wait 2000
+shot welcome-default-midnight-violet

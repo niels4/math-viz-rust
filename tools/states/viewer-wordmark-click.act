@@ -1,0 +1,16 @@
+# viewer-wordmark-click (h10-page): the viewer on func=x2&a=2; the wordmark's
+# centre ((104, 48) on the viewer's top bar) navigates home; the shot 2 s
+# later: the welcome page. Behaviour: the route and url lines.
+# Phase 1 reaches the viewer with a mid-run hash edit (no `route` line yet);
+# phase 2 opens it with one (h10-t-route).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+hash func=x2&a=2
+wait 500
+click 104 48
+wait 2000
+shot viewer-wordmark-click

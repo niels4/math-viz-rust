@@ -1,0 +1,13 @@
+# welcome-tab-cta (h10-page): Tab twice: the gear's focus ring, then the
+# link's (the UA focus ring on an anchor, measured on ref-h10; ref-WebKit's
+# Tab skips the link, the known quirk, category e).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+tab
+tab
+shot welcome-tab-cta
