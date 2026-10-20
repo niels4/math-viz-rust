@@ -1019,6 +1019,82 @@ no new tokens (all eight tabled).
   by `./build.sh pages` (wrap's last step); item (5) dropped: the release flags landed in
   6a79410 (claude0).
 
+
+### h10-hero (the welcome backdrop: graph paper and two masked lights)
+
+- `welcome_backdrop.rs` owns the four z-index −1 layers behind the hero plane
+  (paper_x, paper_y, light_top, light_body): the mask stop tables, the srgb
+  `over` operator, the 3-stop `in srgb` top gradient (ends clamped), the SVG
+  blurred-ellipse masks (binary raster at 2 screen-px cells, true separable
+  Gaussian, bilinear upsample) and the whole-window CPU composite in sRGB
+  (`composite_backdrop`), plus the hero's label list (bare plane, no legend).
+- The blend answer to h10-page's question (its GL premultiplied finding makes
+  fills exact, but NanoVG has no blur, no 3-stop srgb gradient and no masked
+  layer): the CPU composite stays — one opaque RGBA image at device
+  resolution, uploaded once per theme/size/fit and drawn with an image pattern
+  exactly as the transition snapshot is. `theme_colors` resolves the six
+  tokens as UNCLIPPED sRGB (mv-theme's `to_space` clips for canvas paint;
+  the DOM gradient interpolates `--param-a`'s out-of-gamut red to 1.038
+  before any gamut map — clipped would cost a level in the top light's left
+  tail); in-gamut tokens come out identical (pinned by test).
+- `paint_backdrop` (welcome.rs) runs after the layout (reads the laid-out
+  `WelcomeHero` box), caches by (theme slug, window pixels, fit) in
+  `App.backdrop`, recomposites and re-uploads on a miss (deleting the stale
+  image), draws the pattern over the window rect. draw_welcome's call moved
+  below `layout_welcome`; page.rs's `element_box` went `pub(crate)` for it.
+- Measured on ref-h10 (1440×900 dpr2, reduced motion): vertical paper lines
+  fill exactly device cols 279+100k/280+100k, horizontals rows −201+100k
+  (paper_y's band top is page −100); line pixels are grid-ink × mask-alpha
+  over bg in encoded space (crossings multiply); the plateau is byte-exact;
+  the true Gaussian sits on WebKit (Chromium ±1, Firefox −2/−3 at the steep
+  edge — no three-box needed). `--chart-glow` carries `/ 0.4` (found by
+  probe); `mask: url()` at a whole document is an alpha mask.
+- H10 judgment: native = web-webkit = web-firefox whole-frame at 0 on every
+  state; web-chromium 0 flat, 3 isolated curve-AA pixels >15 (42/36/35, the
+  recorded SwiftShader (d) family). Surround vs ref-WebKit max 3–4 in
+  falloff-tail clusters (≤603 px), plateau/lines exact; vs ref-Chromium max
+  3–4 same shape; vs ref-Firefox max 6–8 in ~1M wash px — inside the engines'
+  own spread (ref-webkit vs ref-firefox max 6–7 over the same wash,
+  category (e); the tron-cyan 8 is port-vs-webkit 3 + webkit-vs-firefox 5–6
+  on one 1305 px patch, decomposed in the progress file). `shift` finds no
+  row offset. In-plane clusters (plane-label baseline: chromium/firefox set
+  the "5" ~5 px higher than webkit/the port; curve slivers) and intro glyph
+  pixels (description ends, chip letters) are the sibling regions, named in
+  the progress file, not defects of the backdrop.
+- h10-page's code-lens hero-border fix rides here (driver-assigned): the 1 px
+  `--border` stroked at CSS (−1,−1) with a stray `restore()`; now inset from
+  the frame box like draw_commands, restore deleted. Proved byte-exact on
+  all four straight edges vs ref-WebKit, corners showing backdrop through
+  the radius (category b), nothing at the window's top-left.
+
+### fix-cursor (the pointer on every control the reference gives it)
+
+- The reference's cursor census is `getComputedStyle(document.elementFromPoint(x, y)).cursor`
+  with a real mouse at the control's centre, in all three engines (probes in
+  `/tmp/cursor-probe/`, evidence `evidence.json`): labels compute `default` in
+  Chromium/Firefox (UA `label { cursor: default }`) and `auto` in WebKit; the radio input
+  covering each selector cell computes `default` (Chromium/Firefox UA) / `auto` (WebKit);
+  links compute `pointer` in Chromium/Firefox but `auto` in this WebKit (even a bare
+  injected anchor on `about:blank`; explicit `cursor: pointer` computes fine, so the
+  bundled WebKit 26.6 UA sheet lacks the link rule — recorded, not matched: real Safari
+  shows the hand and the port keeps pointer). No CSS `cursor:` rule anywhere but the
+  eight known ones (grep at the hash + current main: neither styles the selector cells).
+- Two rulings (decisions.md, driver's 2026-10-20 message): the selector cells keep the
+  pointer as the user's deliberate departure (the reference is the arrow everywhere);
+  the menu's light/dark cells and theme rows keep the port's pointer too (claude0's
+  consistency call, overturnable — the reference is default in all three engines, so
+  matching it is a two-line revert in `settings.rs`). h1-settings' "cursor pointer
+  while hovered" described the port, which now stays that way deliberately. Everything
+  else already matched. Cursors never screenshot, so pixels can't change either way.
+- No paint code reads cursors: changing region cursors cannot move a pixel (proved by
+  `same-run` 0 differences on H1+H3 before/after, 20 states x 7 surfaces). The cursor
+  leaves through `update_cursor` after every retarget (hover None, or the Text fallback
+  when no region covers text runs), `CURSOR_CSS` + `mv_set_cursor` on the web (the
+  `!important` rule beats SDL's inline cursor), SystemCursor on native. `tools/run states`
+  only takes `[MmHh]<digits>` group names: a non-history group (here FIXCURSOR) is
+  appended to milestones.toml for `all` but run by passing its state names explicitly.
+
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

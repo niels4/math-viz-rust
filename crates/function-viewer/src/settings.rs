@@ -578,6 +578,11 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             false,
         );
     });
+    // Pointer on the cells (fix-cursor): claude0's consistency call in the
+    // user's place (2026-10-20, overturnable) — the same kind of control as
+    // the selector cells, which the user wants with the pointer. The
+    // reference measures default in all three engines (its labels carry no
+    // cursor rule), so matching it is a two-line revert; see decisions.md.
     crate::input::region(
         app,
         mv_clay::id("MenuCell", index as u32),
@@ -742,6 +747,9 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             });
         }
     });
+    // Pointer on the rows (fix-cursor): as the cells above, claude0's
+    // consistency call (overturnable); the reference measures default.
+    // See decisions.md.
     crate::input::region(
         app,
         mv_clay::id("MenuRow", index as u32),

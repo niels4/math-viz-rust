@@ -423,8 +423,10 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
 /// `css_background` would apply twice, and the welcome pass paints no
 /// translucent Clay rect).
 fn draw_welcome(app: &mut App, theme: &mv_theme::Theme, density: f32) {
-    crate::welcome::paint_backdrop(app);
     let commands = crate::welcome::layout_welcome(app, app.size, 1.0);
+    // After the layout: the backdrop reads the hero's laid-out box for its
+    // cache (h10-hero fills the slot here, before the frame's content).
+    crate::welcome::paint_backdrop(app, theme, density);
     crate::input::collect_regions(app);
     // The still in its frame first: the frame's opaque fill sits under the
     // ink in the same pass, so the menu's background (in the commands after)
@@ -602,7 +604,7 @@ fn paint_menu_shadow(app: &mut App, theme: &mv_theme::Theme) {
 }
 
 /// The laid-out box of an element, if the frame laid it out.
-fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
+pub(crate) fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
     let data = app
         .clay
         .as_ref()
