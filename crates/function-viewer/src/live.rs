@@ -418,7 +418,11 @@ fn post(l: &Live, index: i64) {
                     SDL_PushEvent(&mut ev);
                 }
             }
-            LiveWhat::Shot(_) | LiveWhat::Resize(_) | LiveWhat::Scheme(_) | LiveWhat::Hash(_) | LiveWhat::End(_) => {
+            LiveWhat::Shot(_)
+            | LiveWhat::Resize(_)
+            | LiveWhat::Scheme(_)
+            | LiveWhat::Hash(_)
+            | LiveWhat::End(_) => {
                 push_user_event(
                     UserCode::Live,
                     index as *mut std::ffi::c_void,

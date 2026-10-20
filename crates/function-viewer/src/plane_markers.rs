@@ -283,7 +283,11 @@ pub fn paint_label(
 /// (`drawCartesianPlane.test.ts`: no label shows until then), else the
 /// marker's own label.
 fn labels(marker: &PlotMarker, font_ready: bool) -> Option<&PlotLabel> {
-    if font_ready { marker.label.as_ref() } else { None }
+    if font_ready {
+        marker.label.as_ref()
+    } else {
+        None
+    }
 }
 
 /// Paints the frame's markers in the source's order: the guides of the
