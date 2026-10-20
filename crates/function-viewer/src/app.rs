@@ -10,6 +10,7 @@ use enum_map::EnumMap;
 use crate::app_loop;
 use crate::input::InputState;
 use crate::scroll::{Scroll, Scroller};
+use crate::url::Url;
 
 /// The shell's app state.
 pub struct App {
@@ -52,7 +53,10 @@ pub struct App {
     pub clay: Option<mv_clay::Clay>,
     /// The page query: `--query` at start natively, the hash on the web. The
     /// harness writes it to `views.json` whenever it changes.
-    pub url: String,
+    ///
+    /// The query string plus its route (`url::Url`); the page milestones'
+    /// params parse from it and write back through it.
+    pub url: Url,
     /// The GL loader for the app's few direct GL calls, `None` in tests
     /// (`headless_app`), which never call GL.
     ///
@@ -180,7 +184,7 @@ impl App {
             dirty: false,
             // Uninitialised shaping fonts; `app_init` runs `mv_text::init`.
             fonts: mv_text::uninit(),
-            url: String::new(),
+            url: Url::from_query(""),
         }
     }
 }

@@ -174,6 +174,21 @@ pub unsafe extern "C" fn mv_model_line(line: *const std::os::raw::c_char) -> boo
     )
 }
 
+/// The page's hash changed under the app (an edit in the address bar,
+/// back/forward): queued as the app's own event. The main thread re-reads
+/// the hash there, as math-viz2's `hashchange` subscription re-reads its
+/// route and search string. Called from the shell's `hashchange` listener
+/// on the browser thread; our own writes go through `history.replaceState`,
+/// which fires no `hashchange`, so they never loop back here.
+#[unsafe(no_mangle)]
+pub extern "C" fn mv_hash_changed() {
+    crate::app_loop::push_user_event(
+        crate::app_loop::UserCode::Hash,
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+    );
+}
+
 /// Sets up the default context.
 ///
 /// Nothing to install on this side: Rust's `System` allocator calls
@@ -597,6 +612,22 @@ pub fn platform_read_hash() -> String {
         hash.split_once('?')
             .map(|(_, query)| query.to_string())
             .unwrap_or_default()
+    }
+}
+
+/// Writes the page's hash through `history.replaceState` (no history entry),
+/// so the page behaves as math-viz2's does. Takes the full hash
+/// (`Url::full_hash`); a hash with an interior NUL is never written. The
+/// milestones call this on the frame step once their params' writes change
+/// the query.
+pub fn platform_write_hash(hash: &str) {
+    let Ok(hash) = std::ffi::CString::new(hash) else {
+        return;
+    };
+    // SAFETY: the NUL-terminated hash is live for the call; the shell copies
+    // it before returning.
+    unsafe {
+        mv_write_hash(hash.as_ptr());
     }
 }
 
