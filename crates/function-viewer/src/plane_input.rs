@@ -802,6 +802,9 @@ mod tests {
         // it the draw consumes the step's dirty and the glide stalls after
         // one step (every flick frame but the first showed a frozen camera).
         let mut app = headless_app();
+        // On the viewer route: the headless default is the welcome route,
+        // whose playing loop would keep the loop awake past the settle.
+        app.url.sync_from_hash("#function-viewer");
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
         init_camera_from_url(&mut app);
         handle_input(&mut app, left_button([300.0, 200.0], true), 0);

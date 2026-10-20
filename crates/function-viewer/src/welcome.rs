@@ -648,9 +648,11 @@ pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32) {
 
 /// Goes to the route with the query, as the anchors do: the button to
 /// `#function-viewer` with an empty query, the wordmark to `#`. On the web
-/// the hash is assigned (a history entry; the existing `hashchange` path
-/// re-reads the route and query), natively the URL is set and the same
-/// route-entered step runs.
+/// the hash is assigned (a history entry) and the URL is read in at once,
+/// as natively: the later `hashchange` finds the route unchanged and skips
+/// its second enter. Without the synchronous enter a shot on the click's
+/// turn photographs the old route on the web (h10-loop's mount shot), while
+/// natively the same turn already draws the new one.
 pub fn navigate(app: &mut App, route: &str, query: &str) {
     let hash = if query.is_empty() {
         route.to_string()
@@ -659,8 +661,13 @@ pub fn navigate(app: &mut App, route: &str, query: &str) {
     };
     #[cfg(target_os = "emscripten")]
     {
-        let _ = app;
         crate::platform_web::platform_navigate_hash(&hash);
+        let prev = app.url.route().to_string();
+        app.url.sync_from_hash(&format!("#{hash}"));
+        if prev != app.url.route() {
+            enter_route(app);
+        }
+        app.dirty = true;
     }
     #[cfg(not(target_os = "emscripten"))]
     {
@@ -927,9 +934,9 @@ mod tests {
 
     #[test]
     fn navigation_sets_the_route_and_enters_it() {
-        // Native only (the web build assigns `location.hash` instead): the
-        // button to `#function-viewer` with an empty query, the wordmark to
-        // `#`.
+        // Tests run natively; on the web the same sync-and-enter runs
+        // beside the `location.hash` assignment. The button to
+        // `#function-viewer` with an empty query, the wordmark to `#`.
         let mut app = crate::fixture::headless_app();
         assert_eq!(Route::of(&app.url), Route::Welcome);
         navigate(&mut app, VIEWER_ROUTE, "");

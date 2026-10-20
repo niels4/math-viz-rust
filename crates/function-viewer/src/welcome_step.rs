@@ -77,15 +77,13 @@ impl WelcomeState {
 }
 
 /// Whether the welcome route keeps the loop awake: only while animation is
-/// on and the loop has started (under reduced motion the page rests on the
-/// still and requests no frames; before the first stepped frame nothing has
-/// animated yet — the entering turn's own dirty covers it). `loop.rs`'s
+/// on (under reduced motion the page rests on the still and requests no
+/// frames). The entering turn draws the mount unstepped but stays awake
+/// through this arm, so the next frame starts the loop. `loop.rs`'s
 /// `schedule` reads it.
 #[must_use]
 pub fn animating(app: &App) -> bool {
-    Route::of(&app.url) == Route::Welcome
-        && WelcomeClock::is_animating(!app.reduced_motion)
-        && app.welcome.clock.elapsed() > 0.0
+    Route::of(&app.url) == Route::Welcome && WelcomeClock::is_animating(!app.reduced_motion)
 }
 
 /// One frame on the welcome route: the clock advances every frame, the
@@ -297,13 +295,9 @@ mod tests {
     #[test]
     fn animating_needs_the_route_and_motion() {
         let mut app = welcome_app();
-        // Before the first stepped frame nothing has animated yet.
-        assert!(!animating(&app));
-        let mut now = 0;
-        assert!(frame(&mut app, &mut now));
-        assert!(frame(&mut app, &mut now));
-        // The startup shape steps from the first frame (no entering turn).
-        assert!(app.welcome.clock.elapsed() > 0.0);
+        // Awake from the entering turn on (the mount draws unstepped but
+        // the loop must start on the next frame).
+        app.welcome = WelcomeState::fresh_entered(false);
         assert!(animating(&app));
         app.reduced_motion = true;
         assert!(!animating(&app));
