@@ -1,6 +1,8 @@
 # math-viz2-rust
 
-A port of math-viz2, the user's React Function Viewer, to Rust in math-viz-rust's stack: one codebase that builds a native desktop app and, compiled to WebAssembly, a browser app. The reference of record is math-viz2 itself at each milestone's hash, served on port 5190. The rest of this README is wrap's.
+**Live app:** https://niels4.github.io/math-viz-rust/
+
+A port of the Function Viewer from [math-viz](https://github.com/niels4/math-viz) (React, TypeScript, Canvas 2D) to Rust: one codebase that builds a native desktop app on SDL3 and, compiled to WebAssembly, the browser app linked above. The port follows the original's development history commit by commit; the original app at each milestone's commit is the reference the harness compares against.
 
 ## Toolchain
 
@@ -9,9 +11,6 @@ A port of math-viz2, the user's React Function Viewer, to Rust in math-viz-rust'
 | Rust | `1.99.0` (`rust-toolchain.toml`; `wasm32-unknown-emscripten` target) | the app; `cargo` builds both targets |
 | SDL3 | 3.4.18 (Homebrew `sdl3` natively for dev/check builds; compiled from source for the release and always on the web) | window, input, GL context, main callbacks |
 | Emscripten | 6.0.12 through emsdk in `~/emsdk` | linking the web build |
-| Python | 3.14 (Homebrew), the `tools/` venv (t0b) | the harness |
-| Python dev tools | black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414, pinned `==` in `tools/pyproject.toml` (t1-hash) | `tools/format` and `tools/check` on the harness |
-| Playwright browsers | chromium 1243, firefox 1543, webkit 2359 in `~/Library/Caches/ms-playwright` | screenshots of the web build and the reference |
 
 Clay (`e6cc369`), NanoVG, Fontstash, stb_truetype, kb_text_shape (2.21) are vendored in `vendor/` (t0c), which says where each came from and what changed; emsdk is the one toolchain fetched outside it.
 
