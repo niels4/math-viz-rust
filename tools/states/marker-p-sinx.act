@@ -1,0 +1,10 @@
+# marker-p-sinx (h8-plane): sin x at p=1, so P sits at (1, 0.84).
+# Behaviour: url line func=sinx&p=1; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx&p=1
+wait 2000
+shot marker-p-sinx

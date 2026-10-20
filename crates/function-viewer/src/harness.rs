@@ -120,6 +120,8 @@ pub struct Harness<'a> {
     pub lit: String,
     /// The cursor as last written to `views.json`.
     pub cursor: String,
+    /// Q's quantized x as last written to `views.json`.
+    pub q: String,
     /// The shown transform as last written to `views.json`.
     pub shown: String,
 }
@@ -157,6 +159,7 @@ pub fn run_harness(
         camera: String::new(),
         lit: String::new(),
         cursor: String::new(),
+        q: String::new(),
         shown: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
@@ -521,6 +524,14 @@ fn harness_frame(h: &mut Harness<'_>) {
     {
         h.cursor = cursor;
         h.views.extend_from_slice(h.cursor.as_bytes());
+    }
+    // Q's quantized x, whenever the pointer names or clears a point
+    // (`qXAtom`, read by `act.py`'s `plane_point` against the Q row's
+    // text at the same frame).
+    let q = q_line(h.app.state.q_x);
+    if q != h.q {
+        h.q = q;
+        h.views.extend_from_slice(h.q.as_bytes());
     }
     // The camera, whenever it changed: center, scale, whether a frame is
     // scheduled (h2-input; the behaviour checks read these against the
@@ -920,6 +931,17 @@ fn cursor_line(cursor: crate::input::Cursor) -> Option<String> {
         _ => return None,
     };
     Some(format!("{{\"cursor\": \"{name}\"}}\n"))
+}
+
+/// One `q` line: Q's quantized x, or null while the pointer names no point.
+/// Written whenever it changes, so hover states show the value at the shot
+/// and still states keep byte-identical views. Pure, like `lit_line` above,
+/// so the shape is testable without the app.
+fn q_line(q_x: Option<f64>) -> String {
+    match q_x {
+        Some(x) => format!("{{\"q\": {}}}\n", fmt_g17(x)),
+        None => "{\"q\": null}\n".to_string(),
+    }
 }
 
 /// One `shown` line: the transform the plane draws, with whether a flip is
@@ -1323,6 +1345,13 @@ mod tests {
             camera_line([0.0, 0.0], 0.5, true),
             "{\"camera\": {\"center\": [0, 0], \"scale\": 0.5, \"animating\": true}}\n"
         );
+    }
+
+    #[test]
+    fn q_line_has_its_shape() {
+        assert_eq!(q_line(None), "{\"q\": null}\n");
+        assert_eq!(q_line(Some(2.0)), "{\"q\": 2}\n");
+        assert_eq!(q_line(Some(2.02)), "{\"q\": 2.02}\n");
     }
 
     #[test]

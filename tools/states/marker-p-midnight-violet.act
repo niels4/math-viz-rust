@@ -1,0 +1,9 @@
+# marker-p-midnight-violet (h8-plane): P at (2, 2) on x1 at rest in midnight-violet, in its theme ink.
+# Behaviour: url line (empty query); no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme midnight-violet
+wait 2000
+shot marker-p-themes

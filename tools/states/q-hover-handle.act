@@ -1,0 +1,14 @@
+# q-hover-handle (h8-plane): the pointer on the shift diamond at (928, 490):
+# no Q shows while it rests on a handle.
+# Behaviour: url line (empty query); no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+wait 800
+move 929 490
+wait 500
+shot q-hover-handle

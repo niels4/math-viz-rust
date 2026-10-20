@@ -1,0 +1,9 @@
+# marker-p-clean-teal (h8-plane): P at (2, 2) on x1 at rest in clean-teal, in its theme ink.
+# Behaviour: url line (empty query); no q line.
+size 1440 900
+density 2
+scheme light
+mode light
+theme clean-teal
+wait 2000
+shot marker-p-themes

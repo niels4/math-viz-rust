@@ -56,6 +56,13 @@ pub fn top_bar(app: &mut App) {
         kind: HitKind::Gear,
         index: 0,
     };
+    // The wordmark link to the root page (`TopBar.tsx` at `96f1e84`): a hot
+    // region over the flake and word with the pointer cursor and a no-op
+    // click, as the planner's root-page call has it.
+    let wordmark = Hit {
+        kind: HitKind::Wordmark,
+        index: 0,
+    };
 
     let mut bar = crate::ui::empty_decl();
     bar.layout.sizing = clay::Sizing {
@@ -108,6 +115,15 @@ pub fn top_bar(app: &mut App) {
                 false,
             );
         });
+        crate::input::region(
+            app,
+            mv_clay::id("Wordmark", 0),
+            wordmark,
+            Cursor::Pointer,
+            Cursor::Pointer,
+            false,
+            crate::ui::corner_radius_all(0.0),
+        );
         // The divider: a 1 px border-left, 28 px tall.
         let mut divider = crate::ui::empty_decl();
         divider.layout.sizing = clay::Sizing {

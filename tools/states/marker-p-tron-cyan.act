@@ -1,0 +1,9 @@
+# marker-p-tron-cyan (h8-plane): P at (2, 2) on x1 at rest in tron-cyan, in its theme ink.
+# Behaviour: url line (empty query); no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme tron-cyan
+wait 2000
+shot marker-p-themes

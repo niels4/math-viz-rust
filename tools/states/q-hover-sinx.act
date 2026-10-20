@@ -1,0 +1,15 @@
+# q-hover-sinx (h8-plane): on sin x, the pointer at (978, 490), plot (1, 0):
+# Q at (1, 0.84) with its guide, drop lines and label. Two moves, as q-hover.
+# Behaviour: url line func=sinx; q line 1.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx
+wait 500
+move 979 490
+wait 800
+move 978 490
+wait 500
+shot q-hover-sinx
