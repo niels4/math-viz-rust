@@ -1012,6 +1012,32 @@ no new tokens (all eight tabled).
   by `./build.sh pages` (wrap's last step); item (5) dropped: the release flags landed in
   6a79410 (claude0).
 
+### fix-cursor (the pointer on every control the reference gives it)
+
+- The reference's cursor census is `getComputedStyle(document.elementFromPoint(x, y)).cursor`
+  with a real mouse at the control's centre, in all three engines (probes in
+  `/tmp/cursor-probe/`, evidence `evidence.json`): labels compute `default` in
+  Chromium/Firefox (UA `label { cursor: default }`) and `auto` in WebKit; the radio input
+  covering each selector cell computes `default` (Chromium/Firefox UA) / `auto` (WebKit);
+  links compute `pointer` in Chromium/Firefox but `auto` in this WebKit (even a bare
+  injected anchor on `about:blank`; explicit `cursor: pointer` computes fine, so the
+  bundled WebKit 26.6 UA sheet lacks the link rule — recorded, not matched: real Safari
+  shows the hand and the port keeps pointer). No CSS `cursor:` rule anywhere but the
+  eight known ones (grep at the hash + current main: neither styles the selector cells).
+- Two findings: the menu's light/dark cells and theme rows were port Pointer while the
+  reference is default in all three engines (h1-settings' "cursor pointer while hovered"
+  described the port, not the reference) — set to Default; the selector cells were port
+  Default matching the reference arrow, but the user explicitly asked for the pointer —
+  set to Pointer as a marked overturnable deviation (one revert in `selector.rs`; the
+  cursor never screenshots, so pixels can't change). Everything else already matched.
+- No paint code reads cursors: changing region cursors cannot move a pixel (proved by
+  `same-run` 0 differences on H1+H3 before/after, 20 states x 7 surfaces). The cursor
+  leaves through `update_cursor` after every retarget (hover None, or the Text fallback
+  when no region covers text runs), `CURSOR_CSS` + `mv_set_cursor` on the web (the
+  `!important` rule beats SDL's inline cursor), SystemCursor on native. `tools/run states`
+  only takes `[MmHh]<digits>` group names: a non-history group (here FIXCURSOR) is
+  appended to milestones.toml for `all` but run by passing its state names explicitly.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
