@@ -53,12 +53,16 @@ t0-harness's entries: math-viz2's storage keys are three JSON strings (`mathviz-
 `mathviz-dark-theme`, `mathviz-light-theme`, one per key; no tour key), the port's three
 under `math-viz2-rust-*`; the theme class is on `document.body` (main.tsx sets it); the
 reference at af434dc renders the not-found page (no canvas), so `act`/`dom`/`raf` wait for
-the body's class, not a canvas, until h1's plane; the theme files define the same 35 tokens
-in the same order in all six themes, values identical to the copied file's for every shared
-token; `tools/run themes` reads every token's stream through the reference in each scheme
-and fails on the first mismatch, and its output drops math-viz's page tokens (ParamA and
-friends, the chart points, the curve glow: theme.rs's tests and testdata/tokens.json still
-name them, h1-frame's fix-forward).
+the body's class, not a canvas, until h1's plane; the theme files define the same tokens in
+the same order in all six themes (31 at af434dc; --section, --chart-axis, --chart-grid-major
+and --shadow-color join by 5cef052), shared values identical to the copied file's;
+`tools/run themes` reads every token's stream through the reference in each scheme and fails
+on the first mismatch, and its output drops math-viz's page tokens (ParamA and friends, the
+chart points, the curve glow: theme.rs's tests and testdata/tokens.json still name them,
+h1-frame's fix-forward). `views.json`'s `url`-line contract (kept from t0-shell-a): a line
+holding only `url` is written whenever the page query changes (`--query` writes one at frame
+0); no line reads as the empty query, and behaviour checks compare the last `url` line with
+the reference's `location.hash` query.
 
 ## The references and the bar
 

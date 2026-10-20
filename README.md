@@ -85,9 +85,14 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   milestone appends its states, tokens and boxes.
 - **Writes:** each run writes its shots, any video and `report.json` (`views.json`,
   `motion.json`, `time.json` and `live.json` are checked against their shapes, a mismatch
-  counting as a problem). `tools/run states` lays the surfaces' shots on a contact sheet and
-  compares every pair at threshold 0; `tools/run judge` counts the native shot's pixels apart
-  from the reference per engine (flat and more than 2 levels apart, clustered); `tools/run
-  themes` regenerates `crates/mv-theme/src/themes.rs` through the reference;
-  `tools/run font` instances math-viz2's variable woff2 into `assets/fonts/`;
-  `tools/run gamut` checks Display P3 (its allowances start empty).
+  counting as a problem). `views.json` holds one object per shot with the exact 10 keys
+  (`shot,time,zoom,pan_x,pan_y,origin_x,origin_y,cursor,theme,scaled`); a line holding only
+  `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0;
+  runs without one write none, which reads as the empty query). Behaviour checks compare the
+  last `url` line with the reference's `location.hash` query after every scripted input.
+  `tools/run states` lays the surfaces' shots on a contact sheet and compares every pair at
+  threshold 0; `tools/run judge` counts the native shot's pixels apart from the reference per
+  engine (flat and more than 2 levels apart, clustered); `tools/run themes` regenerates
+  `crates/mv-theme/src/themes.rs` through the reference; `tools/run font` instances math-viz2's
+  variable woff2 into `assets/fonts/`; `tools/run gamut` checks Display P3 (its allowances
+  start empty).
