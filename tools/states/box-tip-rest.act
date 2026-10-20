@@ -1,0 +1,11 @@
+# box-tip-rest (h5-box): the pointer resting on a's box past 400 ms.
+# The rest tip shows: Drag sideways ... back to 1.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 450.5
+wait 700
+shot box-tip-rest

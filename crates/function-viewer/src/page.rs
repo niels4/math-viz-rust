@@ -68,13 +68,14 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_fixed(SIDEBAR_WIDTH),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
-            // `--space-card` inside the 1 px border: Clay's border takes no
-            // layout space, the browser's `border-box` does.
+            // `--space-inset` (12) inside the 1 px border at the h4 hash
+            // (`--space-card` before): Clay's border takes no layout space,
+            // the browser's `border-box` does.
             side.layout.padding = clay::Padding {
-                left: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                right: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                top: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                bottom: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                left: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                right: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                top: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                bottom: (crate::sidebar::SIDE_PAD + 1.0) as u16,
             };
             side.backgroundColor = crate::ui::ink(
                 crate::ui::current_theme(app),
@@ -108,6 +109,8 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
         });
         // The settings menu floats under the gear, above the page.
         crate::settings::menu(app);
+        // The scrub ruler floats under its row while a box scrubs (h5-ruler).
+        crate::ruler::layout_open_drag(app);
     });
     app.clay
         .as_mut()
@@ -234,6 +237,15 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
+    // The readout's two lines, scaled to fit where the equation is long.
+    crate::readout::paint_readout(app);
+    // The transform rows' inset rings, focus rings and chevrons (h4-rows),
+    // and Reset all's focus ring (h5-buttons).
+    crate::transform_row::paint_rows(app);
+    crate::transform_section::paint_head(app);
+    // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
+    // beneath, as the positioned tape stacks in the DOM.
+    crate::ruler::paint_open_drag(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }

@@ -1,0 +1,11 @@
+# url-params (H4): a mid-run hash edit to a=2&h=1 — the rows adopt the URL's
+# values live (a shows "2.00", h "1.00"), the curve moves in h6.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+hash a=2&h=1
+wait 400
+shot url-params

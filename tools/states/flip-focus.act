@@ -1,0 +1,26 @@
+# flip-focus (H5): b's toggle focused by Tab — reached deterministically by
+# clicking b's box (331, 555: its centre at 1440x900, focuses without changing
+# the value) and Shift+Tab once back to its toggle (counting 7-8 Tabs from the
+# body proved flaky: the first Tab is swallowed when the document has no
+# focus). Expect the 3 px primary-32% ring, no outline. Behaviour: the DOM's
+# activeElement is b's toggle ("Mirror left to right").
+# flip-focus (H5): b's toggle focused by Tab — reached by clicking k's box
+# (331, 494: its centre at 1440x900, focuses without changing the value) and
+# a single forward Tab to the next stop, b's toggle. (Shift+Tab back from b's
+# box overshoots to k's box in the harness's Python-driver WebKit while plain
+# Tab advances exactly one stop; counting Tabs from the body is flaky because
+# the first Tab is swallowed when the document has no focus. Both measured.)
+# Expect the 3 px primary-32% ring, no outline. Behaviour: the DOM's
+# activeElement is b's toggle ("Mirror left to right").
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+click 331 494
+wait 200
+key Tab
+wait 200
+shot flip-focus

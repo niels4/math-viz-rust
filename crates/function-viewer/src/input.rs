@@ -141,6 +141,23 @@ pub enum HitKind {
     /// A function-picker option; `Hit.index` names the option in picker
     /// order (h3's selector declares the regions).
     Selector,
+    /// A readout term; `Hit.index` names the parameter in A B H K order, in
+    /// both lines (h4-readout's readout declares the regions).
+    ReadoutTerm,
+    /// A transform row; `Hit.index` names the parameter in `TransformParam`
+    /// order (h4-rows' transform_row declares the regions).
+    TransformRow,
+    /// A transform row's number field; `Hit.index` names the parameter
+    /// (h4-rows; the row's focus stop).
+    TransformField,
+    /// A scale row's flip toggle; `Hit.index` names the parameter in
+    /// `TransformParam` order (h5-buttons; a focus stop, in tab order).
+    TransformFlip,
+    /// A row's reset button; `Hit.index` names the parameter (h5-buttons;
+    /// never a focus stop: `tabIndex={-1}`).
+    TransformReset,
+    /// The Transform card's Reset all (h5-buttons; a focus stop, `index` 0).
+    TransformResetAll,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -357,6 +374,9 @@ pub fn collect_regions(app: &mut App) {
     let (input, scroll) = (&mut app.input, &app.scroll);
     input.regions.clear();
     input.stops.clear();
+    // The last frame's texts the I-beam shows over: like the regions, they
+    // are re-noted every layout (h4-readout's runs note theirs post-pass).
+    input.texts.clear();
     for d in &input.declared {
         let mut r = d.region;
         if !d.keep_box {
@@ -454,9 +474,12 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             // A drag the plane holds keeps panning under capture, wherever
             // the pointer is, as `setPointerCapture` keeps the hook's moves
-            // coming; anything else retargets.
+            // coming; a scrub the value box holds keeps scrubbing the same
+            // way; anything else retargets.
             if app.input.pressed.kind == HitKind::Plane && !event.left {
                 crate::plane_input::plane_move(app);
+            } else if crate::scrub_value::captured(app) && !event.left {
+                crate::scrub_value::pointer_moved(app);
             } else {
                 retarget(app);
             }
@@ -478,6 +501,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if event.down {
                 press(app);
                 crate::settings::press_down(app);
+                crate::transform_row::press_down(app);
                 if app.input.pressed.kind == HitKind::Plane {
                     // SDL's numbering starts at 1; the camera takes the DOM's,
                     // where the primary button is 0 (only 0 drags, there).
@@ -491,9 +515,16 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if down.kind == HitKind::Plane {
                     crate::plane_input::plane_up(app);
                 }
+                // A box press ends: a scrub flushes or opens the field, a
+                // tap may reset or move the caret. Before the release clears
+                // the press the down hit names.
+                crate::scrub_value::release_up(app, down, event.pos, event.clicks);
                 release(app);
                 crate::settings::click(app, down);
                 crate::selector::click(app, down);
+                // The transform buttons' click (h5-buttons: the press started
+                // and the release lands on the toggle, reset or Reset all).
+                crate::transform_row::click(app, down);
                 // The overlay button's click (the press started and the
                 // release lands on it, as the button's `onClick` needs both):
                 // the camera back to its defaults, flushed.
@@ -514,6 +545,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             app.input.pointer = event.pos;
             app.input.over = true;
             retarget(app);
+            // A wheel over a value box steps it (ignored while typed into,
+            // when the page may scroll instead).
+            if app.input.hover.kind == HitKind::TransformField {
+                crate::scrub_value::wheel_over(app, event.delta[1]);
+            }
             // The plane zooms about the pointer; a held drag keeps the hover
             // on the plane through capture, so a wheel mid-drag zooms, as the
             // hook's wheel and drag run on one loop.
@@ -532,14 +568,22 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.mods = event.mods;
             // The page milestones route their keys from here.
-            if !crate::settings::key(app, &event) {
-                crate::selector::key(app, &event);
+            if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
+                crate::transform_row::key(app, &event);
+            }
+            // A modifier anywhere re-reads a held scrub's mode live
+            // mid-drag, as the window key hook does (down and up, never a
+            // repeat, which cannot change the mode; acts only then).
+            if !event.repeat {
+                crate::scrub_value::modifier_key(app);
             }
         }
         Input::Text(event) => {
             if crate::trace() {
                 println!("input text {:?}", event.text);
             }
+            // The focused transform field takes the typed text (h4-rows).
+            crate::transform_row::text(app, &event.text);
         }
         Input::Window(event) => {
             app.size = event.size;
@@ -563,6 +607,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if app.input.pressed.kind == HitKind::Plane {
                     crate::plane_input::plane_up(app);
                 }
+                // A held scrub ends too, flushing when it dragged, as the
+                // window release stops the box's press.
+                crate::scrub_value::focus_lost(app);
                 app.input.pressed = Hit::default();
                 retarget(app);
             }
@@ -615,11 +662,21 @@ pub fn retarget(app: &mut App) {
     } else {
         Hit::default()
     };
-    if captures(pressed.kind) {
+    if captures(pressed.kind) || crate::scrub_value::captured(app) {
         hit = pressed;
     }
     if hit != app.input.hover {
+        let before = app.input.hover;
         app.input.hover = hit;
+        // The highlight follows the pointer across the transform rows (leave
+        // then enter, as the DOM fires them); h4-rows owns this sync.
+        crate::transform_row::sync_hover(app, before, hit);
+        // The highlight model follows the hover: terms and rows light (or
+        // drop) as the pointer moves across them (h4-readout; the row kinds
+        // map in `readout::hit_param` too). Only on a change: re-stamping
+        // the hover every frame would keep it ahead of the focus forever,
+        // and a Tabbed focus would never take the lead (h5-buttons).
+        crate::readout::sync_hover(app);
         app.dirty = true;
     }
     update_cursor(app);

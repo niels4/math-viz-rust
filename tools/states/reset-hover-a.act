@@ -1,0 +1,12 @@
+# reset-hover-a (H5): the pointer on a's reset (254, 450: the button's centre
+# at 1440x900) — ink foreground on secondary, radius 4; a lit in the row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+move 254 450
+wait 300
+shot reset-hover-a

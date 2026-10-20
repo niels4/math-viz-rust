@@ -1,0 +1,16 @@
+# box-drag-a-50 (h5-box): a's box held 50 px into a drag.
+# a=1 multiplies by (1.002)^50; the box shows the value with the row-tint
+# background and the ink outline, the row stays lit, the ruler shows
+# (h5-ruler). The URL is unchanged until release (200 ms debounce).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 450.5
+down
+move 381.5 450.5 over 80
+shot box-drag-a-50
+up
+wait 1200
