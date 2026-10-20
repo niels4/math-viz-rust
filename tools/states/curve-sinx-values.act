@@ -1,0 +1,11 @@
+# curve-sinx-values (H6): sin x at a=2, h=1, k=-3 at rest.
+# Behaviour: views shown line {a:2, b:1, h:1, k:-3}; url line
+# func=sinx&a=2&h=1&k=-3.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx&a=2&h=1&k=-3
+wait 2000
+shot curve-sinx-values

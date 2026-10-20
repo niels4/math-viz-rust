@@ -1,0 +1,19 @@
+# switch-with-values (H6): x³ picked at a=2. The switch (old x² fading,
+# new x³ drawing on) composes with the transform: each switch curve shows
+# transformed, the dashed originals behind. The x³ cell's centre is
+# (257.5, 187): the third 83 px cell in the options row (x²'s is
+# (174.5, 187)), probed on the reference at 5196. Behaviour: url line
+# func=x3&a=2 right after the click; the mid shot shows the half-drawn
+# transformed x³.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2
+wait 2000
+click 257.5 187
+wait 300
+shot switch-with-values-mid
+wait 2000
+shot switch-with-values

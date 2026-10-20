@@ -189,23 +189,132 @@ pub fn paint_axes(
 /// The plotted curves' look: solid, 3 px (`drawCurve` at `3560eb2`).
 pub const CURVE_WIDTH: f32 = 3.0;
 
+/// The dashed original's look (`dashedLook` at `5cef052`): 2 px, `[6, 6]`
+/// dashes from half a dash in (`lineDashOffset` is half the first dash),
+/// 0.75 alpha, round caps and joins.
+pub const DASHED_CURVE_WIDTH: f32 = 2.0;
+/// The dashed original's pattern (`dash: [6, 6]`).
+pub const DASHED_CURVE_DASH: [f64; 2] = [6.0, 6.0];
+/// Where the pattern starts (`lineDashOffset`: half the first dash).
+pub const DASHED_CURVE_OFFSET: f64 = 3.0;
+/// The dashed original's alpha (`alpha: 0.75`, times the curve's own).
+pub const DASHED_CURVE_ALPHA: f32 = 0.75;
+
+/// The smallest dash piece that survives, in px (the first port's `dash.rs`
+/// floor: a shorter piece never strokes).
+const MIN_DASH_PIECE_PX: f64 = 0.01;
+
+/// The dash on-intervals along a length: on/off pairs from an offset (the
+/// first port's `dash.rs` intervals: the pattern runs from `-offset`, and a
+/// piece shorter than [`MIN_DASH_PIECE_PX`] is dropped).
+fn dash_intervals(length: f64, pattern: [f64; 2], offset: f64) -> Vec<[f64; 2]> {
+    let period = pattern[0] + pattern[1];
+    let mut out: Vec<[f64; 2]> = Vec::new();
+    if period <= 0.0 || length <= 0.0 {
+        return out;
+    }
+    let mut o = offset;
+    while o > period {
+        o -= period;
+    }
+    while o < 0.0 {
+        o += period;
+    }
+    let mut pos = -o;
+    while pos < length {
+        let from = pos.max(0.0);
+        let to = (pos + pattern[0]).min(length);
+        if to - from >= MIN_DASH_PIECE_PX {
+            out.push([from, to]);
+        }
+        pos += period;
+    }
+    out
+}
+
+/// Cut a polyline by a dash pattern from an offset (Canvas 2D's
+/// `setLineDash` with `lineDashOffset`, as the first port's `dash.rs` cuts
+/// it): the on-intervals as subpaths, since Canvas caps each dash with the
+/// look's caps. `pub(crate)` for the line painters (h6-handles), whose
+/// dashed and measured looks cut their shafts the same way.
+pub(crate) fn dash_pieces(
+    points: &[[f64; 2]],
+    pattern: [f64; 2],
+    offset: f64,
+) -> Vec<Vec<[f64; 2]>> {
+    if points.len() < 2 {
+        return Vec::new();
+    }
+    // The distance along the polyline at each vertex.
+    let mut along = vec![0.0; points.len()];
+    for (i, pair) in points.windows(2).enumerate() {
+        let dx = pair[1][0] - pair[0][0];
+        let dy = pair[1][1] - pair[0][1];
+        along[i + 1] = along[i] + dx.hypot(dy);
+    }
+    let length = along[points.len() - 1];
+    let at = |seg: usize, d: f64| -> [f64; 2] {
+        let span = along[seg + 1] - along[seg];
+        let t = if span == 0.0 {
+            0.0
+        } else {
+            (d - along[seg]) / span
+        };
+        let a = points[seg];
+        let b = points[seg + 1];
+        [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+    };
+    let mut pieces: Vec<Vec<[f64; 2]>> = Vec::new();
+    // The segment the walk is in; intervals come in order.
+    let mut seg = 0;
+    for interval in dash_intervals(length, pattern, offset) {
+        while seg + 2 < points.len() && along[seg + 1] <= interval[0] {
+            seg += 1;
+        }
+        let mut piece = vec![at(seg, interval[0])];
+        let mut end_seg = seg;
+        while end_seg + 2 < points.len() && along[end_seg + 1] < interval[1] {
+            end_seg += 1;
+            piece.push(points[end_seg]);
+        }
+        piece.push(at(end_seg, interval[1]));
+        pieces.push(piece);
+        seg = end_seg;
+    }
+    pieces
+}
+
 /// Paints the frame's curves over the canvas: each curve's sampled polyline
-/// (`plot::sample_curve`: the `drawCurve` sampling, one point per px column
-/// with the partial segment of a draw-on), stroked in `line` (`chartLine`)
-/// at the curve's alpha with round joins, in order so each draws over the
-/// ones before it. Canvas 2D defaults to butt caps and the grid paint sets
-/// `BUTT`, which persists here as there.
+/// (`plot::sample_curve` through [`TransformedFunction::value`], so the
+/// switch's draw-on and fade compose with the transform as the source
+/// composes them), the dashed original behind its transformed curve in the
+/// muted ink, each stroked in order so each draws over the ones before it.
+/// Canvas 2D centres strokes on the layout px as NanoVG does with butt
+/// caps; the dashed pieces carry the look's round caps, as Canvas caps each
+/// dash.
+///
+/// [`TransformedFunction::value`]: crate::transform_curves::TransformedFunction::value
+// Eight inputs: the pass predicate shares the dashed and solid passes'
+// one signature so the dispatch reads as one call twice.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_curves(
     vg: &mut mv_nvg::Context,
     width: f32,
     height: f32,
     grid: &GridLayout,
-    curves: &[crate::plot::PlotCurve],
+    curves: &[crate::transform_curves::TransformedCurve],
     line: [f32; 4],
+    muted: [f32; 4],
+    dashed_only: bool,
 ) {
     for curve in curves {
+        // One pass paints the dashed originals, the next the solid curves;
+        // the lines paint between them (the `drawCartesianPlane` order).
+        if curve.dashed != dashed_only {
+            continue;
+        }
         let points = crate::plot::sample_curve(
-            curve.func,
+            |x| curve.func.value(x),
             grid,
             f64::from(width),
             f64::from(height),
@@ -215,16 +324,33 @@ pub fn paint_curves(
         // where Canvas 2D reads the first line-to as one: the explicit move
         // strokes the same pixels on both.
         vg.begin_path();
-        for (i, [x, y]) in points.iter().enumerate() {
-            if i == 0 {
+        if curve.dashed {
+            for piece in dash_pieces(&points, DASHED_CURVE_DASH, DASHED_CURVE_OFFSET) {
+                let mut piece = piece.iter();
+                if let Some([x, y]) = piece.next() {
+                    vg.move_to(*x as f32, *y as f32);
+                }
+                for [x, y] in piece {
+                    vg.line_to(*x as f32, *y as f32);
+                }
+            }
+            vg.global_alpha(curve.alpha as f32 * DASHED_CURVE_ALPHA);
+            vg.stroke_color(muted);
+            vg.stroke_width(DASHED_CURVE_WIDTH);
+            vg.line_cap(mv_nvg::LineCapType::ROUND);
+        } else {
+            let mut points = points.iter();
+            if let Some([x, y]) = points.next() {
                 vg.move_to(*x as f32, *y as f32);
-            } else {
+            }
+            for [x, y] in points {
                 vg.line_to(*x as f32, *y as f32);
             }
+            vg.global_alpha(curve.alpha as f32);
+            vg.stroke_color(line);
+            vg.stroke_width(CURVE_WIDTH);
+            vg.line_cap(mv_nvg::LineCapType::BUTT);
         }
-        vg.global_alpha(curve.alpha as f32);
-        vg.stroke_color(line);
-        vg.stroke_width(CURVE_WIDTH);
         vg.line_join(mv_nvg::LineCapType::ROUND);
         vg.stroke();
         vg.global_alpha(1.0);
@@ -330,13 +456,14 @@ pub fn plane_texts(
 }
 
 /// Paints the plane over the canvas's content box: the grid, the axes, the
-/// lines of the lit parameter, the curves, the handles, and, once the font
-/// has loaded, the labels and the scale legend (the `drawCartesianPlane`
-/// order: dashed curves, lines, solid curves, handles, legend). h6-curve
-/// splits `curves` into its dashed and solid passes around `lines`.
-// Twelve paint inputs (the plane's six, the frame's curves, handles and
-// lines with their inks): a bundle struct would hide the draw order this
-// signature documents.
+/// curves, the handles, and, once the font has loaded, the labels and the
+/// scale legend (the `drawCartesianPlane` order: the dashed originals, the
+/// lit parameter's lines, the solid curves, the handles, the legend).
+/// h6-curve paints its dashed originals behind each transformed curve;
+/// the dispatch below splits its pass around the lines.
+// Thirteen paint inputs (the plane's six, the frame's curves with their
+// three inks, the handles and lines with theirs): a bundle struct would
+// hide the draw order this signature documents.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_plane(
     fonts: &mut mv_text::Fonts,
@@ -346,8 +473,9 @@ pub fn paint_plane(
     scale: f64,
     colors: &PlaneColors,
     font_ready: bool,
-    curves: &[crate::plot::PlotCurve],
+    curves: &[crate::transform_curves::TransformedCurve],
     line: [f32; 4],
+    muted: [f32; 4],
     handles: &[crate::plot::PlotHandle],
     lines: &[crate::plot::PlotLine],
     primary: [f32; 4],
@@ -386,10 +514,30 @@ pub fn paint_plane(
     } else {
         None
     };
-    // h6-curve splits this into its dashed and solid passes; `lines`
-    // paints between them, `handles` after the solid pass.
+    // The draw order (`drawCartesianPlane.ts`): the dashed originals, the
+    // lit parameter's lines, the solid curves, the handles. The two curve
+    // passes filter on the `dashed` flag; each pass keeps the frame's order.
+    paint_curves(
+        vg,
+        content.width,
+        content.height,
+        &grid,
+        curves,
+        line,
+        muted,
+        true,
+    );
     paint_lines(vg, &grid, lines, primary);
-    paint_curves(vg, content.width, content.height, &grid, curves, line);
+    paint_curves(
+        vg,
+        content.width,
+        content.height,
+        &grid,
+        curves,
+        line,
+        muted,
+        false,
+    );
     paint_handles(vg, &grid, handles, primary, colors.page);
     if let Some((fonts, geometry)) = legend {
         paint_legend(fonts, vg, &geometry, &colors.legend);
@@ -400,9 +548,6 @@ pub fn paint_plane(
     // the border box inset half a px, the border's exact pixels.
     vg.restore();
 }
-
-/// A lit parameter's arrow: 2.5 px, solid, full alpha (`lineLooks.arrow`).
-pub const ARROW_WIDTH: f32 = 2.5;
 
 /// A lit scale's dashed box side: 1.5 px, `[5, 4]`, 0.8 alpha
 /// (`lineLooks.dashed`).
@@ -420,84 +565,10 @@ pub const MEASURED_WIDTH: f32 = 3.0;
 /// Every line's ticks: 2 px (`tickWidth`).
 pub const LINE_TICK_WIDTH: f32 = 2.0;
 
-/// The smallest dash piece that survives, in px (the first port's
-/// `mv-plane/src/dash.rs` cutoff: sub-pixel slivers never cover a pixel).
-const MIN_PIECE_PX: f64 = 0.01;
-
-/// Cuts a shaft by a dash pattern from an offset, in px: the `[on, off]`
-/// intervals along its length (`lineDashOffset` is where the first piece
-/// starts), each as its own subpath so one stroke paints them all. The
-/// first port's `dash_polyline` technique (`mv-plane/src/dash.rs`); the
-/// painter strokes solid shafts directly, so this only serves the dashed
-/// look (h6-curve's dashed original reuses it through `pub(crate)`).
-pub(crate) fn dash_pieces(
-    points: &[[f64; 2]],
-    pattern: [f64; 2],
-    offset: f64,
-) -> Vec<Vec<[f64; 2]>> {
-    let period = pattern[0] + pattern[1];
-    if period <= 0.0 || points.len() < 2 {
-        return Vec::new();
-    }
-    // The distance along the shaft at each vertex.
-    let mut along = vec![0.0; points.len()];
-    for i in 1..points.len() {
-        let dx = points[i][0] - points[i - 1][0];
-        let dy = points[i][1] - points[i - 1][1];
-        along[i] = along[i - 1] + dx.hypot(dy);
-    }
-    let length = along[points.len() - 1];
-    let at = |seg: usize, d: f64| -> [f64; 2] {
-        let span = along[seg + 1] - along[seg];
-        let t = if span == 0.0 {
-            0.0
-        } else {
-            (d - along[seg]) / span
-        };
-        let a = points[seg];
-        let b = points[seg + 1];
-        [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
-    };
-    // The dash intervals from the offset, as the canvas lays them: the dash
-    // starts `offset` into its pattern.
-    let mut o = offset % period;
-    if o < 0.0 {
-        o += period;
-    }
-    let mut intervals = Vec::new();
-    let mut pos = -o;
-    while pos < length {
-        let from = pos.max(0.0);
-        let to = (pos + pattern[0]).min(length);
-        if to - from >= MIN_PIECE_PX {
-            intervals.push([from, to]);
-        }
-        pos += period;
-    }
-    // Each interval as its own subpath.
-    let mut dashes = Vec::new();
-    let mut seg = 0;
-    for interval in intervals {
-        while seg + 2 < points.len() && along[seg + 1] <= interval[0] {
-            seg += 1;
-        }
-        let mut dash = vec![at(seg, interval[0])];
-        let mut end_seg = seg;
-        while end_seg + 2 < points.len() && along[end_seg + 1] < interval[1] {
-            end_seg += 1;
-            dash.push(points[end_seg]);
-        }
-        dash.push(at(end_seg, interval[1]));
-        dashes.push(dash);
-        seg = end_seg;
-    }
-    dashes
-}
-
 /// The shaft's look: width, dash pattern and alpha (`lineLooks`).
 fn line_look(kind: crate::plot::LineKind) -> (f32, Option<[f64; 2]>, f32) {
     match kind {
-        crate::plot::LineKind::Arrow => (ARROW_WIDTH, None, 1.0),
+        crate::plot::LineKind::Arrow => (crate::plane_geometry::ARROW_WIDTH as f32, None, 1.0),
         crate::plot::LineKind::Dashed => (DASHED_WIDTH, Some(DASHED_DASH), DASHED_ALPHA),
         crate::plot::LineKind::Measured => (MEASURED_WIDTH, None, 1.0),
     }
@@ -634,6 +705,24 @@ pub fn paint_lines(
 mod tests {
     use super::*;
 
+    /// A `[6, 6]` dash at offset 3 over 30 px: `[0, 3]`, `[9, 15]`,
+    /// `[21, 27]` (h6-curve's review: the helper carries a test).
+    #[test]
+    fn dash_intervals_cut_a_6_6_dash_from_offset_3() {
+        assert_eq!(
+            dash_intervals(30.0, [6.0, 6.0], 3.0),
+            vec![[0.0, 3.0], [9.0, 15.0], [21.0, 27.0]]
+        );
+    }
+
+    /// A degenerate pattern or length cuts nothing.
+    #[test]
+    fn dash_intervals_cut_nothing_degenerate() {
+        assert!(dash_intervals(30.0, [0.0, 0.0], 3.0).is_empty());
+        assert!(dash_intervals(0.0, [6.0, 6.0], 3.0).is_empty());
+        assert!(dash_pieces(&[[0.0, 0.0]], [6.0, 6.0], 3.0).is_empty());
+    }
+
     /// The mono advance the grid tests pin: a char is 8.4 px at 14 px.
     fn probe_width(text: &str) -> f64 {
         text.len() as f64 * 8.4
@@ -642,8 +731,10 @@ mod tests {
     /// The port's boxes against `testdata/page.json` (the reference at this
     /// hash, `tools/run dom --fixture`): the canvas and the overlay button
     /// within the plan's 0.5 CSS px, and the content and button boxes derived
-    /// from the canvas exactly. The button only exists off the default
-    /// camera (h6-handles), so its box reads from the `overlay-tip` shot.
+    /// from the canvas exactly. At `5cef052` the button only renders off the
+    /// default camera (the tooltip commit), so its box reads from the
+    /// `overlay-tip` shot (which h6-handles' fixture state provides;
+    /// `overlay-visible` carries the same box).
     #[test]
     fn boxes_match_fixture() {
         const SLACK: f64 = 0.5;

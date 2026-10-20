@@ -136,6 +136,9 @@ pub struct App {
     /// while the pointer is elsewhere (h6-handles; the tooltip shows past
     /// its 400 ms delay).
     pub overlay_tip_since: Option<crate::app_loop::Time>,
+    /// The flip toggle's state: the pending flip, its spring, the press
+    /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
+    pub flip: crate::flip::FlipState,
 }
 
 impl App {
@@ -299,6 +302,7 @@ impl App {
             scrub_rest: None,
             scrub_resting: None,
             overlay_tip_since: None,
+            flip: crate::flip::FlipState::new(),
         }
     }
 }
