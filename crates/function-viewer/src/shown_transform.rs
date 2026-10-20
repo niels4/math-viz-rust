@@ -92,7 +92,7 @@ impl ShownTransform {
     /// jump's target, which blends from `from` to `to` at the spring's
     /// share. A value typed mid-turn differs from the target and shows at
     /// once, as the TypeScript's `===` check does.
-    fn shown(&self, transform: Transform) -> Transform {
+    pub fn shown(&self, transform: Transform) -> Transform {
         let Some(jump) = &self.jump else {
             return transform;
         };
@@ -114,22 +114,11 @@ impl ShownTransform {
         out
     }
 
-    /// One animation frame: adopt a flip the animation has not seen (the
-    /// hook's render-phase step — `from` is what the plane shows with the
-    /// flipped param at its old value, `to` is the live transform with it
-    /// at its new value — unless the flip is null or motion is reduced),
-    /// advance the jump by the frame's `dt`, and return the transform to
-    /// show. Past the duration the flip ends and the live transform shows
-    /// whole. At rest the state is untouched and the live transform
-    /// returns, so stepping past the end is harmless (the hook's loop
-    /// simply no longer runs).
-    pub fn step(
-        &mut self,
-        flip: Option<Flip>,
-        transform: Transform,
-        dt: f64,
-        can_animate: bool,
-    ) -> Transform {
+    /// Adopt a flip the animation has not seen, without advancing (the
+    /// hook's render-phase step): the jump starts at elapsed 0 with its
+    /// first frame pending, so the press's own turn still draws the old
+    /// value. With no new flip, or motion reduced, only the seen mark moves.
+    pub fn adopt(&mut self, flip: Option<Flip>, transform: Transform, can_animate: bool) {
         if self.seen != flip {
             self.seen = flip;
             if let Some(pending) = flip
@@ -144,6 +133,24 @@ impl ShownTransform {
                 });
             }
         }
+    }
+
+    /// One animation frame: adopt through [`adopt`](Self::adopt), advance
+    /// the jump by the frame's `dt`, and return the transform to show
+    /// (`from` is what the plane shows with the flipped param at its old
+    /// value, `to` is the live transform with it at its new value). Past
+    /// the duration the flip ends and the live transform shows whole. At
+    /// rest the state is untouched and the live transform returns, so
+    /// stepping past the end is harmless (the hook's loop simply no longer
+    /// runs).
+    pub fn step(
+        &mut self,
+        flip: Option<Flip>,
+        transform: Transform,
+        dt: f64,
+        can_animate: bool,
+    ) -> Transform {
+        self.adopt(flip, transform, can_animate);
         let finished = if let Some(jump) = self.jump.as_mut() {
             let dt = if jump.first_frame { FIRST_FRAME_MS } else { dt };
             jump.first_frame = false;
@@ -227,6 +234,13 @@ mod tests {
                         .step(self.flip, self.live, FIRST_FRAME_MS, self.can_animate);
             }
         }
+
+        /// The press's own turn: adopt without advancing, then draw (the
+        /// hook's render phase runs before any frame passes).
+        fn press(&mut self) {
+            self.shown.adopt(self.flip, self.live, self.can_animate);
+            self.plane = self.shown.shown(self.live);
+        }
     }
 
     #[test]
@@ -277,6 +291,19 @@ mod tests {
         rig.frames(1);
         assert_close_to(rig.plane.a, -2.0);
         assert!(!rig.shown.is_animating());
+    }
+
+    #[test]
+    fn the_press_turn_draws_2_00_before_any_frame_passes() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        // The box shows the new value at once; the press's own turn still
+        // draws the old one, as the hook adopts the jump during render.
+        assert_eq!(rig.live.a, -2.0);
+        rig.press();
+        assert_eq!(rig.plane.a, 2.0);
+        assert!(rig.shown.is_animating());
     }
 
     #[test]
