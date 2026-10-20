@@ -153,6 +153,11 @@ pub struct HighlightState {
     pub lead: Touch,
     pub scrub_mode: EnumMap<TransformParam, Option<ScrubMode>>,
     pub jumps: Jumps,
+    /// P's x slider is being dragged (`pDraggingAtom`, h8).
+    pub p_dragging: bool,
+    /// The plane pointer's quantized x, while it is over the plane and off
+    /// the handles (`qXAtom`, h8); `None` elsewhere.
+    pub q_x: Option<f64>,
 }
 
 impl HighlightState {
@@ -202,6 +207,14 @@ impl HighlightState {
     #[must_use]
     pub fn is_lit(&self, param: TransformParam) -> bool {
         self.lit().contains(&param)
+    }
+
+    /// Whether any transform parameter is being scrubbed (`transformDragAtom`,
+    /// h8): a scrub mode set on any of a, b, h or k. The moved badge reads it
+    /// as its drag flag.
+    #[must_use]
+    pub fn transform_drag(&self) -> bool {
+        self.scrub_mode.values().any(|mode| mode.is_some())
     }
 
     /// Touches or untouches the pointer's side.

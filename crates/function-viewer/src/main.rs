@@ -32,6 +32,7 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod moved_by;
 pub mod number_field;
 pub mod overlay;
 pub mod page;
@@ -49,6 +50,7 @@ pub mod platform_web;
 #[cfg(windows)]
 pub mod platform_windows;
 pub mod plot;
+pub mod point_format;
 pub mod prefs;
 pub mod readout;
 pub mod reset;
@@ -74,6 +76,7 @@ pub mod transition;
 pub mod typography;
 pub mod ui;
 pub mod url;
+pub mod visible_range;
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};

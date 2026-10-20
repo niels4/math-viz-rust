@@ -13,6 +13,9 @@
 //! `transformParams`: [`A_PARAM`], [`B_PARAM`], [`H_PARAM`], [`K_PARAM`] (the
 //! transform `y = a · f((x − h) / b) + k`; scales default 1, shifts 0, a
 //! scale of 0 never reads).
+//!
+//! Extended at `96f1e84` with [`P_PARAM`] (P's x: key `p`, default 2, the
+//! same number param as h and k).
 
 use std::f64::consts::FRAC_PI_2;
 
@@ -168,6 +171,10 @@ transform_param!(B_PARAM, "b", 1.0, true);
 transform_param!(H_PARAM, "h", 0.0, false);
 transform_param!(K_PARAM, "k", 0.0, false);
 
+// P's x: the same number param as h and k (key `p`, default 2, not a scale).
+// Pinned at `96f1e84` alongside the Points card.
+transform_param!(P_PARAM, "p", 2.0, false);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,5 +294,28 @@ mod tests {
         let mut h = QueryParam::new(&H_PARAM, "");
         h.set_flushed(&mut url, 0.0);
         assert_eq!(url.query(), "a=2.5");
+    }
+
+    #[test]
+    fn p_param_defaults_to_2_and_reads_like_a_shift() {
+        assert_eq!(*QueryParam::new(&P_PARAM, "").get(), 2.0);
+        assert_eq!(*QueryParam::new(&P_PARAM, "p=1.5").get(), 1.5);
+        assert_eq!(*QueryParam::new(&P_PARAM, "p=-5").get(), -5.0);
+        // Not a scale: 0 is a fine x for P.
+        assert_eq!(*QueryParam::new(&P_PARAM, "p=0").get(), 0.0);
+        // Unparseable text falls back to the default, as `queryParamAtom` does.
+        assert_eq!(*QueryParam::new(&P_PARAM, "p=x").get(), 2.0);
+        assert_eq!(*QueryParam::new(&P_PARAM, "p=Infinity").get(), 2.0);
+    }
+
+    #[test]
+    fn p_param_serializes_like_string_of_tofixed3() {
+        assert_eq!(serialize_transform(&2.0), Some("2".to_owned()));
+        let mut url = Url::from_query("");
+        let mut p = QueryParam::new(&P_PARAM, "");
+        p.set_flushed(&mut url, 2.0);
+        assert_eq!(url.query(), "");
+        p.set_flushed(&mut url, 3.256);
+        assert_eq!(url.query(), "p=3.256");
     }
 }
