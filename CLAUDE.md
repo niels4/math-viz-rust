@@ -826,6 +826,34 @@ no new tokens (all eight tabled).
   recolor. Owner: h8-points-field's tip/input code (wrap/field settles
   the mechanism — suspect a second bar path beside `layout_tip`, since
   `scrub_value::tip` early-returns unless typing/resting).
+### h10-seam (the legend out of the plane painter; param colours' new source)
+
+- `plane.rs`'s `paint_plane` is the bare plane (grid, axes, labels, curves,
+  lines, handles, markers in the source's order); `page.rs`'s `draw_plane`
+  paints the legend after it through `scale_legend::paint_legend` under one
+  shared `font_ready` gate (natively `true`), in the canvas's translated
+  and scissored space exactly as the painter did — the hero calls the bare
+  painter alone. `PlaneColors.legend` stays the colours' bundle (drawn by
+  the viewer now, never by `paint_plane`). Cutouts paint before the legend
+  now; they touch only 4 px corners, the plate sits 28/22 px off the edges,
+  no overlap. Proof: `states H2–H8 --targets native` (167 states, all ok)
+  plus `H2 H6 --targets web --engines webkit` (46, all ok) before vs after:
+  `same-run` 0 differences on both, exit 0.
+- `themes.py`'s `read_sidebar_params` reads the six per-theme `--param-a/k/b/h`
+  blocks from `src/style/param_colours.module.css`'s `.param_colours` block
+  (4cc4490; values unchanged; the sidebar and the welcome page both carry
+  the class, so `verify`'s sidebar selector still resolves). The per-theme
+  `--point-p`/`--point-q` overrides stayed in `SideBar.module.css`: the naive
+  move fails `verify` (arctic-ice `--point-q` computed `oklch(0.8276 0.1013
+  230.32)`, the file then saying the base default), so a new
+  `read_sidebar_theme_points` sources them from there and `read_themes`
+  merges them under the base defaults as before. Regen at 68e1c7b on the
+  h9-merged base: all three files headers only (themes.rs + tokens.json +
+  page.json reference lines), every value row equal — committed with the
+  generator change as (2).
+- Probe (`.local/probe_params.py`, report in `.local/shots/h10-seam/`):
+  welcome `/` vs viewer `/#function-viewer` `--param-a/k/b/h` in all six
+  themes equal, 24/24 in WebKit (seeding math-viz2's keys as `act.py` does).
 
 ## Long runs
 
