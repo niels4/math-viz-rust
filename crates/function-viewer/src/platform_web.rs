@@ -597,8 +597,11 @@ fn prefs_key_save(key: &str, text: &str) -> bool {
     }
 }
 
-/// The page's hash query at start: `location.hash` through `mv_read_hash`,
-/// cut to the query part (`#function-viewer?center=1,2` → `center=1,2`).
+/// The page's hash at start: `location.hash` through `mv_read_hash`, whole
+/// (`#function-viewer?center=1,2&scale=2`). Callers parse it with `Url`
+/// (`Url::new`, `sync_from_hash`): cutting the query here dropped it, since
+/// those split the full hash again and read an empty query (h2-plane found
+/// the web build rendering every query state at its defaults).
 pub fn platform_read_hash() -> String {
     // SAFETY: the shell hands a fresh NUL-terminated string; it is read once
     // here, then freed through the shell's `free`.
@@ -609,9 +612,7 @@ pub fn platform_read_hash() -> String {
         }
         let hash = std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned();
         free(ptr.cast::<std::ffi::c_void>());
-        hash.split_once('?')
-            .map(|(_, query)| query.to_string())
-            .unwrap_or_default()
+        hash
     }
 }
 
