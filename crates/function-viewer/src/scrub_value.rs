@@ -724,15 +724,12 @@ pub fn box_text(app: &App, param: TransformParam) -> String {
     )
 }
 
-/// The drag modifier holding this parameter, if one does.
+/// The drag modifier holding this parameter, if one does: the shared
+/// per-parameter scrub mode (`scrubModeAtoms`), set by this box's own drag
+/// and by a handle drag on the plane alike, as the readout's `mode` is.
 #[must_use]
 pub fn drag_mode(app: &App, param: TransformParam) -> Option<ScrubMode> {
-    match app.scrub_hold {
-        Some(ScrubHold::Scrub { param: held, press }) if held == param && press.dragging => {
-            Some(press.mode)
-        }
-        _ => None,
-    }
+    app.state.scrub_mode[param]
 }
 
 /// Whether a scrub holds the pointer: moves route to the drag instead of
@@ -793,7 +790,7 @@ pub fn press_down(app: &mut App) {
             dragging: false,
         },
     });
-    mirror_scrub(app);
+    mirror_scrub(app, param);
     app.dirty = true;
 }
 
@@ -823,7 +820,7 @@ pub fn release_up(app: &mut App, down: Hit, pos: [f32; 2], clicks: i64) {
         Some(ScrubHold::Scrub { param, .. }) => {
             if crate::transform_row::hit_param(down) != Some(param) {
                 app.scrub_hold = None;
-                mirror_scrub(app);
+                mirror_scrub(app, param);
                 return;
             }
             let mut box_ = machine(app, param);
@@ -978,12 +975,18 @@ pub fn wheel_over(app: &mut App, delta_y: f32) {
 /// The window lost the focus: a held scrub ends (flushing when it dragged,
 /// as `onWindowRelease` stops it), taps and the rest tip drop.
 pub fn focus_lost(app: &mut App) {
+    let param = match app.scrub_hold {
+        Some(ScrubHold::Scrub { param, .. }) => Some(param),
+        _ => None,
+    };
     match app.scrub_hold.take() {
         Some(ScrubHold::Scrub { param, press }) if press.dragging => flush_value(app, param),
         _ => {}
     }
     clear_rest(app);
-    mirror_scrub(app);
+    if let Some(param) = param {
+        mirror_scrub(app, param);
+    }
 }
 
 /// Tracks the rest tip across hover moves: entering a box arms the
@@ -1101,7 +1104,7 @@ fn store(app: &mut App, param: TransformParam, box_: &ScrubBox) {
             }
         }
     }
-    mirror_scrub(app);
+    mirror_scrub(app, param);
 }
 
 /// Performs a fact's effects through the row's page param.
@@ -1178,9 +1181,15 @@ fn blur_field(app: &mut App, param: TransformParam) {
     app.dirty = true;
 }
 
-/// Mirrors the drag for the ruler: while a scrub holds the value,
-/// `App.scrub` carries the rebased anchor off the row's laid-out box.
-fn mirror_scrub(app: &mut App) {
+/// Mirrors the drag for the ruler and the shared scrub modes: while a scrub
+/// holds the value, `App.scrub` carries the rebased anchor off the row's
+/// laid-out box, and the shared mode for the dragged parameter is set (a
+/// handle drag on the plane sets the same slot directly, so the rows light
+/// and the rulers come out for every held parameter). The slot clears when
+/// this parameter's own box drag retires; a handle drag's modes are the
+/// plane's to clear, so a retiring box never touches a slot a handle holds.
+fn mirror_scrub(app: &mut App, param: TransformParam) {
+    let was = app.scrub.filter(|drag| drag.param == param);
     app.scrub = match app.scrub_hold {
         Some(ScrubHold::Scrub { param, press }) if press.dragging => {
             let (region, _) = crate::input::region_of(app, crate::transform_row::row_hit(param));
@@ -1195,6 +1204,22 @@ fn mirror_scrub(app: &mut App) {
         }
         _ => None,
     };
+    let held = app
+        .scrub
+        .filter(|drag| drag.param == param)
+        .map(|drag| drag.mode);
+    match (was, held) {
+        (_, Some(mode)) => {
+            app.state.scrub_mode[param] = Some(mode);
+        }
+        // The box's own drag retired (`stop` clears when its press was
+        // dragging). A handle drag's modes never pass through here: `was`
+        // is only this box's mirrored drag.
+        (Some(_), None) => {
+            app.state.scrub_mode[param] = None;
+        }
+        _ => {}
+    }
 }
 
 /// Lays out the tip under the box: the rest words once the pointer rested,
@@ -2079,6 +2104,23 @@ mod tests {
         assert!(app.scrub_hold.is_none());
         // A release that dragged never opens the field.
         assert_eq!(app.input.focus, Hit::default());
+    }
+
+    // A box drag holds its parameter's shared scrub mode and releases it,
+    // so the rows light and the ruler comes out under the dragged row.
+    #[test]
+    fn app_box_drag_holds_and_releases_the_shared_mode() {
+        let mut app = box_app(TransformParam::K, 278.0, 478.5);
+        press_at(&mut app, TransformParam::K, 331.5, 494.5);
+        app.input.pointer = [381.5, 494.5];
+        pointer_moved(&mut app);
+        assert_eq!(
+            app.state.scrub_mode[TransformParam::K],
+            Some(ScrubMode::Coarse)
+        );
+        assert_eq!(app.state.scrub_mode[TransformParam::A], None);
+        release_at(&mut app, TransformParam::K, 381.5, 494.5, 1);
+        assert_eq!(app.state.scrub_mode[TransformParam::K], None);
     }
 
     // The box text shows three decimals while a fine drag holds it.

@@ -820,7 +820,11 @@ pub fn click(app: &mut App, down: Hit) {
         }
         HitKind::TransformReset => {
             if let Some(param) = index_param(down.index) {
-                store_param(app, param, crate::reset::reset_value(param));
+                let to = crate::reset::reset_value(param);
+                let from = crate::transform_section::param_value(app, param);
+                app.state.jumps.single(param, from, to);
+                crate::flip::adopt_jumps(app);
+                store_param(app, param, to);
                 blur_button(app);
             }
         }
@@ -1276,5 +1280,27 @@ mod tests {
             height: 12.0,
         };
         assert!(!box_contains(tip, straddling));
+    }
+
+    #[test]
+    fn reset_click_jumps_from_the_live_value_to_the_default() {
+        // The row test: at a=3 the reset click sets the one-jump list from
+        // 3 to 1, flushes the key out of the URL at once, and starts the
+        // spring (the shown values still ease from 3).
+        let mut app = crate::fixture::headless_app();
+        app.url = crate::url::Url::from_query("a=3");
+        crate::transform_section::init_params_from_url(&mut app);
+        app.input.hover = reset_hit(TransformParam::A);
+        click(&mut app, reset_hit(TransformParam::A));
+        assert_eq!(
+            app.state.jumps.list,
+            vec![crate::state::Jump {
+                param: TransformParam::A,
+                from: 3.0,
+                to: 1.0,
+            }]
+        );
+        assert_eq!(app.url.query(), "");
+        assert!(app.flip.is_animating());
     }
 }

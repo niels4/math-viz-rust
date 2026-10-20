@@ -127,6 +127,18 @@ pub fn live_transform(app: &App) -> Transform {
     }
 }
 
+/// Adopts the jump list the caller just set (a row's reset, Reset all's
+/// four): the spring starts from the shown values at elapsed 0, so the
+/// press's own turn still draws the old values while the boxes already show
+/// the new ones, as the hook's identity change does. Reduced motion shows
+/// the new values at once, as `canAnimate()` being false does.
+pub fn adopt_jumps(app: &mut App) {
+    let live = live_transform(app);
+    let can_animate = !app.reduced_motion;
+    app.flip.shown.adopt(&app.state.jumps, live, can_animate);
+    app.flip.frame_at = None;
+}
+
 /// The flip toggle's press, by mouse click or keyboard (`onClick`): the
 /// one-jump list with the negated value written through flushed at once, as
 /// `setJumps` + `setValue(-value, { flush: true })` do. Reduced motion shows
