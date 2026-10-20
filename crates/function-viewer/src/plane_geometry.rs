@@ -5,7 +5,9 @@
 //! the overshoot clamp inside `drawCurve` (which arrived in `f1e069f`,
 //! inside h6's stretch), `drawHandle`'s shapes and `drawLine`'s shaft,
 //! ticks and arrowhead. h7-p-plane adds `fromPx` and `hitTest` at `251c080`.
-//! Paint (colours, widths, dashes, alphas) stays with
+//! h8-p-marker adds the P/Q marker geometry (`PlotMarker`, the looks, the
+//! guide and drop lines, the label layout and the off-frame arrow) at
+//! `96f1e84`. Paint (colours, widths, dashes, alphas) stays with
 //! the coders' `plane.rs`; this module is pure positions, which is what
 //! the vitest cases pin.
 
@@ -135,6 +137,372 @@ pub fn hit_test(grid: &GridLayout, handles: &[PlotHandle], at: [f64; 2]) -> Opti
             HandleKind::Square => dx.max(dy) <= SQUARE_SIDE / 2.0,
         }
     })
+}
+
+/// Clamp a canvas value into a range (`clamp` in `grid.ts`, which the draw
+/// file imports): `Math.min(hi, Math.max(lo, v))`, so a range gone negative
+/// on a narrow canvas pins to its top — `f64::clamp` would panic there.
+/// (`grid.rs` keeps its own private copy; this file is h7-p-plane's
+/// neighbour, not its owner, so the one-line duplication stands.)
+fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
+    v.min(hi).max(lo)
+}
+
+/// A marker's label: a name and its pre-formatted coords string (`PlotLabel`).
+/// The coords string is the app's, built by the painter through
+/// `point_format::format_number` as `"(x, y)"`; geometry only measures the
+/// two runs it is given.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlotLabel {
+    pub name: String,
+    pub coords: String,
+}
+
+/// Which marker a plane point draws (`PlotMarker["shape"]`): P's bullseye or
+/// Q's ring. The source leaves the field unset for P, so the default is the
+/// bullseye.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MarkerShape {
+    #[default]
+    Bullseye,
+    Ring,
+}
+
+/// A point marker on the plane (`PlotMarker`): where it sits in plane units,
+/// which theme token its ink is (P's `point_p`, Q's `point_q` — the painter
+/// reads `theme.colors[ink]` as the source reads `theme[marker.ink]`), and
+/// what rides on it. Everything but the point defaults to off, as the source
+/// tests each flag against `true`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlotMarker {
+    pub point: PlotPoint,
+    pub ink: mv_theme::Token,
+    pub shape: MarkerShape,
+    pub label: Option<PlotLabel>,
+    pub drop_lines: bool,
+    pub guide: bool,
+}
+
+/// A marker's radius in px (`markerRadius`): the background fill, and the
+/// ring's outer edge.
+pub const MARKER_RADIUS: f64 = 12.0;
+
+/// A marker look's ring stroke width and core radius in px (`markerLooks`):
+/// a bullseye's ring is thin around a wide core, a ring's is wide around a
+/// small centre.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MarkerLook {
+    pub ring: f64,
+    pub core: f64,
+}
+
+/// A marker shape's look (`markerLooks[shape ?? "bullseye"]`).
+#[must_use]
+pub const fn marker_look(shape: MarkerShape) -> MarkerLook {
+    match shape {
+        MarkerShape::Bullseye => MarkerLook {
+            ring: 2.5,
+            core: 6.0,
+        },
+        MarkerShape::Ring => MarkerLook {
+            ring: 3.0,
+            core: 3.0,
+        },
+    }
+}
+
+/// A guide line's width in px (`guideWidth`): Q's full-height line. The
+/// painter owns the width; the dash offset (half the first dash) rides with
+/// it.
+pub const GUIDE_WIDTH: f64 = 1.0;
+
+/// A guide line's dash in px (`guideDash`), offset by half its first dash.
+pub const GUIDE_DASH: [f64; 2] = [4.0, 6.0];
+
+/// A drop line's width in px (`dropWidth`): P's lines to the axes while
+/// dragged. The painter owns the width; the dash offset (half the first
+/// dash) rides with it.
+pub const DROP_WIDTH: f64 = 1.5;
+
+/// A drop line's dash in px (`dropDash`), offset by half its first dash.
+pub const DROP_DASH: [f64; 2] = [5.0, 4.0];
+
+/// One of the label's two text faces as a line box in px: Figma's ascent
+/// plus descent plus line gap as the height, and the alphabetic baseline
+/// measured from the box top (`labelLetter`/`labelNumber`; the fonts stay the
+/// painter's). Used as numbers, never measured.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LabelFace {
+    pub height: f64,
+    pub baseline: f64,
+}
+
+/// The label name's face (`labelLetter`).
+pub const LABEL_LETTER: LabelFace = LabelFace {
+    height: 25.0,
+    baseline: 17.74,
+};
+
+/// The label coords' face (`labelNumber`).
+pub const LABEL_NUMBER: LabelFace = LabelFace {
+    height: 22.0,
+    baseline: 17.81,
+};
+
+/// The label's row height in px (`labelRow`): the larger face height.
+pub const LABEL_ROW: f64 = 25.0;
+
+/// The label's horizontal padding in px (`labelPadX`): the inset beside the
+/// border on each side.
+pub const LABEL_PAD_X: f64 = 12.0;
+
+/// The label's vertical padding in px (`labelPadY`): the inset above and
+/// below the row.
+pub const LABEL_PAD_Y: f64 = 6.0;
+
+/// The label pill's border width in px (`labelBorder`).
+pub const LABEL_BORDER: f64 = 2.0;
+
+/// The gap between the name and coords runs in px (`labelRunGap`).
+pub const LABEL_RUN_GAP: f64 = 6.0;
+
+/// How far right of the point the label sits in px (`labelGap`), and how far
+/// above it (`labelGap * labelRise`).
+pub const LABEL_GAP: f64 = 22.0;
+
+/// The fraction of the label gap the label rises above the point
+/// (`labelRise`): 13.2 px.
+pub const LABEL_RISE: f64 = 0.6;
+
+/// How far inside the frame the label clamps in px (`labelEdgeMargin`).
+pub const LABEL_EDGE_MARGIN: f64 = 12.0;
+
+/// The off-frame arrow's box side in px (`arrowBox`).
+pub const ARROW_BOX: f64 = 12.0;
+
+/// The off-frame arrow's triangle side in px (`arrowSize`).
+pub const ARROW_SIZE: f64 = 10.0;
+
+/// How far inside the pill the arrow box sits in px (`arrowPadLeft`).
+pub const ARROW_PAD_LEFT: f64 = 8.0;
+
+/// The gap between the arrow box and the name run in px (`arrowGap`).
+pub const ARROW_GAP: f64 = 8.0;
+
+/// Which frame edge a point lies furthest past (`Direction` in the draw
+/// file): the larger overshoot wins, a tie going vertical
+/// (`overY >= overX`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// Which edge a canvas point lies past (`offEdge`): `None` on the frame
+/// (edges included), else the side of the larger overshoot — up or down on
+/// a tie.
+#[must_use]
+pub fn off_edge(grid: &GridLayout, px: f64, py: f64) -> Option<Direction> {
+    let over_x = if px < 0.0 {
+        -px
+    } else if px > grid.width {
+        px - grid.width
+    } else {
+        0.0
+    };
+    let over_y = if py < 0.0 {
+        -py
+    } else if py > grid.height {
+        py - grid.height
+    } else {
+        0.0
+    };
+    if over_x == 0.0 && over_y == 0.0 {
+        return None;
+    }
+    if over_y >= over_x {
+        Some(if py < 0.0 {
+            Direction::Up
+        } else {
+            Direction::Down
+        })
+    } else if px < 0.0 {
+        Some(Direction::Left)
+    } else {
+        Some(Direction::Right)
+    }
+}
+
+/// The canvas x of a marker's guide line (`drawGuide`'s guard): `Some` while
+/// the marker's x lies on the plane (`0 <= px <= width`), so the line runs
+/// the plane's full height whatever the marker's y is; `None` past either
+/// edge.
+#[must_use]
+pub fn guide_x(grid: &GridLayout, point: PlotPoint) -> Option<f64> {
+    let [px, _] = to_px(grid, point);
+    (0.0 <= px && px <= grid.width).then_some(px)
+}
+
+/// A marker's drop lines to the axes in canvas px (`drawDropLines` without
+/// the paint): the vertical runs from the marker (clamped onto the frame) to
+/// the x-axis when the marker's x is on the plane, the horizontal from the
+/// marker (likewise clamped) to the y-axis when its y is. Each is `None`
+/// exactly when the source strokes nothing for it; the painter strokes both
+/// in one path, vertical first.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DropLines {
+    pub vertical: Option<[[f64; 2]; 2]>,
+    pub horizontal: Option<[[f64; 2]; 2]>,
+}
+
+/// A marker's drop lines in canvas px (`drawDropLines` without the paint).
+#[must_use]
+pub fn drop_lines(grid: &GridLayout, point: PlotPoint) -> DropLines {
+    let [px, py] = to_px(grid, point);
+    let [origin_x, origin_y] = grid.origin;
+    DropLines {
+        vertical: (0.0 <= px && px <= grid.width)
+            .then_some([[px, clamp(py, 0.0, grid.height)], [px, origin_y]]),
+        horizontal: (0.0 <= py && py <= grid.height)
+            .then_some([[clamp(px, 0.0, grid.width), py], [origin_x, py]]),
+    }
+}
+
+/// Whose ink one of a marker's three arcs takes: the painter resolves
+/// `Background` to the plane background, `Foreground` to the foreground,
+/// and `Marker` to `theme.colors[marker.ink]` — the source's bullseye/ring
+/// swap, kept beside the looks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MarkerInk {
+    Background,
+    Foreground,
+    Marker,
+}
+
+/// One of a marker's three concentric arcs: its centre, its radius, and whose
+/// ink it takes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MarkerArc {
+    pub at: [f64; 2],
+    pub r: f64,
+    pub ink: MarkerInk,
+}
+
+/// A marker's three arcs in canvas px (`drawMarker` without the paint): the
+/// background fill at the marker radius, the ring at the radius less half
+/// its width, and the filled core. A bullseye's ring takes the foreground
+/// and its core the marker's ink; a ring's go the other way round.
+#[must_use]
+pub fn marker_arcs(center_px: [f64; 2], shape: MarkerShape) -> [MarkerArc; 3] {
+    let look = marker_look(shape);
+    let (ring_ink, core_ink) = match shape {
+        MarkerShape::Bullseye => (MarkerInk::Foreground, MarkerInk::Marker),
+        MarkerShape::Ring => (MarkerInk::Marker, MarkerInk::Foreground),
+    };
+    [
+        MarkerArc {
+            at: center_px,
+            r: MARKER_RADIUS,
+            ink: MarkerInk::Background,
+        },
+        MarkerArc {
+            at: center_px,
+            r: MARKER_RADIUS - look.ring / 2.0,
+            ink: ring_ink,
+        },
+        MarkerArc {
+            at: center_px,
+            r: look.core,
+            ink: core_ink,
+        },
+    ]
+}
+
+/// A marker label's pill in canvas px (`drawLabel` without the paint and
+/// without measuring): its box, which way the marker lies when off the
+/// frame, the text's left edge and two alphabetic baselines, and the
+/// off-frame arrow's box top-left (`None` while the marker is in view). The
+/// two text runs' widths arrive measured (`Math.ceil`ed, as the source ceils
+/// `measureText`); the painter resolves the pill fill, border, arrow and
+/// text inks.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LabelLayout {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+    pub dir: Option<Direction>,
+    pub text_left: f64,
+    pub name_baseline: f64,
+    pub coords_baseline: f64,
+    pub arrow: Option<[f64; 2]>,
+}
+
+/// A marker label's pill in canvas px (`drawLabel` without the paint).
+#[must_use]
+pub fn label_layout(
+    grid: &GridLayout,
+    px: f64,
+    py: f64,
+    name_width: f64,
+    coords_width: f64,
+) -> LabelLayout {
+    fn baseline(face: LabelFace, row_top: f64) -> f64 {
+        row_top + (LABEL_ROW - face.height) / 2.0 + face.baseline
+    }
+
+    let dir = off_edge(grid, px, py);
+    let inset = LABEL_BORDER + LABEL_PAD_X;
+    let lead = match dir {
+        None => 0.0,
+        Some(_) => ARROW_PAD_LEFT - LABEL_PAD_X + ARROW_BOX + ARROW_GAP,
+    };
+    let w = 2.0 * inset + lead + name_width + LABEL_RUN_GAP + coords_width;
+    let h = 2.0 * (LABEL_BORDER + LABEL_PAD_Y) + LABEL_ROW;
+    let x = clamp(
+        px + LABEL_GAP,
+        LABEL_EDGE_MARGIN,
+        grid.width - LABEL_EDGE_MARGIN - w,
+    );
+    let y = clamp(
+        py - LABEL_GAP * LABEL_RISE - h,
+        LABEL_EDGE_MARGIN,
+        grid.height - LABEL_EDGE_MARGIN - h,
+    );
+    let row_top = y + LABEL_BORDER + LABEL_PAD_Y;
+    let arrow = dir.map(|_| {
+        let in_box = (ARROW_BOX - ARROW_SIZE) / 2.0;
+        [
+            x + LABEL_BORDER + ARROW_PAD_LEFT + in_box,
+            row_top + (LABEL_ROW - ARROW_BOX) / 2.0 + in_box,
+        ]
+    });
+    LabelLayout {
+        x,
+        y,
+        w,
+        h,
+        dir,
+        text_left: x + inset + lead,
+        name_baseline: baseline(LABEL_LETTER, row_top),
+        coords_baseline: baseline(LABEL_NUMBER, row_top),
+        arrow,
+    }
+}
+
+/// An off-frame arrow's filled triangle (`drawArrow`): the three corners from
+/// the arrow box's top-left, tip first in each direction's order.
+#[must_use]
+pub fn arrow_path(dir: Direction, x: f64, y: f64) -> [[f64; 2]; 3] {
+    let s = ARROW_SIZE;
+    match dir {
+        Direction::Up => [[x + s / 2.0, y], [x + s, y + s], [x, y + s]],
+        Direction::Down => [[x, y], [x + s, y], [x + s / 2.0, y + s]],
+        Direction::Left => [[x + s, y], [x + s, y + s], [x, y + s / 2.0]],
+        Direction::Right => [[x, y], [x + s, y + s / 2.0], [x, y + s]],
+    }
 }
 
 /// The tick half-lengths across the start and end of each line look
@@ -349,5 +717,191 @@ mod tests {
         let grid = grid_400x300();
         assert_eq!(hit_test(&grid, &[shift_handle()], [0.0, 0.0]), None);
         assert_eq!(hit_test(&grid, &[], [250.0, 100.0]), None);
+    }
+
+    /// A marker with P's ink at plane units, unset shape and nothing riding
+    /// on it (the vitest draws `{ point, ink: "ordinal05" }`).
+    fn plain_marker(x: f64, y: f64) -> PlotMarker {
+        PlotMarker {
+            point: PlotPoint { x, y },
+            ink: mv_theme::Token::Ordinal05,
+            shape: MarkerShape::default(),
+            label: None,
+            drop_lines: false,
+            guide: false,
+        }
+    }
+
+    /// `toBeCloseTo` without a precision is two decimal places.
+    fn close(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 0.005,
+            "{actual} is not close to {expected}"
+        );
+    }
+
+    #[test]
+    fn p_at_1_1_is_a_bullseye_around_250_100_with_a_core_in_its_ink() {
+        // The default shape is the bullseye.
+        let grid = grid_400x300();
+        let marker = plain_marker(1.0, 1.0);
+        let center = to_px(&grid, marker.point);
+        assert_eq!(center, [250.0, 100.0]);
+
+        let arcs = marker_arcs(center, marker.shape);
+        assert_eq!(arcs.map(|arc| arc.at), [center; 3]);
+        assert_eq!(
+            arcs[1],
+            MarkerArc {
+                at: center,
+                r: 10.75,
+                ink: MarkerInk::Foreground,
+            }
+        );
+        assert_eq!(
+            arcs[2],
+            MarkerArc {
+                at: center,
+                r: 6.0,
+                ink: MarkerInk::Marker,
+            }
+        );
+    }
+
+    #[test]
+    fn p_s_label_sits_22_px_right_of_the_point_its_bottom_13_2_px_above_it() {
+        // The harness's measureText stub returns width 40 for every run.
+        let grid = grid_400x300();
+        let [px, py] = to_px(&grid, PlotPoint { x: 1.0, y: 1.0 });
+        let layout = label_layout(&grid, px, py, 40.0, 40.0);
+
+        assert_eq!((layout.x, layout.w, layout.h), (272.0, 114.0, 41.0));
+        close(layout.y, 45.8);
+        assert_eq!(layout.dir, None);
+        assert_eq!(layout.arrow, None);
+        assert_eq!(layout.text_left, 286.0);
+        assert_eq!(layout.text_left + 40.0 + LABEL_RUN_GAP, 332.0);
+    }
+
+    #[test]
+    fn p_s_label_stays_12_px_inside_the_frame_on_each_side_keeping_its_place_along_that_side() {
+        let grid = grid_400x300();
+        let label_at = |x: f64, y: f64| {
+            let [px, py] = to_px(&grid, PlotPoint { x, y });
+            let layout = label_layout(&grid, px, py, 40.0, 40.0);
+            (layout.x, layout.y)
+        };
+
+        assert_eq!(label_at(-1.0, 20.0), (172.0, 12.0));
+        assert_eq!(label_at(-1.0, -20.0), (172.0, 247.0));
+        let (left, top) = label_at(-20.0, 1.0);
+        assert_eq!(left, 12.0);
+        close(top, 45.8);
+        let (right, top) = label_at(20.0, 1.0);
+        assert_eq!(right, 258.0);
+        close(top, 45.8);
+    }
+
+    #[test]
+    fn p_s_label_leads_with_a_triangle_pointing_the_way_p_lies_furthest_past_the_view() {
+        let grid = grid_400x300();
+        let arrow_of = |x: f64, y: f64| {
+            let [px, py] = to_px(&grid, PlotPoint { x, y });
+            let layout = label_layout(&grid, px, py, 40.0, 40.0);
+            let [ax, ay] = layout.arrow.expect("an off-frame label draws its arrow");
+            let dir = layout.dir.expect("an off-frame label knows its side");
+            arrow_path(dir, ax, ay).map(|[qx, qy]| [qx - layout.x, qy - layout.y])
+        };
+
+        assert_eq!(
+            arrow_of(-1.0, 20.0),
+            [[16.0, 15.5], [21.0, 25.5], [11.0, 25.5]]
+        );
+        assert_eq!(
+            arrow_of(-1.0, -20.0),
+            [[11.0, 15.5], [21.0, 15.5], [16.0, 25.5]]
+        );
+        assert_eq!(
+            arrow_of(-20.0, 1.0),
+            [[21.0, 15.5], [21.0, 25.5], [11.0, 20.5]]
+        );
+        assert_eq!(
+            arrow_of(20.0, 1.0),
+            [[11.0, 15.5], [21.0, 20.5], [11.0, 25.5]]
+        );
+        // The tie goes vertical: as far past in x as in y still points up.
+        assert_eq!(arrow_of(20.0, 30.0), arrow_of(-1.0, 20.0));
+    }
+
+    #[test]
+    fn p_s_label_has_no_triangle_while_p_is_in_view_and_makes_room_for_it_when_p_is_not() {
+        let grid = grid_400x300();
+        let labelled = |x: f64, y: f64| {
+            let [px, py] = to_px(&grid, PlotPoint { x, y });
+            label_layout(&grid, px, py, 40.0, 40.0)
+        };
+
+        let in_view = labelled(1.0, 1.0);
+        assert_eq!(in_view.w, 114.0);
+        let above = labelled(1.0, 20.0);
+        assert_eq!(above.w, 130.0);
+        assert_eq!(above.text_left, above.x + 30.0);
+    }
+
+    #[test]
+    fn p_s_drop_lines_run_in_its_ink_from_1_1_to_each_axis() {
+        // The ink is the painter's (`theme.colors[marker.ink]`); geometry
+        // gives the two segments the painter strokes in one path.
+        let grid = grid_400x300();
+        let lines = drop_lines(&grid, PlotPoint { x: 1.0, y: 1.0 });
+        assert_eq!(lines.vertical, Some([[250.0, 100.0], [250.0, 150.0]]));
+        assert_eq!(lines.horizontal, Some([[250.0, 100.0], [200.0, 100.0]]));
+    }
+
+    #[test]
+    fn above_the_view_p_s_drop_line_comes_in_from_the_top_edge_and_none_runs_off_the_canvas() {
+        let grid = grid_400x300();
+        let lines = drop_lines(&grid, PlotPoint { x: 1.0, y: 20.0 });
+        assert_eq!(lines.vertical, Some([[250.0, 0.0], [250.0, 150.0]]));
+        assert_eq!(lines.horizontal, None);
+    }
+
+    #[test]
+    fn p_has_no_drop_lines_unless_asked() {
+        // The painter only strokes a marker whose `drop_lines` is set; the
+        // flag defaults to off.
+        assert!(!plain_marker(1.0, 1.0).drop_lines);
+    }
+
+    #[test]
+    fn q_at_1_1_is_a_ring_in_its_ink_around_250_100_with_a_centre_in_the_foreground() {
+        let grid = grid_400x300();
+        let center = to_px(&grid, PlotPoint { x: 1.0, y: 1.0 });
+        assert_eq!(center, [250.0, 100.0]);
+
+        let arcs = marker_arcs(center, MarkerShape::Ring);
+        assert_eq!(
+            arcs.map(|arc| [arc.at[0], arc.at[1], arc.r]),
+            [
+                [250.0, 100.0, 12.0],
+                [250.0, 100.0, 10.5],
+                [250.0, 100.0, 3.0],
+            ]
+        );
+        // A ring's ring is the marker's ink, its core the foreground.
+        assert_eq!(arcs[1].ink, MarkerInk::Marker);
+        assert_eq!(arcs[2].ink, MarkerInk::Foreground);
+    }
+
+    #[test]
+    fn q_s_guide_runs_down_the_plane_s_full_height_at_its_x_even_while_q_is_above_the_view() {
+        let grid = grid_400x300();
+        assert_eq!(guide_x(&grid, PlotPoint { x: 1.0, y: 20.0 }), Some(250.0));
+    }
+
+    #[test]
+    fn q_has_no_guide_while_its_x_lies_past_the_view() {
+        let grid = grid_400x300();
+        assert_eq!(guide_x(&grid, PlotPoint { x: 20.0, y: 1.0 }), None);
     }
 }

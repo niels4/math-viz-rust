@@ -403,6 +403,24 @@ no new tokens (all eight tabled).
   and is left out; `plot::PlotHandle { kind, at }` stays, handlers dispatch
   in the app.
 
+### h8-p-marker (the P/Q marker geometry)
+
+- `plane_geometry` holds the markers as pure positions: `PlotMarker { point,
+  ink: mv_theme::Token, shape, label, drop_lines, guide }` (the TS `keyof
+  ThemeVars` is the `Token` enum; `PointP`/`PointQ` arrive with h8-plane's
+  regeneration), `MarkerShape::{Bullseye, Ring}` defaulting to bullseye,
+  `PlotLabel`'s coords pre-formatted by the painter; `marker_arcs` returns
+  the three concentric arcs with `MarkerInk::{Background, Foreground,
+  Marker}` so the bullseye/ring ink swap lives beside `marker_look`;
+  `guide_x` is `Some(px)` iff on the plane; `drop_lines` gives the vertical
+  then the horizontal segment, each `None` exactly when the TS strokes
+  nothing; `label_layout` takes the `Math.ceil`ed run widths and returns the
+  pill, baselines, and the arrow box (`None` in view); `arrow_path` the
+  tip-first triangle. The label faces are literal `LabelFace` line boxes
+  (Figma metrics, never measured); the TS `clamp` import is a private local
+  (one-line duplication of `grid.rs`'s, which h7-p-plane owns) because
+  `f64::clamp` panics on the negative range a narrow canvas makes.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
