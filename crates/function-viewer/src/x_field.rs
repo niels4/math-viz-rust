@@ -527,7 +527,8 @@ fn number_style() -> mv_text::Style {
 /// when invalid), the scheme selection over a fully selected text while
 /// focused, and destructive text when invalid. `readout_x` is the readout
 /// scope's x, `open`/`x_slot` its lead geometry, `number_base` the number
-/// line's baseline, `ink` the run's ink. Called from the P readout's paint.
+/// line's baseline, `ink` the run's NanoVG ink. Called from the P readout's
+/// paint.
 pub fn paint_field(
     app: &mut App,
     theme: &mv_theme::Theme,
@@ -535,7 +536,7 @@ pub fn paint_field(
     open: f32,
     x_slot: f32,
     number_base: f32,
-    ink: mv_sys::clay::Color,
+    ink: mv_nvg::Color,
 ) {
     let data = app
         .clay
@@ -618,10 +619,12 @@ pub fn paint_field(
     }
     let style = number_style();
     let text_w = mv_text::measure(&mut app.fonts, style, &display);
+    // `ink` arrives in NanoVG space (the readout's ink); only the invalid
+    // tone re-inks from the theme.
     let text_ink = if invalid {
         crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Destructive))
     } else {
-        crate::draw::nvg_color(ink)
+        ink
     };
     mv_text::draw(
         &mut app.fonts,
