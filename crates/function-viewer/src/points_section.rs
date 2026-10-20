@@ -856,12 +856,7 @@ fn number_style() -> mv_text::Style {
 #[must_use]
 pub(crate) fn readout_width(app: &mut App, readout: &XReadout<'_>) -> f32 {
     let (x_slot, _) = x_slot(app, readout.text, readout.chars, readout.slotted);
-    let number = mv_text::Style {
-        face: mv_text::Face::RobotoMono500,
-        size: NUMBER_SIZE,
-        tracking: 0.0,
-        features: tabular(),
-    };
+    let number = number_style();
     let open = ceil_px(OPEN_EM * MATH_SIZE);
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
