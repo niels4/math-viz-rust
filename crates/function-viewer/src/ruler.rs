@@ -357,43 +357,90 @@ pub fn open_drag(app: &App) -> Option<ScrubDrag> {
     app.scrub
 }
 
-/// Lays the open drag's ruler out: the floating card under its row. Called
-/// from the layout pass after the rows; paints nothing by itself.
-pub fn layout_open_drag(app: &mut App) {
-    let Some(drag) = open_drag(app) else {
-        return;
-    };
-    layout_ruler(app, row_parent(drag.param), drag.param, drag.row_box.width);
+/// A ruler the frame opens, in the source's `a b h k` order: the box drag's
+/// at its scrubbed value, then one per parameter whose shared scrub mode is
+/// set (a handle drag's) at the live value, as `Ruler` reads the live query
+/// param under every mode-held row.
+struct OpenRuler {
+    param: TransformParam,
+    mode: ScrubMode,
+    value: f64,
+    row_width: f32,
 }
 
-/// Paints the open drag's ruler over the rows beneath: the card and the tape
+/// Every ruler this frame opens: the box drag's, then one per mode-held
+/// parameter the box drag doesn't already cover.
+fn open_rulers(app: &App) -> Vec<OpenRuler> {
+    let mut rulers = Vec::new();
+    if let Some(drag) = open_drag(app) {
+        rulers.push(OpenRuler {
+            param: drag.param,
+            mode: drag.mode,
+            value: crate::scrub::scrubbed(
+                drag.start_value,
+                drag.dx,
+                drag.kind == ScrubKind::Scale,
+                drag.mode,
+            ),
+            row_width: drag.row_box.width,
+        });
+    }
+    for param in [
+        TransformParam::A,
+        TransformParam::B,
+        TransformParam::H,
+        TransformParam::K,
+    ] {
+        if rulers.iter().any(|ruler| ruler.param == param) {
+            continue;
+        }
+        if let Some(mode) = app.state.scrub_mode[param] {
+            let (region, _) = crate::input::region_of(app, crate::transform_row::row_hit(param));
+            rulers.push(OpenRuler {
+                param,
+                mode,
+                value: crate::transform_section::param_value(app, param),
+                row_width: region.r#box.width,
+            });
+        }
+    }
+    rulers
+}
+
+/// Lays the open rulers out: one floating card under each held row. Called
+/// from the layout pass after the rows; paints nothing by itself.
+pub fn layout_open_drag(app: &mut App) {
+    for ruler in open_rulers(app) {
+        layout_ruler(app, row_parent(ruler.param), ruler.param, ruler.row_width);
+    }
+}
+
+/// Paints the open rulers over the rows beneath: the card and the tape
 /// first (their chrome paints earlier and would show through the tape's
-/// translucent wash), then the tape's contents at the live value. Called from
+/// translucent wash), then the tape's contents at the value. Called from
 /// the post-pass after the rows.
 pub fn paint_open_drag(app: &mut App) {
-    let Some(drag) = open_drag(app) else {
-        return;
-    };
+    for ruler in open_rulers(app) {
+        paint_one_ruler(app, &ruler);
+    }
+}
+
+/// Paints one open ruler: the foundation, then the tape's contents.
+fn paint_one_ruler(app: &mut App, ruler: &OpenRuler) {
     let (card, tape, content) = {
         let clay = app.clay.as_ref().expect("clay context initialised");
-        let card = clay.get_element_data(ruler_id(drag.param));
-        let tape = clay.get_element_data(tape_box_id(drag.param));
-        let content = clay.get_element_data(tape_id(drag.param));
+        let card = clay.get_element_data(ruler_id(ruler.param));
+        let tape = clay.get_element_data(tape_box_id(ruler.param));
+        let content = clay.get_element_data(tape_id(ruler.param));
         if !card.found || !tape.found || !content.found {
             return;
         }
         (card.boundingBox, tape.boundingBox, content.boundingBox)
     };
     let theme = crate::ui::current_theme(app).clone();
-    let colors = ruler_colors(&theme, drag.param, drag.mode);
+    let colors = ruler_colors(&theme, ruler.param, ruler.mode);
     paint_foundation(&mut app.vg, &card, &tape, &colors);
-    let value = crate::scrub::scrubbed(
-        drag.start_value,
-        drag.dx,
-        drag.kind == ScrubKind::Scale,
-        drag.mode,
-    );
-    let marks = ruler_marks(value, f64::from(content.width), is_scale(drag.param));
+    let marks = ruler_marks(ruler.value, f64::from(content.width), is_scale(ruler.param));
     paint_tape(&mut app.fonts, &mut app.vg, &content, &marks, &colors);
 }
 
@@ -617,6 +664,47 @@ mod tests {
         }
     }
 
+    /// The port's boxes against `testdata/page.json` at the held shift-handle
+    /// drag (the reference at this hash): the h and k rulers under their lit
+    /// rows, within the plan's 0.5 CSS px.
+    #[test]
+    fn held_handle_rulers_match_the_fixture() {
+        const SLACK: f64 = 0.5;
+        let fixture: serde_json::Value =
+            serde_json::from_str(crate::fixture::PAGE_FIXTURE).expect("page fixture parses");
+        let boxes = &fixture["shots"]["rows-lit-hk-drag"]["webkit"]["boxes"];
+        let read = |name: &str| -> [f64; 4] {
+            let got = boxes[name].as_array().expect("box");
+            [
+                got[0].as_f64().expect("x"),
+                got[1].as_f64().expect("y"),
+                got[2].as_f64().expect("w"),
+                got[3].as_f64().expect("h"),
+            ]
+        };
+        for (row_name, want_name) in [("row_h", "ruler_h"), ("row_k", "ruler_k")] {
+            let row = read(row_name);
+            let ruler = ruler_box(&clay::BoundingBox {
+                x: row[0] as f32,
+                y: row[1] as f32,
+                width: row[2] as f32,
+                height: row[3] as f32,
+            });
+            let want = read(want_name);
+            for (got, want) in [
+                (f64::from(ruler.x), want[0]),
+                (f64::from(ruler.y), want[1]),
+                (f64::from(ruler.width), want[2]),
+                (f64::from(ruler.height), want[3]),
+            ] {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{want_name} {got} against {want}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn scale_marks_match_the_probed_drag() {
         // `a` held 30 px in: `scrubbed(1.0, 30.0, scale, coarse)` is 1.06,
@@ -759,5 +847,41 @@ mod tests {
             ruler_colors(&theme, TransformParam::A, ScrubMode::Snap).stroke,
             theme.colors[mv_theme::Token::Warning]
         );
+    }
+
+    #[test]
+    fn open_rulers_covers_every_mode_held_param_at_its_live_value() {
+        // The handle-drag half: a handle drag sets h and k coarse with no
+        // box drag mirrored, and the rulers come out under both rows with
+        // their marks sliding at the live values.
+        let mut app = crate::fixture::headless_app();
+        app.url = crate::url::Url::from_query("h=2");
+        crate::transform_section::init_params_from_url(&mut app);
+        app.state.scrub_mode[TransformParam::H] = Some(ScrubMode::Coarse);
+        app.state.scrub_mode[TransformParam::K] = Some(ScrubMode::Coarse);
+        let rulers = open_rulers(&app);
+        let held: Vec<(TransformParam, ScrubMode, f64)> = rulers
+            .iter()
+            .map(|ruler| (ruler.param, ruler.mode, ruler.value))
+            .collect();
+        assert_eq!(
+            held,
+            vec![
+                (TransformParam::H, ScrubMode::Coarse, 2.0),
+                (TransformParam::K, ScrubMode::Coarse, 0.0),
+            ]
+        );
+        // The box drag it mirrors is never doubled: its parameter reads the
+        // single mirrored drag, not the shared slot as well.
+        app.scrub = Some(ScrubDrag {
+            param: TransformParam::H,
+            kind: ScrubKind::Shift,
+            start_value: 2.0,
+            dx: 0.0,
+            mode: ScrubMode::Coarse,
+            row_box: row_a(),
+        });
+        let rulers = open_rulers(&app);
+        assert_eq!(rulers.len(), 2);
     }
 }

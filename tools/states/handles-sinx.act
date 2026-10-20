@@ -1,0 +1,9 @@
+# handles-sinx (H6): sin x at a=2, h=1, k=-3, the diamond on the vertex and the square on the peak.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx&a=2&h=1&k=-3
+wait 2000
+shot handles-sinx

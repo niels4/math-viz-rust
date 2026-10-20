@@ -15,3 +15,12 @@ H4 = ["readout-x1", "readout-x2", "readout-x3", "readout-sinx", "readout-values"
 # H5 at b8a0e1d: h5-box's box-* states, h5-ruler's ruler-* states, then
 # h5-buttons' reset-*, flip-* and readout-b-height states.
 H5 = ["box-drag-a-50", "box-drag-shift", "box-drag-ctrl", "box-drag-out", "box-release", "box-wheel", "box-click-open", "box-arrows-typing", "box-esc", "box-dblclick", "box-tip-rest", "box-tip-typing", "ruler-a-30", "ruler-k-30", "ruler-b-30", "ruler-h-30", "ruler-negative-scale", "ruler-shift-mode", "ruler-ctrl-mode", "reset-visible", "reset-hover-a", "reset-all-hover", "reset-click", "flip-rest", "flip-hover", "flip-pressed", "flip-focus", "flip-only-scale-rows", "readout-b-height"]
+# H6 at 5cef052: h6-curve's transformed curves at values, the flip's frames
+# on the paused clock, a value typed mid-turn, reduced motion, and the
+# switch composed with the transform; then h6-handles' handles-*, lines-*
+# and overlay-tip* states.
+H6 = ["curve-values", "curve-b", "curve-sinx-values", "flip-frames", "flip-typed-mid", "reduced-flip", "switch-with-values", "handles-x1", "handles-x2", "handles-x3", "handles-sinx", "handles-x1-novalues", "handles-x2-novalues", "handles-x3-novalues", "handles-sinx-novalues", "lines-lit-k", "lines-lit-h", "lines-lit-a", "lines-lit-b", "lines-none", "overlay-tip", "overlay-tip-default"]
+# H7 at 251c080: the cursor over the plane, hover and drag on the shift and
+# scale handles, no pan while dragging, the release flush, the drag past the
+# canvas edge, and the pan cursor (h7-plane).
+H7 = ["handle-hover-shift", "handle-hover-scale", "handle-hover-move", "handle-hover-end", "handle-drag-shift", "handle-drag-scale", "handle-drag-release", "handle-drag-no-pan", "handle-drag-out", "pan-cursor", "reset-frames", "reset-all-frames", "reduced-reset", "rows-lit-hk-drag", "rows-lit-ab-hover", "readout-lit-hk"]

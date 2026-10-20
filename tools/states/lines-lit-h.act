@@ -1,0 +1,11 @@
+# lines-lit-h (H6): x2 at a=2, h=1, k=-3 with the pointer on h's box: the arrow running from the y-axis to the shift handle.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 2000
+move 331.5 599.5
+wait 1000
+shot lines-lit-h

@@ -123,9 +123,26 @@ pub fn live_values(app: &App) -> enum_map::EnumMap<TransformParam, f64> {
     enum_map::EnumMap::from_fn(|param| param_value(app, param))
 }
 
-/// Reset all's click: every default comes back, each flushed, so the keys
-/// leave the URL at once.
+/// Reset all's click: the four jumps in the section's order (an unchanged
+/// param jumps from its default to its default), then every default comes
+/// back, each flushed, so the keys leave the URL at once. The shown values
+/// ease together on the spring while the boxes show the defaults at once.
 pub fn reset_all_params(app: &mut App) {
+    let live = live_values(app);
+    app.state.jumps.set(
+        ROW_ORDER
+            .iter()
+            .map(|param| {
+                let to = crate::reset::reset_value(*param);
+                crate::state::Jump {
+                    param: *param,
+                    from: live[*param],
+                    to,
+                }
+            })
+            .collect(),
+    );
+    crate::flip::adopt_jumps(app);
     for param in ROW_ORDER {
         let default = crate::reset::reset_value(param);
         match param {
@@ -612,5 +629,35 @@ mod tests {
         );
         let flip = at(mv_clay::id("TransformFlip", 0));
         assert!((flip.x - 177.0).abs() <= 0.5, "flip x with reset");
+    }
+
+    #[test]
+    fn reset_all_jumps_every_param_in_section_order() {
+        // Reset all's test: at a=3&h=2 the four jumps run in the section's
+        // order a k b h with the live values as froms (an unchanged param
+        // jumps from its default to its default), the keys leave the URL at
+        // once, and the spring starts turning.
+        let mut app = crate::fixture::headless_app();
+        app.url = crate::url::Url::from_query("a=3&h=2");
+        init_params_from_url(&mut app);
+        reset_all_params(&mut app);
+        let jumps: Vec<(TransformParam, f64, f64)> = app
+            .state
+            .jumps
+            .list
+            .iter()
+            .map(|jump| (jump.param, jump.from, jump.to))
+            .collect();
+        assert_eq!(
+            jumps,
+            vec![
+                (TransformParam::A, 3.0, 1.0),
+                (TransformParam::K, 0.0, 0.0),
+                (TransformParam::B, 1.0, 1.0),
+                (TransformParam::H, 2.0, 0.0),
+            ]
+        );
+        assert_eq!(app.url.query(), "");
+        assert!(app.flip.is_animating());
     }
 }
