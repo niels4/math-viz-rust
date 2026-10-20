@@ -49,6 +49,7 @@ pub mod platform_windows;
 pub mod plot;
 pub mod prefs;
 pub mod readout;
+pub mod ruler;
 pub mod ruler_marks;
 pub mod scale_legend;
 pub mod scroll;

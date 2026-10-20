@@ -165,6 +165,9 @@ FIXTURE_STATES = (
     "rows-enter",
     "rows-zero-scale",
     "rows-arrows",
+    # h5-ruler: the ruler and tape only exist mid-drag, so the fixture runs
+    # ruler-a-30 (a's box held 30 px in).
+    "ruler-a-30",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

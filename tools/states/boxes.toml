@@ -61,3 +61,9 @@ row_h = "div[data-param=\"h\"]"
 chip_a = "div[data-param=\"a\"] > span[aria-hidden=\"true\"]"
 field_a = "div[data-param=\"a\"] input"
 arrows_a = "div[data-param=\"a\"] svg"
+# H5 at b8a0e1d: the ruler card and the tape under a's dragged row (the
+# ruler-* states hold the drag at their shot). The ruler is the row's last
+# div child (the value box, then the ruler); aria-hidden tells it from the
+# box, and the tape is the ruler's first div child.
+ruler_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"]"
+tape_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"] > div"

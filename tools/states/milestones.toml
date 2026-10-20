@@ -12,3 +12,6 @@ H3 = ["sidebar-default", "select-x2", "select-sinx", "switch-frames", "switch-mi
 # equation, and with a lit by the pointer (h4-readout); then h4-rows' rows
 # and params states.
 H4 = ["readout-x1", "readout-x2", "readout-x3", "readout-sinx", "readout-values", "readout-narrow", "readout-hover-a", "rows-default", "rows-values", "rows-hover-a", "rows-focus-k", "rows-typed", "rows-enter", "rows-zero-scale", "rows-arrows", "url-params"]
+# H5 at b8a0e1d: the scrub ruler under a dragged box (h5-ruler; h5-box's
+# box-* and h5-buttons' reset/flip states join this line at their merges).
+H5 = ["ruler-a-30", "ruler-k-30", "ruler-b-30", "ruler-h-30", "ruler-negative-scale", "ruler-shift-mode", "ruler-ctrl-mode"]

@@ -94,11 +94,6 @@ pub const CHEVRON_HEIGHT: f32 = 10.0;
 /// The chevrons' stroke (`.chevrons`: `stroke-width: 2px`, round caps).
 pub const CHEVRON_STROKE: f32 = 2.0;
 
-/// The tint wash's share of the row's ink (`--row-tint`: `color-mix(in oklch,
-/// var(--row-ink) 18%, transparent)`). The probe shows the resolved wash as
-/// the ink's own oklch triple at `/ 0.18`, so the port scales the alpha.
-pub const TINT_ALPHA: f32 = 0.18;
-
 /// Whether the parameter lays its tape out by ratio (`Ruler`'s `isScale`:
 /// the `a` and `b` rows; `h` and `k` add).
 #[must_use]
@@ -254,14 +249,17 @@ pub struct RulerColors {
     pub ink: [f32; 4],
 }
 
-/// The ruler's colours from the resolved theme, the row's ink
-/// (`param.colour_token()`) and the drag mode.
+/// The ruler's colours from the resolved theme, the parameter and the drag
+/// mode: the row's ink is `param.colour_token()`, its wash `theme::band` (the
+/// pre-blended 18 % tint, as the lit rows paint it; the probe shows the
+/// resolved wash as the ink's own oklch triple at `/ 0.18`).
 #[must_use]
 pub fn ruler_colors(
     theme: &mv_theme::Theme,
-    param_ink: mv_theme::Color,
+    param: TransformParam,
     mode: ScrubMode,
 ) -> RulerColors {
+    let param_ink = theme.colors[param.colour_token()];
     let stroke = match tape_stroke(mode) {
         TapeStroke::RowInk => param_ink,
         TapeStroke::Accent => theme.colors[mv_theme::Token::Accent],
@@ -270,12 +268,7 @@ pub fn ruler_colors(
     RulerColors {
         card: theme.colors[mv_theme::Token::Card],
         rim: theme.colors[mv_theme::Token::Border],
-        fill: [
-            param_ink[0],
-            param_ink[1],
-            param_ink[2],
-            param_ink[3] * TINT_ALPHA,
-        ],
+        fill: mv_theme::band(theme, param.colour_token()),
         stroke,
         index: param_ink,
         ink: theme.colors[mv_theme::Token::Foreground],
@@ -304,6 +297,16 @@ pub fn ruler_id(param: TransformParam) -> clay::ElementId {
 #[must_use]
 pub fn tape_id(param: TransformParam) -> clay::ElementId {
     mv_clay::id("RulerTape", param as u32)
+}
+
+/// The row's Clay id for a parameter: the float's parent (the rows declare
+/// `transform_row::ROW_ID` per `transform_row::param_index`).
+#[must_use]
+pub fn row_parent(param: TransformParam) -> clay::ElementId {
+    mv_clay::id(
+        crate::transform_row::ROW_ID,
+        crate::transform_row::param_index(param) as u32,
+    )
 }
 
 /// Lays the ruler card out under its row: full row width, 4 px down, the tape
@@ -402,7 +405,7 @@ pub fn paint_ruler(app: &mut App, param: TransformParam, value: f64, mode: Scrub
         data.boundingBox
     };
     let theme = crate::ui::current_theme(app).clone();
-    let colors = ruler_colors(&theme, theme.colors[param.colour_token()], mode);
+    let colors = ruler_colors(&theme, param, mode);
     let marks = ruler_marks(value, f64::from(content.width), is_scale(param));
     paint_tape(&mut app.fonts, &mut app.vg, &content, &marks, &colors);
 }
@@ -531,6 +534,52 @@ mod tests {
         );
     }
 
+    /// The port's boxes against `testdata/page.json` (the reference at this
+    /// hash, `tools/run dom --fixture`): the ruler card and tape at the
+    /// ruler-a-30 shot within the plan's 0.5 CSS px.
+    #[test]
+    fn boxes_match_fixture() {
+        const SLACK: f64 = 0.5;
+        let fixture: serde_json::Value =
+            serde_json::from_str(crate::fixture::PAGE_FIXTURE).expect("page fixture parses");
+        let boxes = &fixture["shots"]["ruler-a-30"]["webkit"]["boxes"];
+        let read = |name: &str| -> [f64; 4] {
+            let got = boxes[name].as_array().expect("box");
+            [
+                got[0].as_f64().expect("x"),
+                got[1].as_f64().expect("y"),
+                got[2].as_f64().expect("w"),
+                got[3].as_f64().expect("h"),
+            ]
+        };
+        let row = read("row_a");
+        let ruler = ruler_box(&clay::BoundingBox {
+            x: row[0] as f32,
+            y: row[1] as f32,
+            width: row[2] as f32,
+            height: row[3] as f32,
+        });
+        for (got, want) in [
+            (f64::from(ruler.x), read("ruler_a")[0]),
+            (f64::from(ruler.y), read("ruler_a")[1]),
+            (f64::from(ruler.width), read("ruler_a")[2]),
+            (f64::from(ruler.height), read("ruler_a")[3]),
+        ] {
+            assert!((got - want).abs() <= SLACK, "ruler {got} against {want}");
+        }
+        // The tape's border box: the card inside its 1 px rim and 8 px pad.
+        let tape = read("tape_a");
+        let ruler_want = read("ruler_a");
+        for (got, want) in [
+            (tape[0], ruler_want[0] + f64::from(tape_origin())),
+            (tape[1], ruler_want[1] + f64::from(tape_origin())),
+            (tape[2], ruler_want[2] - 2.0 * f64::from(tape_origin())),
+            (tape[3], f64::from(TAPE_HEIGHT)),
+        ] {
+            assert!((got - want).abs() <= SLACK, "tape {got} against {want}");
+        }
+    }
+
     #[test]
     fn scale_marks_match_the_probed_drag() {
         // `a` held 30 px in: `scrubbed(1.0, 30.0, scale, coarse)` is 1.06,
@@ -619,20 +668,21 @@ mod tests {
     #[test]
     fn colors_resolve_around_the_rows_ink() {
         let theme = mv_theme::resolve(mv_theme::Slug::ArcticIce, mv_theme::Space::Srgb);
-        let ink: mv_theme::Color = [1.0, 0.0, 0.0, 1.0];
-        let colors = ruler_colors(&theme, ink, ScrubMode::Coarse);
+        let ink = theme.colors[mv_theme::Token::ParamA];
+        let colors = ruler_colors(&theme, TransformParam::A, ScrubMode::Coarse);
         assert_eq!(colors.card, theme.colors[mv_theme::Token::Card]);
         assert_eq!(colors.rim, theme.colors[mv_theme::Token::Border]);
-        assert_eq!(colors.fill, [1.0, 0.0, 0.0, TINT_ALPHA]);
+        // The wash is the pre-blended tint: the ink at 18 % alpha.
+        assert_eq!(colors.fill, [ink[0], ink[1], ink[2], ink[3] * 0.18]);
         assert_eq!(colors.stroke, ink);
         assert_eq!(colors.index, ink);
         assert_eq!(colors.ink, theme.colors[mv_theme::Token::Foreground]);
         assert_eq!(
-            ruler_colors(&theme, ink, ScrubMode::Fine).stroke,
+            ruler_colors(&theme, TransformParam::A, ScrubMode::Fine).stroke,
             theme.colors[mv_theme::Token::Accent]
         );
         assert_eq!(
-            ruler_colors(&theme, ink, ScrubMode::Snap).stroke,
+            ruler_colors(&theme, TransformParam::A, ScrubMode::Snap).stroke,
             theme.colors[mv_theme::Token::Warning]
         );
     }
