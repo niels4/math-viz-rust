@@ -1,11 +1,13 @@
 """The harness's action language, read for Playwright: the scripts in tools/states that put the
-React reference, the web build and the native build in the same state (README: The harness).
+math-viz2 reference, the web build and the native build in the same state (README: The harness).
 crates/mv-script/src/script.rs reads the same language for the native build: change the two
 together.
 
 A line is a verb and its arguments, and '#' starts a comment. Lines before the first action say
-how the page opens; after it, size, scheme and reduced-motion change it live. Positions are
-logical pixels, times milliseconds."""
+how the page opens (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space` and
+`query`); after it, size, scheme and reduced-motion change it live. Positions are logical pixels,
+times milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every surface:
+appended to the reference and web URLs, passed as --query natively."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,8 +53,9 @@ MODIFIERS = {"shift": "Shift", "ctrl": "Control", "alt": "Alt", "meta": "Meta"}
 
 @dataclass
 class Start:
-    """How the page opens: React's defaults (state/useAppTheme.ts) on a dark system, the port
-    drawing in sRGB (every capture of the reference is sRGB: plan 1.10)."""
+    """How the page opens: math-viz2's defaults (src/state/useAppTheme.ts) on a dark system, the
+    port drawing in sRGB (every capture of the reference is sRGB); `query` the page's hash query
+    (?key=value&...), opening on every surface."""
 
     size: tuple[int, int] = (1440, 900)
     density: float = 2
@@ -62,6 +65,7 @@ class Start:
     light_theme: str = "clean-teal"
     reduced_motion: bool = False
     space: str = "srgb"
+    query: str = ""  # the page's hash query (?key=value&...), opening on every surface
 
     @property
     def theme_shown(self) -> str:
@@ -338,6 +342,11 @@ def _line(start: Start, started: bool, text: str, surface: str = "all") -> Verb 
         case "space":
             _before_actions(started, word)
             start.space = _one_of(fields, SPACES, "space")
+        case "query":
+            _before_actions(started, word)
+            if len(fields) != 1:
+                raise _LineError("query takes the page's hash query, e.g. query center=1,2&scale=2")
+            start.query = fields[0]
         case "move":
             if len(fields) != 2 and not (len(fields) == 4 and fields[2] == "over"):
                 raise _LineError("move takes X Y [over MS]")

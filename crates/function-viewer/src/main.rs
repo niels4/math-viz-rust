@@ -19,9 +19,11 @@ pub mod app;
 // is declared under this name.
 #[path = "loop.rs"]
 pub mod app_loop;
+pub mod camera;
 pub mod draw;
 pub mod fixture;
 pub mod flex;
+pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
 pub mod harness;
 pub mod icons;
@@ -44,6 +46,7 @@ pub mod settings;
 pub mod svgpath;
 pub mod typography;
 pub mod ui;
+pub mod url;
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -944,7 +947,7 @@ impl Main {
             app.prefs = appearance(app.prefs, &options, app.system_scheme);
         }
         // The page query at start: `--query` (empty without it).
-        app.url = options.query.clone();
+        app.url = crate::url::Url::from_query(&options.query);
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1089,7 +1092,7 @@ impl Main {
         app.prefs = appearance(app.prefs, &options, app.system_scheme);
         // The page query at start: the hash's query part, if the page was
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
-        app.url = platform_read_hash();
+        app.url = crate::url::Url::new(&platform_read_hash());
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1308,6 +1311,17 @@ impl Main {
                 #[cfg(not(target_os = "emscripten"))]
                 if *code == UserCode::Live as i32 {
                     return crate::live::live_step(app, *data1 as usize as i64);
+                }
+                #[cfg(target_os = "emscripten")]
+                if *code == UserCode::Hash as i32 {
+                    // The page's hash changed under the app (an edit in the
+                    // address bar, back/forward): route and query in at once.
+                    // Param live values follow through each param's `sync`,
+                    // which their owners run on the frame step (h2-input adds
+                    // the camera's); with no params yet this is the query the
+                    // harness records.
+                    app.url.sync_from_hash(&platform_read_hash());
+                    return AppResult::Continue;
                 }
                 // Anything else (notably `ReducedMotion`) falls through to
                 // `input_from_event`, which decodes it by type and code.

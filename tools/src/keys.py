@@ -1,21 +1,16 @@
 """The web build's browser shortcuts (web-keys): what the page prevents per case.
 
 The user's ruling (2026-10-18): in the web app, browser keyboard shortcuts reach the browser as
-they do on the React page. While a number field is edited, Cmd combos stay with the app, as in a
+they do on the math-viz2 page. While a number field is edited, Cmd combos stay with the app, as in a
 native text field; otherwise every Cmd+key combo goes to the browser untouched; Cmd+Opt combos
 always go to the browser; the Meta key alone still reaches SDL (a Cmd-drag reads GUI as held).
 web/library.js stops the pass-through combos before SDL's bubble-phase listener, so the browser
 performs them; the field-edit flag (platform_web.rs's platform_field_editing, set when a field
 opens and closes) tells the page when a field is edited.
 
-This check records `defaultPrevented` per case on the Rust web build (`web`) and the Odin web
-build (`odin-web`, the Odin record, prevented in every case), in each engine, routing each
-target's web/ from disk (no WEB_PORT, no server): outside a field Meta+ArrowLeft, Meta+R and
-Meta+Alt+I are not prevented on web; inside b's field Meta+ArrowLeft, Meta+A and Meta+ArrowRight
-are prevented, each moving the caret as now, and the field's crop after each equals odin-web's
-after the same gesture; after Escape Meta+ArrowLeft is not prevented again; a Cmd-drag on k's
-box draws the snap badge and stroke identically to odin-web. The exit status is the web column's;
-odin-web is reported, never judged."""
+This check records `defaultPrevented` per case on the web build (`web`), in each engine, routing
+the build's web/ from disk (no WEB_PORT, no server). The cases name the page's parts (b's box,
+k's box); the milestone that owns them keeps the coordinates with the page (h4-rows, h5-box)."""
 
 import json
 from dataclasses import asdict, dataclass
@@ -123,15 +118,15 @@ def keydown(records: list[KeyRecord], code: str) -> KeyRecord | None:
     return next((r for r in records if r.type == "keydown" and r.code == code), None)
 
 
-def fresh_page(context: BrowserContext, target: str) -> tuple[Page, PageLog, list[str]]:
-    """A page routed from the target's web/ with ?trace, at its first frame, with page-error
+def fresh_page(context: BrowserContext) -> tuple[Page, PageLog, list[str]]:
+    """A page routed from the build's web/ with ?trace, at its first frame, with page-error
     stacks collected (to tell the browser's own shortcut noise from app errors)."""
     page = context.new_page()
     log = PageLog()
     log.watch(page)
     stacks: list[str] = []
     page.on("pageerror", lambda error: stacks.append(str(error.stack or error)))
-    page.goto(serve(context, web_dir(target, None)) + "?trace", wait_until="load")
+    page.goto(serve(context, web_dir(None)) + "?trace", wait_until="load")
     page.wait_for_function("() => window.Module?.started === true", polling=50)
     page.wait_for_function("() => Module.frames >= 1")
     page.wait_for_timeout(300)
@@ -150,10 +145,10 @@ def wait_console(log: PageLog, start: int, text: str, page: Page, timeout_ms: in
 
 
 def passthrough_case(
-    context: BrowserContext, target: str, combo: str, code: str, name: str
+    context: BrowserContext, combo: str, code: str, name: str
 ) -> tuple[Step, PageLog]:
     """One pass-through combo on a freshly loaded page: was its keydown prevented?"""
-    page, log, stacks = fresh_page(context, target)
+    page, log, stacks = fresh_page(context)
     try:
         count = seen_count(page)
         page.keyboard.press(combo)
@@ -194,12 +189,12 @@ def passthrough_case(
 
 
 def field_case(
-    context: BrowserContext, target: str, out: Path
+    context: BrowserContext, out: Path
 ) -> tuple[list[Step], dict[str, Path], PageLog]:
     """b's field: Meta+arrows/A prevented with the caret moved; Escape ends it."""
     steps: list[Step] = []
     crops: dict[str, Path] = {}
-    page, log, stacks = fresh_page(context, target)
+    page, log, stacks = fresh_page(context)
     try:
         out.mkdir(parents=True, exist_ok=True)
         start = len(log.console)
@@ -217,9 +212,9 @@ def field_case(
         page.wait_for_timeout(400)
 
         def crop(name: str) -> Path:
-            # A body selection from an unprevented Select All tints the composited page (measured
-            # on odin-web: WebKit selects the body, an overlay over every pixel); the crops compare
-            # the app's pixels, so the selection is cleared first (a no-op where nothing selected).
+            # A body selection from an unprevented Select All tints the composited page (measured:
+            # WebKit selects the body, an overlay over every pixel); the crops compare the app's
+            # pixels, so the selection is cleared first (a no-op where nothing selected).
             page.evaluate("getSelection().removeAllRanges()")
             # The compositor needs a frame to drop the overlay before the shot.
             page.wait_for_timeout(300)
@@ -311,9 +306,9 @@ def field_case(
         page.close()
 
 
-def drag_case(context: BrowserContext, target: str, out: Path) -> tuple[Step, Path | None, PageLog]:
+def drag_case(context: BrowserContext, out: Path) -> tuple[Step, Path | None, PageLog]:
     """A Cmd-drag on k's box: Meta alone reaches SDL, so the drag snaps."""
-    page, log, stacks = fresh_page(context, target)
+    page, log, stacks = fresh_page(context)
     try:
         out.mkdir(parents=True, exist_ok=True)
         page.mouse.move(*K_BOX)
@@ -340,9 +335,9 @@ def drag_case(context: BrowserContext, target: str, out: Path) -> tuple[Step, Pa
 
 
 def run_target(
-    context: BrowserContext, target: str, out: Path
+    context: BrowserContext, out: Path
 ) -> tuple[list[Step], dict[str, Path], Path | None]:
-    """Every case on one target: the steps, the field crops, the snap shot."""
+    """Every case on the web build: the steps, the field crops, the snap shot."""
     out.mkdir(parents=True, exist_ok=True)
     steps: list[Step] = []
     for combo, code, name in [
@@ -350,97 +345,51 @@ def run_target(
         ("Meta+KeyR", "KeyR", "Meta+R"),
         ("Meta+Alt+KeyI", "KeyI", "Meta+Alt+I"),
     ]:
-        step, _ = passthrough_case(context, target, combo, code, name)
+        step, _ = passthrough_case(context, combo, code, name)
         steps.append(step)
-    field_steps, crops, _ = field_case(context, target, out)
+    field_steps, crops, _ = field_case(context, out)
     steps.extend(field_steps)
-    drag_step, shot, _ = drag_case(context, target, out)
+    drag_step, shot, _ = drag_case(context, out)
     steps.append(drag_step)
     return steps, crops, shot
 
 
-def run_engine(engine: str, targets: list[str], out: Path) -> dict[str, list[Step]]:
-    """One engine: each target's cases, then the web column judged against odin-web's."""
-    report: dict[str, list[Step]] = {}
-    crops: dict[str, dict[str, Path]] = {}
-    shots: dict[str, Path | None] = {}
+def run_engine(engine: str, out: Path) -> list[Step]:
+    """One engine: the web build's cases."""
     with sync_playwright() as playwright:
         browser = engine_type(playwright, engine).launch()
         try:
-            for target in targets:
-                out_target = out / engine / target
-                context = browser.new_context(
-                    viewport={"width": 1440, "height": 900},
-                    device_scale_factor=2,
-                    color_scheme="dark",
-                    reduced_motion="no-preference",
-                    locale="en-US",
-                    timezone_id="UTC",
-                )
-                context.add_init_script(init_script(Start(), target, False))
-                context.add_init_script(RECORDER)
-                try:
-                    steps, field_crops, shot = run_target(context, target, out_target)
-                finally:
-                    context.close()
-                report[target] = steps
-                crops[target] = field_crops
-                shots[target] = shot
+            out_target = out / engine / "web"
+            context = browser.new_context(
+                viewport={"width": 1440, "height": 900},
+                device_scale_factor=2,
+                color_scheme="dark",
+                reduced_motion="no-preference",
+                locale="en-US",
+                timezone_id="UTC",
+            )
+            context.add_init_script(init_script(Start(), "web", False))
+            context.add_init_script(RECORDER)
+            try:
+                steps, _, _ = run_target(context, out_target)
+            finally:
+                context.close()
         finally:
             browser.close()
-    # The web column against the Odin record: each in-field crop and the snap
-    # shot identical at threshold 0 to odin-web's after the same gesture.
-    if "web" in report and "odin-web" in report:
-        web_steps = report["web"]
-        for name, what in [
-            ("after-left", "Meta+ArrowLeft"),
-            ("after-a", "Meta+A"),
-            ("after-right", "Meta+ArrowRight"),
-        ]:
-            a, b = crops["web"].get(name), crops["odin-web"].get(name)
-            if a is None or b is None:
-                web_steps.append(
-                    Step(f"field crop after {what} equals odin-web's", False, "crop missing")
-                )
-            else:
-                diff = difference(load_rgb(a), load_rgb(b))
-                web_steps.append(
-                    Step(
-                        f"field crop after {what} equals odin-web's",
-                        diff.changed == 0,
-                        f"{diff.changed} px differ at threshold 0",
-                    )
-                )
-        a, b = shots["web"], shots["odin-web"]
-        if a is None or b is None:
-            web_steps.append(Step("Cmd-drag shot identical to odin-web's", False, "shot missing"))
-        else:
-            diff = difference(load_rgb(a), load_rgb(b))
-            web_steps.append(
-                Step(
-                    "Cmd-drag shot identical to odin-web's",
-                    diff.changed == 0,
-                    f"{diff.changed} px differ at threshold 0",
-                )
-            )
-    return report
+    return steps
 
 
-def run_keys(engines: list[str], targets: list[str], out: Path = OUT) -> int:
-    """The key check in each engine: reports per engine and target, the web column judged."""
+def run_keys(engines: list[str], out: Path = OUT) -> int:
+    """The key check in each engine: the web build's report."""
     failed = False
     for engine in engines:
-        report = run_engine(engine, targets, out)
-        for target, steps in report.items():
-            judged = target == "web"
-            for step in steps:
-                print(
-                    f"{engine}/{target}: {'ok  ' if step.ok else 'FAIL'} {step.what}: {step.said}"
-                )
-                failed |= judged and not step.ok
-            (out / engine / target).mkdir(parents=True, exist_ok=True)
-            (out / engine / target / "report.json").write_text(
-                json.dumps([asdict(s) for s in steps], indent=2) + "\n"
-            )
+        steps = run_engine(engine, out)
+        for step in steps:
+            print(f"{engine}/web: {'ok  ' if step.ok else 'FAIL'} {step.what}: {step.said}")
+            failed |= not step.ok
+        (out / engine / "web").mkdir(parents=True, exist_ok=True)
+        (out / engine / "web" / "report.json").write_text(
+            json.dumps([asdict(s) for s in steps], indent=2) + "\n"
+        )
         print(f"report: {out / engine}")
     return 1 if failed else 0

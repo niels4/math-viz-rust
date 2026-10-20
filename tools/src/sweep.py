@@ -19,8 +19,8 @@ from act import REPO, Run, run, shown
 from script import Script, load
 from states import STATES
 
-# What a crash leaves in a run's console: the Odin oracle's bounds check or panic (natively on
-# stderr, on the web through the console), Rust's panic texts (`panicked at src/main.rs:3:21:`,
+# What a crash leaves in a run's console: the port's bounds check or panic (natively on
+# stderr, on the web through the console): Rust's panic texts (`panicked at src/main.rs:3:21:`,
 # `index out of bounds: the len is 3 but the index is 9`, `attempt to ...`, measured from a
 # scratch cargo panic; `panic` covers `panicked at`, `unreachable` covers `unreachable
 # executed`) or the wasm trap (`RuntimeError`). Any problem a run reports counts too (a native
