@@ -7,6 +7,8 @@
 
 use mv_numfmt::precision;
 
+use crate::camera::UNSCALED_UNIT_SIZE;
+
 /// Minor grid lines stay at least this many px apart.
 const MIN_GRID_PX: f64 = 20.0;
 
@@ -22,8 +24,8 @@ const LABEL_GAP_Y: f64 = 6.0;
 /// With its axis near or past an edge, a label row stays this far inside it.
 const LABEL_EDGE_PAD: f64 = 8.0;
 
-/// One plane unit is this many screen px at scale 1 (`unscaledUnitSize`).
-const UNSCALED_UNIT_SIZE: f64 = 25.0;
+// One plane unit in screen px at scale 1 is `camera::UNSCALED_UNIT_SIZE`
+// (`constants.ts` single-sources it; `camera.rs` owns the port).
 
 const EPS: f64 = 1e-9;
 

@@ -54,9 +54,6 @@ const MAX_FRAME_DT: f64 = 50.0;
 // The first frame of an animation has no earlier frame to measure from,
 // and its timestamp can be earlier than the event that requested it.
 const FIRST_FRAME_DT: f64 = 1000.0 / 60.0;
-// A line-mode wheel delta is worth this many px (the idiom skill's unit
-// rule; the shell reports px, so the coder always passes `Pixels`).
-const LINE_PX: f64 = 16.0;
 
 /// Which button a press used. A mouse press drags only with button 0, the
 /// primary button, as the TypeScript checks `button === 0`; pen and touch
@@ -65,14 +62,6 @@ const LINE_PX: f64 = 16.0;
 pub enum PointerButton {
     Mouse(u32),
     Other,
-}
-
-/// The units of a wheel delta. The shell reports px (SDL normalises there),
-/// so the plane always sees `Pixels`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WheelMode {
-    Pixels,
-    Lines,
 }
 
 // A pointer position and its event's timeStamp. Event times, not the time
@@ -203,11 +192,12 @@ impl Camera {
         self.center = [self.center[0] - dx / unit, self.center[1] + dy / unit];
     }
 
-    /// A wheel notch about the cursor: `dy` in the mode's units (positive
-    /// is the DOM's `deltaY` direction), `at` the cursor's offset from the
-    /// canvas center in CSS px, as the draw code measures that center.
-    /// Already at a scale limit, nothing starts.
-    pub fn wheel(&mut self, dx: f64, dy: f64, mode: WheelMode, at: [f64; 2]) {
+    /// A wheel notch about the cursor: `dy` in px (positive is the DOM's
+    /// `deltaY` direction, which `useCamera.ts` reads raw with no `deltaMode`
+    /// branch), `at` the cursor's offset from the canvas center in CSS px, as
+    /// the draw code measures that center. Already at a scale limit, nothing
+    /// starts.
+    pub fn wheel(&mut self, dx: f64, dy: f64, at: [f64; 2]) {
         // The TypeScript reads only deltaY; a horizontal wheel does not move
         // the plane.
         let _ = dx;
@@ -215,11 +205,7 @@ impl Camera {
             return;
         }
         self.anchor = at;
-        let dy_px = match mode {
-            WheelMode::Pixels => dy,
-            WheelMode::Lines => dy * LINE_PX,
-        };
-        self.target_scale = clamp_scale(self.target_scale * (dy_px * SCALE_SPEED).exp());
+        self.target_scale = clamp_scale(self.target_scale * (dy * SCALE_SPEED).exp());
         // Already at a scale limit: nothing to animate.
         if self.target_scale == self.scale {
             return;
@@ -368,8 +354,9 @@ pub fn format_center(center: [f64; 2]) -> String {
 
 fn fixed4(v: f64) -> String {
     let rounded = round_to(v, 4);
-    // `toFixed` prints no sign for zero.
-    let rounded = if rounded == 0.0 { 0.0 } else { rounded };
+    // `toFixed` prints no sign for a true zero ("0.0000"), but keeps the
+    // minus of a nonzero value that rounds to zero ("-0.0000").
+    let rounded = if v == 0.0 { 0.0 } else { rounded };
     format!("{rounded:.4}")
 }
 
@@ -496,8 +483,7 @@ mod tests {
         }
 
         fn wheel_at(&mut self, delta_y: f64, x: f64, y: f64) {
-            self.cam
-                .wheel(0.0, delta_y, WheelMode::Pixels, Self::offset(x, y));
+            self.cam.wheel(0.0, delta_y, Self::offset(x, y));
         }
 
         fn down(&mut self, x: f64, y: f64) {
@@ -1193,6 +1179,9 @@ mod tests {
             assert_eq!(format_center([-1.4, 2.0]), "-1.4000,2.0000");
             assert_eq!(format_center([3.0, 4.0]), "3.0000,4.0000");
             assert_eq!(format_center([-0.0, 0.0]), "0.0000,0.0000");
+            // A nonzero value that rounds to zero keeps its sign, as
+            // `toFixed(4)` does (`(-0.00001).toFixed(4) === "-0.0000"`).
+            assert_eq!(format_center([-0.00001, 0.00004]), "-0.0000,0.0000");
         }
 
         #[test]
