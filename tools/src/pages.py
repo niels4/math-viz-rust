@@ -138,11 +138,24 @@ def run_pages(
         stderr=subprocess.STDOUT,
         cwd=REPO,
     )
+    # The in-process state runs read the server through the environment, as every
+    # harness command does; the smoke subprocess gets the same mapping in its env.
+    old_port, old_base = os.environ.get("WEB_PORT"), os.environ.get("WEB_BASE")
+    os.environ["WEB_PORT"] = str(port)
+    os.environ["WEB_BASE"] = base
     try:
         wait_ready(port, base)
-        env = dict(os.environ, WEB_PORT=str(port), WEB_BASE=base)
+        env = dict(os.environ)
         return _runs(port, base, engines, out, env)
     finally:
+        if old_port is None:
+            os.environ.pop("WEB_PORT", None)
+        else:
+            os.environ["WEB_PORT"] = old_port
+        if old_base is None:
+            os.environ.pop("WEB_BASE", None)
+        else:
+            os.environ["WEB_BASE"] = old_base
         proc.terminate()
         proc.wait(timeout=10)
 

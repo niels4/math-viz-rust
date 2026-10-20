@@ -160,10 +160,12 @@ def gamut(args: argparse.Namespace) -> int:
 # on the plane, and nothing else. t-pages probed the boxes on the reference at 68e1c7b
 # (the row's band, the term's runs, the dashed unit box with its ticks); they replace the
 # Odin tar's hover-row-1, which t0-harness deleted while web() still loaded it, so the
-# smoke never ran in this repo until t-pages.
+# smoke never ran in this repo until t-pages. The term box covers the port's tint too,
+# which starts 3 px left of the reference's (a port-vs-reference shape the readout
+# milestones own; the smoke only holds that nothing outside the three regions changes).
 HOVER_STATE = "pages-smoke"
 HOVER_ROW: Box = (41, 428, 350, 45)
-HOVER_TERM: Box = (97, 306, 17, 27)
+HOVER_TERM: Box = (94, 306, 20, 28)
 HOVER_UNIT_BOX: Box = (927, 439, 58, 52)
 
 
