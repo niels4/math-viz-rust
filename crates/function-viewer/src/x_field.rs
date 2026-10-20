@@ -374,10 +374,7 @@ mod tests {
         assert_eq!(field.display(2.0), "\u{2212}1.5");
         assert_eq!(
             field.key_down(XKey::Enter, 2.0),
-            vec![
-                XEffect::ValueFlush(-1.5),
-                XEffect::End(FieldEnd::Commit)
-            ]
+            vec![XEffect::ValueFlush(-1.5), XEffect::End(FieldEnd::Commit)]
         );
         assert!(!field.editing());
         assert_eq!(field.edit(), None);
@@ -390,10 +387,7 @@ mod tests {
         let mut field = open();
 
         field.type_text(2.0, "abc");
-        assert_eq!(
-            field.key_down(XKey::Enter, 2.0),
-            Vec::<XEffect>::new()
-        );
+        assert_eq!(field.key_down(XKey::Enter, 2.0), Vec::<XEffect>::new());
         assert!(field.editing());
         assert!(field.invalid());
         assert_eq!(
@@ -425,9 +419,15 @@ mod tests {
     fn arrows_nudge_live_and_esc_undoes_the_nudges() {
         let mut field = open();
 
-        assert_eq!(field.key_down(XKey::ArrowUp, 2.0), vec![XEffect::Value(2.01)]);
+        assert_eq!(
+            field.key_down(XKey::ArrowUp, 2.0),
+            vec![XEffect::Value(2.01)]
+        );
         assert_eq!(field.display(2.01), "2.01");
-        assert_eq!(field.key_down(XKey::ArrowUp, 2.01), vec![XEffect::Value(2.02)]);
+        assert_eq!(
+            field.key_down(XKey::ArrowUp, 2.01),
+            vec![XEffect::Value(2.02)]
+        );
         assert_eq!(field.display(2.02), "2.02");
         assert_eq!(
             field.key_down(XKey::ArrowDown, 2.02),
@@ -469,7 +469,10 @@ mod tests {
     fn arrows_nudge_from_the_text_or_the_value() {
         let mut field = open();
         field.type_text(2.0, "1.5");
-        assert_eq!(field.key_down(XKey::ArrowUp, 2.0), vec![XEffect::Value(1.51)]);
+        assert_eq!(
+            field.key_down(XKey::ArrowUp, 2.0),
+            vec![XEffect::Value(1.51)]
+        );
         assert_eq!(field.display(1.51), "1.51");
 
         let mut garbage = open();
