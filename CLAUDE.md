@@ -478,6 +478,20 @@ no new tokens (all eight tabled).
 - Judge boxes from `judge.json` are CSS px, not device px: a 34x32 "mystery
   cluster" at (1360, 781) is the button box, and element boxes need the
   canvas offset (433, 97) added — costs an hour when missed.
+### h7-p-plane (the grid carried on the layout)
+
+- Since `1cfd34a` the grid is laid out once per camera update: `GridLayout`
+  stores the `width`, `height` and `scale` it was computed for (appended
+  fields, not TS order), and `x_label_lines` / `layout_labels` / the legend
+  entry read them from the grid instead of taking them as args.
+  `layout_grid` keeps its `(center, scale, width, height, margin)` arg order.
+- `labelMargin` moved from a local in `drawCartesianPlane.ts` to an export
+  in `constants.ts` in the stretch; in Rust it stays `plane::LABEL_MARGIN`
+  (already public) — a deliberate non-move.
+- `hitTest`'s handler filter (`handlers?.[action] === undefined` skips the
+  handle) is vacuous at this hash — both handles carry all five handlers —
+  and is left out; `plot::PlotHandle { kind, at }` stays, handlers dispatch
+  in the app.
 
 ### fix-theme-switch (union H1-H6 finding: theme-switch-frames frame 0)
 

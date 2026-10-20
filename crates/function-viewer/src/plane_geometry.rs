@@ -4,12 +4,13 @@
 //! (`src/components/views/CartesianPlane/drawCartesianPlane.ts`): `toPx`,
 //! the overshoot clamp inside `drawCurve` (which arrived in `f1e069f`,
 //! inside h6's stretch), `drawHandle`'s shapes and `drawLine`'s shaft,
-//! ticks and arrowhead. Paint (colours, widths, dashes, alphas) stays with
+//! ticks and arrowhead. h7-p-plane adds `fromPx` and `hitTest` at `251c080`.
+//! Paint (colours, widths, dashes, alphas) stays with
 //! the coders' `plane.rs`; this module is pure positions, which is what
 //! the vitest cases pin.
 
 use crate::grid::GridLayout;
-use crate::plot::{HandleKind, LineKind, PlotPoint};
+use crate::plot::{HandleKind, LineKind, PlotHandle, PlotPoint};
 
 /// How far past the canvas a sampled curve may overshoot before the stroke
 /// clamps it, in px (`overshootPx`): WebKit still strokes a curve drawn
@@ -50,6 +51,15 @@ pub fn to_px(grid: &GridLayout, point: PlotPoint) -> [f64; 2] {
         grid.origin[0] + point.x * grid.px_per_unit,
         grid.origin[1] - point.y * grid.px_per_unit,
     ]
+}
+
+/// Canvas px back to plane units (`fromPx`): the inverse of [`to_px`].
+#[must_use]
+pub fn from_px(grid: &GridLayout, px: [f64; 2]) -> PlotPoint {
+    PlotPoint {
+        x: (px[0] - grid.origin[0]) / grid.px_per_unit,
+        y: (grid.origin[1] - px[1]) / grid.px_per_unit,
+    }
 }
 
 /// Clamp a sampled curve y to the strokeable band (`drawCurve`'s
@@ -108,6 +118,27 @@ pub fn handle_path(kind: HandleKind, at: [f64; 2]) -> HandlePath {
             }
         }
     }
+}
+
+/// The topmost handle under a canvas point (`hitTest` at `251c080`): the
+/// last handle whose shape contains it — a diamond where
+/// `|dx| + |dy| <= diamondRadius`, a square where
+/// `max(|dx|, |dy|) <= squareSide / 2` — so the scale square wins where the
+/// handles overlap. `None` when no handle does (the source's -1). The
+/// source also skips a handle lacking the action's handler; both handles
+/// carry all five handlers at this hash, so the filter is left out, and the
+/// handlers themselves stay the app's dispatch.
+#[must_use]
+pub fn hit_test(grid: &GridLayout, handles: &[PlotHandle], at: [f64; 2]) -> Option<usize> {
+    handles.iter().rposition(|handle| {
+        let [x, y] = to_px(grid, handle.at);
+        let dx = (at[0] - x).abs();
+        let dy = (at[1] - y).abs();
+        match handle.kind {
+            HandleKind::Diamond => dx + dy <= DIAMOND_RADIUS,
+            HandleKind::Square => dx.max(dy) <= SQUARE_SIDE / 2.0,
+        }
+    })
 }
 
 /// The tick half-lengths across the start and end of each line look
@@ -256,5 +287,71 @@ mod tests {
         assert_eq!(path.start_tick, [[193.0, 150.0], [207.0, 150.0]]);
         assert_eq!(path.end_tick, [[193.0, 100.0], [207.0, 100.0]]);
         assert_eq!(path.head, None);
+    }
+
+    /// The shift diamond and the scale square at (1, 1): canvas (250, 100).
+    fn shift_handle() -> PlotHandle {
+        PlotHandle {
+            kind: HandleKind::Diamond,
+            at: PlotPoint { x: 1.0, y: 1.0 },
+        }
+    }
+
+    fn scale_handle() -> PlotHandle {
+        PlotHandle {
+            kind: HandleKind::Square,
+            at: PlotPoint { x: 1.0, y: 1.0 },
+        }
+    }
+
+    /// The port's own tests: `hitTest` and `fromPx` have no vitest tests,
+    /// so these pin the literals (`diamondRadius` 10, `squareSide / 2` 8,
+    /// `findLastIndex`) and the inverse.
+    #[test]
+    fn canvas_px_converts_back_to_plane_units() {
+        let grid = grid_400x300();
+        assert_eq!(from_px(&grid, [250.0, 100.0]), PlotPoint { x: 1.0, y: 1.0 });
+        assert_eq!(from_px(&grid, [200.0, 150.0]), PlotPoint { x: 0.0, y: 0.0 });
+        // Round-trips `to_px`, up to float noise.
+        let point = PlotPoint { x: 0.37, y: -2.1 };
+        let back = from_px(&grid, to_px(&grid, point));
+        assert!((back.x - point.x).abs() < 1e-12, "x round-trips");
+        assert!((back.y - point.y).abs() < 1e-12, "y round-trips");
+    }
+
+    #[test]
+    fn a_point_on_the_diamond_edge_hits_and_outside_misses() {
+        let grid = grid_400x300();
+        let handles = [shift_handle()];
+        // |dx| + |dy| = 10 still hits.
+        assert_eq!(hit_test(&grid, &handles, [255.0, 105.0]), Some(0));
+        assert_eq!(hit_test(&grid, &handles, [260.0, 100.0]), Some(0));
+        // |dx| + |dy| = 11 misses.
+        assert_eq!(hit_test(&grid, &handles, [256.0, 105.0]), None);
+    }
+
+    #[test]
+    fn a_point_on_the_square_corner_hits_and_outside_misses() {
+        let grid = grid_400x300();
+        let handles = [scale_handle()];
+        // max(|dx|, |dy|) = 8 still hits.
+        assert_eq!(hit_test(&grid, &handles, [258.0, 108.0]), Some(0));
+        // max(|dx|, |dy|) = 9 misses.
+        assert_eq!(hit_test(&grid, &handles, [258.0, 109.0]), None);
+    }
+
+    #[test]
+    fn the_last_handle_wins_where_they_overlap() {
+        // Both handles at (1, 1): the scale square beats the shift diamond.
+        let grid = grid_400x300();
+        let handles = [shift_handle(), scale_handle()];
+        assert_eq!(hit_test(&grid, &handles, [250.0, 100.0]), Some(1));
+    }
+
+    #[test]
+    fn a_point_near_no_handle_misses() {
+        let grid = grid_400x300();
+        assert_eq!(hit_test(&grid, &[shift_handle()], [0.0, 0.0]), None);
+        assert_eq!(hit_test(&grid, &[], [250.0, 100.0]), None);
     }
 }
