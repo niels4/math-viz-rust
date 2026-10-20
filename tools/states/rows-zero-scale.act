@@ -7,9 +7,12 @@ mode dark
 theme arctic-ice
 query a=2
 wait 2000
-click 331 537
+click 360 537
 wait 150
-key a ctrl
+key Backspace
+key Backspace
+key Backspace
+key Backspace
 wait 100
 type "0"
 wait 200
