@@ -2,8 +2,10 @@
 //! lines on the 1-2-5 step that keeps them at least [`MIN_GRID_PX`] apart,
 //! major lines on the next step up. No canvas here, so it tests without one.
 //!
-//! Ported from `src/components/views/CartesianPlane/grid.ts` at c409aad.
+//! Ported from `src/components/views/CartesianPlane/grid.ts` at 251c080.
 //! `unscaledUnitSize` (25) is confirmed from `constants.ts` at the same hash.
+//! Since `1cfd34a` the layout carries the canvas width, height and scale it
+//! was laid out for, so the label functions read them from the grid.
 
 use mv_numfmt::precision;
 
@@ -62,6 +64,12 @@ pub struct GridLayout {
     pub y_origin: Option<f64>,
     /// Screen x and y of the origin, on screen or not.
     pub origin: [f64; 2],
+    /// The canvas width, height and camera scale the layout was computed
+    /// for (`1cfd34a` lays the grid out once per camera update and hands the
+    /// layout to the painters, the legend and the hit test).
+    pub width: f64,
+    pub height: f64,
+    pub scale: f64,
 }
 
 /// Which axis a [`GridLabel`] belongs to (TS `"x" | "y"`).
@@ -201,6 +209,9 @@ pub fn layout_grid(
         x_origin: in_range(screen_x(0.0), -margin, width + margin),
         y_origin: in_range(screen_y(0.0), -margin, height + margin),
         origin: [screen_x(0.0), screen_y(0.0)],
+        width,
+        height,
+        scale,
     }
 }
 
@@ -208,18 +219,14 @@ pub fn layout_grid(
 /// the widest label of a line on the canvas leaves less than [`MIN_LABEL_GAP`]
 /// before the next. Every other one means the multiples of twice the major
 /// step, so the same labels stay as the plane pans.
-pub fn x_label_lines(
-    grid: &GridLayout,
-    width: f64,
-    label_width: &dyn Fn(&str) -> f64,
-) -> Vec<GridLine> {
+pub fn x_label_lines(grid: &GridLayout, label_width: &dyn Fn(&str) -> f64) -> Vec<GridLine> {
     let spacing = grid.steps.major * grid.px_per_unit;
     // Lines past the edge are listed so their labels slide in, but a wide
     // label there isn't seen yet and mustn't thin the ones that are.
     let widest = grid
         .major_x
         .iter()
-        .filter(|line| line.px >= 0.0 && line.px <= width)
+        .filter(|line| line.px >= 0.0 && line.px <= grid.width)
         .map(|line| label_width(&unit_text(line.unit)))
         .fold(0.0, f64::max);
     if widest + MIN_LABEL_GAP <= spacing {
@@ -240,12 +247,12 @@ pub fn x_label_lines(
 /// along that edge.
 pub fn layout_labels(
     grid: &GridLayout,
-    width: f64,
-    height: f64,
     label_height: f64,
     label_width: &dyn Fn(&str) -> f64,
 ) -> Vec<GridLabel> {
     let [origin_x, origin_y] = grid.origin;
+    let width = grid.width;
+    let height = grid.height;
 
     let below = origin_y + LABEL_GAP_Y;
     let above = origin_y - LABEL_GAP_Y - label_height;
@@ -258,7 +265,7 @@ pub fn layout_labels(
         LABEL_EDGE_PAD,
         height - LABEL_EDGE_PAD - label_height,
     );
-    let mut labels: Vec<GridLabel> = x_label_lines(grid, width, label_width)
+    let mut labels: Vec<GridLabel> = x_label_lines(grid, label_width)
         .into_iter()
         .map(|line| GridLabel {
             axis: GridAxis::X,
@@ -371,7 +378,7 @@ mod tests {
     /// The default view's 800 by 600 canvas, 14 px labels, 64 px margin.
     fn labels_at(center: [f64; 2]) -> Vec<GridLabel> {
         let grid = layout_grid(center, 0.5, 800.0, 600.0, 64.0);
-        layout_labels(&grid, 800.0, 600.0, 14.0, &label_width)
+        layout_labels(&grid, 14.0, &label_width)
     }
 
     fn of_axis(labels: &[GridLabel], axis: GridAxis) -> Vec<GridLabel> {
@@ -594,7 +601,7 @@ mod tests {
     fn shows_every_x_label_while_they_fit() {
         // The default view: labels like -8, 50 px apart.
         let grid = layout_grid([0.0, 0.0], 0.5, 800.0, 600.0, 0.0);
-        assert_eq!(x_label_lines(&grid, 800.0, &label_width), grid.major_x);
+        assert_eq!(x_label_lines(&grid, &label_width), grid.major_x);
     }
 
     #[test]
@@ -603,7 +610,7 @@ mod tests {
         // widest is 4600: 34 px, which leaves 16 px before the next.
         let positive = layout_grid([3000.0, 0.0], 100.0, 800.0, 600.0, 0.0);
         assert_eq!(
-            units(&x_label_lines(&positive, 800.0, &label_width)),
+            units(&x_label_lines(&positive, &label_width)),
             units(&positive.major_x)
         );
 
@@ -612,7 +619,7 @@ mod tests {
         let negative = layout_grid([-3000.0, 0.0], 100.0, 800.0, 600.0, 0.0);
         assert!(units(&negative.major_x).contains(&-4200.0));
         assert_eq!(
-            units(&x_label_lines(&negative, 800.0, &label_width)),
+            units(&x_label_lines(&negative, &label_width)),
             vec![
                 -4400.0, -4000.0, -3600.0, -3200.0, -2800.0, -2400.0, -2000.0, -1600.0
             ]
@@ -626,7 +633,7 @@ mod tests {
         // lists -110 and -100 too, which wouldn't, but they aren't on screen.
         let grid = layout_grid([0.0, 0.0], 6.2, 800.0, 600.0, 64.0);
         assert!(units(&grid.major_x).contains(&-110.0));
-        assert_eq!(x_label_lines(&grid, 800.0, &label_width), grid.major_x);
+        assert_eq!(x_label_lines(&grid, &label_width), grid.major_x);
     }
 
     #[test]
@@ -639,10 +646,7 @@ mod tests {
                 .into_iter()
                 .filter(|u| u % 400.0 == 0.0)
                 .collect();
-            assert_eq!(
-                units(&x_label_lines(&grid, 800.0, &label_width)),
-                multiples_of_400
-            );
+            assert_eq!(units(&x_label_lines(&grid, &label_width)), multiples_of_400);
         }
     }
 
@@ -748,6 +752,17 @@ mod tests {
             .collect();
         assert!(!y_texts.contains(&"-94".to_string()));
         assert!(y_texts.contains(&"-95".to_string()));
+    }
+
+    /// `1cfd34a` lays the grid out once per camera update: the layout carries
+    /// the canvas width, height and scale it was computed for, so the label
+    /// functions and the legend read them from the grid.
+    #[test]
+    fn layout_grid_stores_width_height_and_scale() {
+        let grid = layout_grid([0.0, 0.0], 0.5, 800.0, 600.0, 64.0);
+        assert_eq!(grid.width, 800.0);
+        assert_eq!(grid.height, 600.0);
+        assert_eq!(grid.scale, 0.5);
     }
 
     #[test]

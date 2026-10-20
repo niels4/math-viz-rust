@@ -320,7 +320,7 @@ pub fn plane_texts(
         return Vec::new();
     }
     let grid = layout_grid(center, scale, width, height, LABEL_MARGIN);
-    let mut texts: Vec<String> = layout_labels(&grid, width, height, PLANE_FONT_SIZE, label_width)
+    let mut texts: Vec<String> = layout_labels(&grid, PLANE_FONT_SIZE, label_width)
         .into_iter()
         .map(|label| label.text)
         .collect();
@@ -369,10 +369,10 @@ pub fn paint_plane(
             let fonts: &mut mv_text::Fonts = &mut guard;
             f64::from(mv_text::measure(fonts, style, text))
         };
-        let labels = layout_labels(&grid, width, height, PLANE_FONT_SIZE, &measure);
+        let labels = layout_labels(&grid, PLANE_FONT_SIZE, &measure);
         let legend_label = crate::scale_legend::legend_text(scale);
         let legend_width = measure(&legend_label);
-        let geometry = legend_geometry(width, height, legend_width, scale);
+        let geometry = legend_geometry(&grid, legend_width);
         let fonts = cell.into_inner();
         paint_labels(fonts, vg, &labels, colors.label);
         Some((fonts, geometry))
@@ -505,7 +505,7 @@ mod tests {
         let grid = layout_grid([100.0, 0.0], 0.5, 990.0, 786.0, LABEL_MARGIN);
         assert_eq!(grid.x_origin, None);
         assert_eq!(grid.y_origin, Some(393.0));
-        let labels = layout_labels(&grid, 990.0, 786.0, PLANE_FONT_SIZE, &probe_width);
+        let labels = layout_labels(&grid, PLANE_FONT_SIZE, &probe_width);
         assert!(
             labels
                 .iter()
@@ -532,7 +532,7 @@ mod tests {
     fn corner_labels_swap_sides() {
         let grid = layout_grid([7.2, 6.6], 0.5, 990.0, 786.0, LABEL_MARGIN);
         assert_eq!(grid.origin, [135.0, 723.0]);
-        let labels = layout_labels(&grid, 990.0, 786.0, PLANE_FONT_SIZE, &probe_width);
+        let labels = layout_labels(&grid, PLANE_FONT_SIZE, &probe_width);
         let top_of = |text: &str| {
             labels
                 .iter()
@@ -564,7 +564,7 @@ mod tests {
     fn scale_100_thins_to_every_other_major() {
         let grid = layout_grid([0.0, 0.0], 100.0, 990.0, 786.0, LABEL_MARGIN);
         assert_eq!(grid.steps.major, 200.0);
-        let lines = crate::grid::x_label_lines(&grid, 990.0, &probe_width);
+        let lines = crate::grid::x_label_lines(&grid, &probe_width);
         assert!(!lines.is_empty(), "some lines keep labels");
         assert!(
             lines.iter().all(|line| (line.unit / 400.0).fract() == 0.0),
