@@ -1,0 +1,7 @@
+/target/
+/build/
+.local/
+.DS_Store
+tools/.venv/
+__pycache__/
+*.egg-info/
