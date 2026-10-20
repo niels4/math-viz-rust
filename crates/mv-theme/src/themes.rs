@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at 5714319 (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at 96f1e84 (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as
@@ -50,6 +50,8 @@ pub enum Token {
     ParamK,
     ParamB,
     ParamH,
+    PointP,
+    PointQ,
 }
 
 /// An oklch colour as a theme file writes it.
@@ -468,6 +470,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal05)),
+                (Token::PointQ, Value::Ref(Token::Ordinal03)),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -830,6 +834,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal05)),
+                (Token::PointQ, Value::Ref(Token::Ordinal02)),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 4.0, // 4px
@@ -1192,6 +1198,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal03)),
+                (Token::PointQ, Value::Ref(Token::Ordinal02)),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1546,6 +1554,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal05)),
+                (Token::PointQ, Value::Ref(Token::Ordinal04)),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1900,6 +1910,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal05)),
+                (Token::PointQ, Value::Ref(Token::Ordinal11)),
             ],
             radius: 9.6,       // 0.6rem
             card_radius: 18.0, // 18px
@@ -2262,6 +2274,8 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::PointP, Value::Ref(Token::Ordinal05)),
+                (Token::PointQ, Value::Ref(Token::Ordinal02)),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)

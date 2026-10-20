@@ -115,11 +115,17 @@ def read_themes(ref: Path) -> list[Theme]:
         if theme.colour_tokens() != first:
             sys.exit(f"{theme.slug} defines other tokens than {themes[0].slug}")
     sidebar = read_sidebar_params(ref)
+    points = read_sidebar_points(ref)
     for theme in themes:
         params = sidebar[theme.slug]
+        # The per-theme point overrides ride with the base points below.
+        points_in_block = {k: params.pop(k) for k in ("--point-p", "--point-q") if k in params}
         if list(params) != ["--param-a", "--param-k", "--param-b", "--param-h"]:
             sys.exit(f"{theme.slug}: sidebar params out of order: {list(params)}")
-        theme.declarations.update(params)
+        merged = dict(params)
+        merged["--point-p"] = points_in_block.get("--point-p", points["--point-p"])
+        merged["--point-q"] = points_in_block.get("--point-q", points["--point-q"])
+        theme.declarations.update(merged)
     return themes
 
 
@@ -140,6 +146,21 @@ def read_sidebar_params(ref: Path) -> dict[str, dict[str, str]]:
     if sorted(out) != sorted(SLUGS):
         sys.exit(f"sidebar params cover {sorted(out)}, want {sorted(SLUGS)}")
     return out
+
+
+def read_sidebar_points(ref: Path) -> dict[str, str]:
+    """P's and Q's default inks: `--point-p`/`--point-q` from SideBar.module.css's
+    base `.sidebar` block (h8-plane sources them; per-theme blocks override one
+    or the other). Values read as written (`var(--ordinal-NN)` refs)."""
+    css = (
+        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
+    ).read_text()
+    head = css.split("&[data-theme", 1)[0]
+    out = {m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(head)}
+    points = {k: v for k, v in out.items() if k in ("--point-p", "--point-q")}
+    if sorted(points) != ["--point-p", "--point-q"]:
+        sys.exit(f"sidebar base points cover {sorted(points)}, want both point tokens")
+    return points
 
 
 def read_pairs() -> list[tuple[str, str]]:

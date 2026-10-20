@@ -1,0 +1,9 @@
+# points-themes-sage-editorial (h8-points-row): the Points card in sage-editorial (point_p and
+# point_q per theme).
+size 1440 900
+density 2
+scheme light
+mode light
+theme sage-editorial
+wait 2000
+shot points-themes-sage-editorial

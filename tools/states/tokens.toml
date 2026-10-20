@@ -162,3 +162,16 @@ token = "--param-b"
 [[pair]]
 selector = '[data-testid="function-form"] [data-param="h"]'
 token = "--param-h"
+
+# h8-plane: P's and Q's inks, resolved per theme on the sidebar (the plane
+# reads the same two tokens where the source reads theme[ordinalNN]
+# directly; probed equal on all six themes in progress/h8-plane.md). The
+# values live on the sidebar; the x-of-P slider always exists, even at
+# defaults, so it selects them.
+[[pair]]
+selector = '[role="slider"][aria-label="x of P"]'
+token = "--point-p"
+
+[[pair]]
+selector = '[role="slider"][aria-label="x of P"]'
+token = "--point-q"

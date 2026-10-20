@@ -39,6 +39,7 @@ pub mod page;
 pub mod plane;
 pub mod plane_geometry;
 pub mod plane_input;
+pub mod plane_markers;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -51,6 +52,7 @@ pub mod platform_web;
 pub mod platform_windows;
 pub mod plot;
 pub mod point_format;
+pub mod points_section;
 pub mod prefs;
 pub mod readout;
 pub mod reset;

@@ -117,6 +117,10 @@ pub struct App {
     pub h_param: crate::url::QueryParam<f64>,
     /// The `k` page param, as above.
     pub k_param: crate::url::QueryParam<f64>,
+    /// P's x page param: the live value with its flush (h8-plane; `url.rs`
+    /// owns the state machine; the slider writes it on release, as the
+    /// hook's `setValue` does. h8-points-slider writes through this field).
+    pub p_param: crate::url::QueryParam<f64>,
     /// The uncommitted text per parameter: `None` at rest (the box shows the
     /// value), `Some` once typed into (h4-rows; `number_field.rs` owns the
     /// display and commit rules).
@@ -154,6 +158,20 @@ pub struct App {
     /// handle: the drag's formula pair never changes mid-drag, while the
     /// hover index follows the moves).
     pub dragged: Option<HandleId>,
+    /// The moved badge's state machine (h8-points-row; `moved_by.rs` owns
+    /// it): fed `(dragging, x, y)` every frame P's row draws.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub moved_by: crate::moved_by::MovedBy,
+    /// The plane's visible plot range for the Points rows' slots
+    /// (h8-points-row): the sidebar lays out before the plane, so the
+    /// layout reads the previous frame's range (at rest — every judged
+    /// shot — it equals the current one). Refreshed in `paint_points`,
+    /// dirtying on change so the first frame's `None` redraws converged
+    /// instead of photographing stale.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub visible_range: Option<crate::visible_range::VisibleRange>,
 }
 
 impl App {
@@ -310,6 +328,7 @@ impl App {
             b_param: crate::url::QueryParam::new(&crate::functions::B_PARAM, ""),
             h_param: crate::url::QueryParam::new(&crate::functions::H_PARAM, ""),
             k_param: crate::url::QueryParam::new(&crate::functions::K_PARAM, ""),
+            p_param: crate::url::QueryParam::new(&crate::functions::P_PARAM, ""),
             drafts: EnumMap::default(),
             // At rest: no scrub holds a box, no rest tip is armed or showing.
             scrub: None,
@@ -323,6 +342,8 @@ impl App {
             dragging: false,
             grab: [0.0, 0.0],
             dragged: None,
+            moved_by: crate::moved_by::MovedBy::new(),
+            visible_range: None,
         }
     }
 }

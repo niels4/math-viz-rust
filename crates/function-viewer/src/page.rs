@@ -26,12 +26,14 @@ pub const SIDEBAR_RADIUS: f32 = 4.0;
 /// The page's sidebar box, for the settings menu's later use and tests.
 pub const SIDEBAR_ID: &str = "Sidebar";
 
-/// The plane's two handles from the drawn transform: the shift diamond at
-/// the vertex, then the scale square at the unit point, in that order so
-/// the square wins a tie (as `FunctionViewer.tsx` builds them at
-/// `251c080`, replacing h6-handles' `transform_handles` call). The draw
-/// and the input dispatch build the same handles from the same `shown`
-/// values, so a press hit-tests what the frame paints.
+/// The plane's two handles: the shift diamond at the live h, k, then the
+/// scale square at the unit point of the shown transform, in that order so
+/// the square wins a tie (`useTransformHandles.ts` at `96f1e84`: the shift
+/// handle's point is the live `{ h, k }`, the scale handle's is
+/// `unitPoint(..., shown)`). During a reset the diamond already sits at the
+/// boxes' values while the square still rides the spring. The draw and the
+/// input dispatch share this one builder, so a press hit-tests what the
+/// frame paints.
 #[must_use]
 pub fn build_handles(app: &App) -> Vec<crate::plot::PlotHandle> {
     let live = crate::flip::live_transform(app);
@@ -43,8 +45,8 @@ pub fn build_handles(app: &App) -> Vec<crate::plot::PlotHandle> {
         crate::plot::PlotHandle {
             kind: crate::plot::HandleKind::Diamond,
             at: crate::plot::PlotPoint {
-                x: shown.h,
-                y: shown.k,
+                x: live.h,
+                y: live.k,
             },
         },
         crate::plot::PlotHandle {
@@ -52,6 +54,60 @@ pub fn build_handles(app: &App) -> Vec<crate::plot::PlotHandle> {
             at: crate::transform_curves::unit_point(base, unit, shown),
         },
     ]
+}
+
+/// The plane's point markers (`Plot`'s `markers` at `96f1e84`): P always,
+/// at `(p, f(p))` with `f` the shown transform applied to the base function
+/// (so P rides the flip and reset springs), inked `point_p` with its
+/// `"P"` label and drop lines while the slider drags it; Q when the pointer
+/// names a point, a ring inked `point_q` with its `"Q"` label, drop lines
+/// and the guide always.
+#[must_use]
+pub fn build_markers(app: &App) -> Vec<crate::plane_geometry::PlotMarker> {
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let slug = *app.func_param.get();
+    let base = crate::functions::base(slug);
+    let f = crate::transform_curves::TransformedFunction {
+        base,
+        transform: shown,
+    };
+    let p = *app.p_param.get();
+    let point_label = |name: &str, x: f64, y: f64| crate::plane_geometry::PlotLabel {
+        name: name.to_string(),
+        coords: format!(
+            "({}, {})",
+            crate::point_format::format_number(x),
+            crate::point_format::format_number(y)
+        ),
+    };
+    let p_point = crate::plot::PlotPoint {
+        x: p,
+        y: f.value(p),
+    };
+    let mut markers = vec![crate::plane_geometry::PlotMarker {
+        point: p_point,
+        ink: mv_theme::Token::PointP,
+        shape: crate::plane_geometry::MarkerShape::Bullseye,
+        label: Some(point_label("P", p_point.x, p_point.y)),
+        drop_lines: app.state.p_dragging,
+        guide: false,
+    }];
+    if let Some(q_x) = app.state.q_x {
+        let q_point = crate::plot::PlotPoint {
+            x: q_x,
+            y: f.value(q_x),
+        };
+        markers.push(crate::plane_geometry::PlotMarker {
+            point: q_point,
+            ink: mv_theme::Token::PointQ,
+            shape: crate::plane_geometry::MarkerShape::Ring,
+            label: Some(point_label("Q", q_point.x, q_point.y)),
+            drop_lines: true,
+            guide: true,
+        });
+    }
+    markers
 }
 
 /// Lays out the page in `app`'s Clay context and returns the frame's render
@@ -222,6 +278,8 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     let base = crate::functions::base(slug);
     let handles = build_handles(app);
     let lines = crate::transform_curves::transform_lines(&app.state.lit(), base, unit, shown);
+    let markers = build_markers(app);
+    let mcolors = crate::plane_markers::marker_colors(theme);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -238,6 +296,8 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         &handles,
         &lines,
         theme.colors[mv_theme::Token::Primary],
+        &markers,
+        &mcolors,
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -345,6 +405,9 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // and Reset all's focus ring (h5-buttons).
     crate::transform_row::paint_rows(app);
     crate::transform_section::paint_head(app);
+    // The Points card's rows (h8-points-row): the marks, letters, badge,
+    // roles and readouts, over the rows beneath like the ruler's tape.
+    crate::points_section::paint_points(app);
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
@@ -596,5 +659,32 @@ fn paint_transition(
             app.transition.image = 0;
         }
         app.transition.active = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// During a reset the shift diamond sits at the live h, k while the
+    /// square still rides the shown transform (the h8-plane fix-forward from
+    /// h7-sidebar's pixels review: Reset all with h = 2 draws the diamond at
+    /// h = 0, as the reference does).
+    #[test]
+    fn reset_diamond_sits_at_the_live_vertex() {
+        let mut app = crate::fixture::headless_app();
+        app.h_param.set_flushed(&mut app.url, 0.0);
+        app.state.jumps.set(vec![crate::state::Jump {
+            param: crate::state::TransformParam::H,
+            from: 2.0,
+            to: 0.0,
+        }]);
+        crate::flip::adopt_jumps(&mut app);
+        let live = crate::flip::live_transform(&app);
+        let shown = crate::flip::shown_transform(&app.flip, live);
+        assert_eq!((live.h, live.k), (0.0, 0.0));
+        assert_eq!(shown.h, 2.0);
+        let handles = build_handles(&app);
+        assert_eq!((handles[0].at.x, handles[0].at.y), (0.0, 0.0));
     }
 }

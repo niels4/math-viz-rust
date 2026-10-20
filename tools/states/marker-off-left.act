@@ -1,0 +1,11 @@
+# marker-off-left (h8-plane): center=0,-12 with p=-12 puts P at (-12, -12)
+# past the left edge but in view vertically: the label with the left arrow.
+# Behaviour: url line center=0,-12&p=-12; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=0,-12&p=-12
+wait 2000
+shot marker-off-left

@@ -1,0 +1,20 @@
+# points-moved-linger (h8-points-row): frames at 0, 300, 599 and 700 ms
+# after the k-drag's release: the badge until 600 ms, gone after.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 485.5
+down
+move 356.5 485.5 over 80
+up
+shot points-moved-linger-0000
+wait 300
+shot points-moved-linger-0300
+wait 299
+shot points-moved-linger-0599
+wait 101
+shot points-moved-linger-0700
+wait 1200

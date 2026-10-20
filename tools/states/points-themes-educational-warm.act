@@ -1,0 +1,9 @@
+# points-themes-educational-warm (h8-points-row): the Points card in educational-warm (point_p and
+# point_q per theme).
+size 1440 900
+density 2
+scheme light
+mode light
+theme educational-warm
+wait 2000
+shot points-themes-educational-warm

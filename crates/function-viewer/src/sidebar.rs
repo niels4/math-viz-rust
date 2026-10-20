@@ -1,7 +1,9 @@
-//! The sidebar column: the Function card and the Transform card.
+//! The sidebar column: the Function card, the Transform card and the
+//! Points card.
 //!
 //! Ported from `FunctionViewer/SideBar/SideBar.tsx` at `3560eb2` (the column;
-//! the Transform card joins it at `5714319`). The
+//! the Transform card joins it at `5714319`, the Points card third at
+//! `96f1e84`). The
 //! sidebar's box (background, border, `--space-inset` padding at the h4 hash)
 //! stays `page.rs`'s `side` declaration, as the top bar's box stays
 //! `top_bar.rs`'s; this column lays the cards inside it.
@@ -32,6 +34,8 @@ pub fn sidebar(app: &mut App, current: FunctionSlug) {
         crate::selector::function_card(app, current);
         // The Transform card (h4-rows' `transform_section`).
         crate::transform_section::section(app);
+        // The Points card third (h8-points-row's `points_section`).
+        crate::points_section::points_section(app);
     });
 }
 

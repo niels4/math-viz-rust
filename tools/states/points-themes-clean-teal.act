@@ -1,0 +1,9 @@
+# points-themes-clean-teal (h8-points-row): the Points card in clean-teal (point_p and
+# point_q per theme).
+size 1440 900
+density 2
+scheme light
+mode light
+theme clean-teal
+wait 2000
+shot points-themes-clean-teal

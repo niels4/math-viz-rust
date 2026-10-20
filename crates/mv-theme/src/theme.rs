@@ -491,6 +491,8 @@ mod tests {
         Token::ParamK,
         Token::ParamB,
         Token::ParamH,
+        Token::PointP,
+        Token::PointQ,
     ];
 
     #[test]
@@ -579,11 +581,12 @@ mod tests {
                 );
             }
         }
-        // The expected count: 228 tokens with a colour (201 plus the sidebar's
-        // --section and 21 inside-sRGB --param-* inks), all inside sRGB; the
-        // three dark shadow colours transparent; three --param-* inks outside
-        // sRGB at their oklch's bytes (h4-readout); the 24 mixes inside too.
-        assert_eq!(tokens.inside, 228);
+        // The expected count: 240 tokens with a colour (201 plus the sidebar's
+        // --section, 21 inside-sRGB --param-* inks and 12 inside-sRGB
+        // --point-* inks), all inside sRGB; the three dark shadow colours
+        // transparent; three --param-* inks outside sRGB at their oklch's
+        // bytes (h4-readout); the 24 mixes inside too.
+        assert_eq!(tokens.inside, 240);
         assert_eq!(tokens.outside, 3);
         assert_eq!(tokens.transparent, 3);
         assert_eq!(mixes.outside, 0);
