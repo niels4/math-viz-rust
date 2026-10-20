@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at c409aad (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at 5714319 (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as
@@ -14,6 +14,7 @@ pub enum Token {
     Background,
     BackgroundMuted,
     Card,
+    Section,
     Foreground,
     ForegroundMuted,
     Primary,
@@ -45,6 +46,10 @@ pub enum Token {
     Ordinal11,
     Ordinal12,
     ShadowColor,
+    ParamA,
+    ParamK,
+    ParamB,
+    ParamH,
 }
 
 /// An oklch colour as a theme file writes it.
@@ -140,6 +145,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0203,
                         h: 245.67,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::Section,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 10.0,
+                        b: Some(Token::BackgroundMuted),
                     }),
                 ),
                 (
@@ -419,6 +432,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 0.0,
                     }),
                 ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.8291,
+                        c: 0.1185,
+                        h: 41.18,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.879,
+                        c: 0.1534,
+                        h: 91.61,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.8112,
+                        c: 0.1013,
+                        h: 293.57,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.711,
+                        c: 0.0835,
+                        h: 250.44,
+                        alpha: 1.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -458,6 +507,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0257,
                         h: 228.29,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::Section,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 10.0,
+                        b: Some(Token::BackgroundMuted),
                     }),
                 ),
                 (
@@ -737,6 +794,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 0.0,
                     }),
                 ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.6816,
+                        c: 0.2415,
+                        h: 353.18,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.8788,
+                        c: 0.1628,
+                        h: 91.08,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.7729,
+                        c: 0.1535,
+                        h: 163.22,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.6623,
+                        c: 0.1786,
+                        h: 264.64,
+                        alpha: 1.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 4.0, // 4px
@@ -776,6 +869,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0695,
                         h: 274.42,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::Section,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 10.0,
+                        b: Some(Token::BackgroundMuted),
                     }),
                 ),
                 (
@@ -1055,6 +1156,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 0.0,
                     }),
                 ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.7487,
+                        c: 0.173,
+                        h: 53.99,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.908,
+                        c: 0.1757,
+                        h: 98.54,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.7729,
+                        c: 0.1535,
+                        h: 163.22,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.7137,
+                        c: 0.1434,
+                        h: 254.62,
+                        alpha: 1.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1096,6 +1233,7 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::Section, Value::Ref(Token::Card)),
                 (
                     Token::Foreground,
                     Value::Oklch(Oklch {
@@ -1372,6 +1510,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         b: None,
                     }),
                 ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.5431,
+                        c: 0.1898,
+                        h: 337.99,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.5138,
+                        c: 0.1368,
+                        h: 100.22,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.5575,
+                        c: 0.2525,
+                        h: 302.32,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.4882,
+                        c: 0.2172,
+                        h: 264.38,
+                        alpha: 1.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1413,6 +1587,7 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::Section, Value::Ref(Token::Card)),
                 (
                     Token::Foreground,
                     Value::Oklch(Oklch {
@@ -1689,6 +1864,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         b: None,
                     }),
                 ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.5672,
+                        c: 0.2039,
+                        h: 354.25,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.5322,
+                        c: 0.1405,
+                        h: 131.59,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.518,
+                        c: 0.2258,
+                        h: 323.95,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.4165,
+                        c: 0.1285,
+                        h: 272.19,
+                        alpha: 1.0,
+                    }),
+                ),
             ],
             radius: 9.6,       // 0.6rem
             card_radius: 18.0, // 18px
@@ -1738,6 +1949,7 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (Token::Section, Value::Ref(Token::Card)),
                 (
                     Token::Foreground,
                     Value::Oklch(Oklch {
@@ -2012,6 +2224,42 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         a: Token::Foreground,
                         p: 12.0,
                         b: None,
+                    }),
+                ),
+                (
+                    Token::ParamA,
+                    Value::Oklch(Oklch {
+                        l: 0.5222,
+                        c: 0.1809,
+                        h: 359.51,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamK,
+                    Value::Oklch(Oklch {
+                        l: 0.4383,
+                        c: 0.1078,
+                        h: 61.05,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamB,
+                    Value::Oklch(Oklch {
+                        l: 0.4244,
+                        c: 0.1809,
+                        h: 265.64,
+                        alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ParamH,
+                    Value::Oklch(Oklch {
+                        l: 0.5299,
+                        c: 0.2222,
+                        h: 306.49,
+                        alpha: 1.0,
                     }),
                 ),
             ],

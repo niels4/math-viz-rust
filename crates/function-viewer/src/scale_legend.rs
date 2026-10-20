@@ -44,7 +44,7 @@ pub const WINDOW_HEIGHT: f64 = TEXT_LINE_HEIGHT + 2.0 * PAD_Y;
 
 /// The legend's label: `formatFixed(2, scale)` plus `" u"` (`format.ts`).
 pub fn legend_text(scale: f64) -> String {
-    format!("{:.2} u", mv_numfmt::round_to(scale, 2))
+    format!("{} u", mv_numfmt::to_fixed(scale, 2))
 }
 
 /// The legend's laid-out geometry in canvas px: the plate, the bar's four
@@ -160,6 +160,8 @@ mod tests {
         assert_eq!(legend_text(5.0), "5.00 u");
         assert_eq!(legend_text(0.01), "0.01 u");
         assert_eq!(legend_text(100.0), "100.00 u");
+        // The binary value decides: 2.675 is 2.6749999... underneath.
+        assert_eq!(legend_text(2.675), "2.67 u");
     }
 
     /// The default legend's geometry against the reference's draw record

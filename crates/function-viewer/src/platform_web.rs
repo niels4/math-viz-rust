@@ -189,6 +189,15 @@ pub extern "C" fn mv_hash_changed() {
     );
 }
 
+/// Holds the camera's next step for this turn's publish-and-draw (h2-input's
+/// hold): the harness calls this after dispatching a button or wheel verb on
+/// the web, where the native harness sets the same hold from its facts (its
+/// `harness_frame`). The next `frame_step` consumes it.
+#[unsafe(no_mangle)]
+pub extern "C" fn mv_hold_step() {
+    crate::plane_input::hold_camera_step();
+}
+
 /// Sets up the default context.
 ///
 /// Nothing to install on this side: Rust's `System` allocator calls

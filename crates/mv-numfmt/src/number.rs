@@ -135,6 +135,239 @@ pub fn round_to(v: f64, dp: i64) -> f64 {
     v.signum() * shift_decimal(shift_decimal(v.abs(), dp).round(), -dp)
 }
 
+/// `v`'s exact decimal digits: every binary fraction terminates, so the
+/// correctly-rounded `{:.1074}` expansion is exact (1074 is the lowest
+/// subnormal's place count). Returns the digits without leading zeros and the
+/// power of ten they carry: `v = digits × 10^exp`.
+fn exact_digits(v: f64) -> (Vec<u8>, i32) {
+    debug_assert!(v.is_finite() && v > 0.0);
+    let text = format!("{v:.1074}");
+    let (int, frac) = text.split_once('.').unwrap_or((text.as_str(), ""));
+    let all = format!("{int}{}", frac.trim_end_matches('0'));
+    let leading = all.bytes().take_while(|&b| b == b'0').count();
+    let trailing = all.bytes().rev().take_while(|&b| b == b'0').count();
+    let digits = all
+        .bytes()
+        .skip(leading)
+        .take(all.len() - leading - trailing)
+        .collect::<Vec<u8>>();
+    debug_assert!(!digits.is_empty());
+    let exp = int.len() as i32 - all.len() as i32 + trailing as i32;
+    (digits, exp)
+}
+
+/// Adds one to a digit string, growing it on overflow (`b"999"` → `b"1000"`).
+fn increment(digits: &[u8]) -> Vec<u8> {
+    let mut out = digits.to_vec();
+    for digit in out.iter_mut().rev() {
+        if *digit == b'9' {
+            *digit = b'0';
+        } else {
+            *digit += 1;
+            return out;
+        }
+    }
+    let mut grown = Vec::with_capacity(out.len() + 1);
+    grown.push(b'1');
+    grown.extend_from_slice(&out);
+    grown
+}
+
+/// `digits × 10^exp` rounded to a whole number, halves up (the larger `n` on
+/// an exact tie, as both `toFixed` and `toPrecision` pick it).
+fn round_half_up(digits: &[u8], exp: i32) -> Vec<u8> {
+    if exp >= 0 {
+        let mut out = digits.to_vec();
+        out.extend(std::iter::repeat_n(b'0', exp as usize));
+        return out;
+    }
+    let drop = (-exp) as usize;
+    if drop > digits.len() {
+        // Below half a unit: no digit reaches the halfway place.
+        return vec![b'0'];
+    }
+    let (kept, dropped) = digits.split_at(digits.len() - drop);
+    if dropped[0] < b'5' {
+        if kept.is_empty() {
+            vec![b'0']
+        } else {
+            kept.to_vec()
+        }
+    } else if kept.is_empty() {
+        vec![b'1']
+    } else {
+        increment(kept)
+    }
+}
+
+/// JavaScript's `Number.prototype.toFixed(f)`: `f` decimals of the exact
+/// binary value, halves up, ASCII `-` for negatives, `String(x)` from 1e21 up.
+///
+/// Panics when `f > 100`, mirroring the `RangeError`.
+pub fn to_fixed(x: f64, f: u32) -> String {
+    assert!(f <= 100, "to_fixed: {f} fraction digits, at most 100");
+    if x.is_nan() {
+        return "NaN".to_string();
+    }
+    if x.is_infinite() {
+        return if x > 0.0 {
+            "Infinity".to_string()
+        } else {
+            "-Infinity".to_string()
+        };
+    }
+    if x.abs() >= 1e21 {
+        return js_to_string(x);
+    }
+    let sign = if x < 0.0 { "-" } else { "" };
+    // Zero has no digits to expand; both zeros print unsigned.
+    let n = if x == 0.0 {
+        vec![b'0']
+    } else {
+        let (digits, exp) = exact_digits(x.abs());
+        round_half_up(&digits, exp + f as i32)
+    };
+    let text = String::from_utf8(n).unwrap_or_default();
+    if f == 0 {
+        return format!("{sign}{text}");
+    }
+    let f = f as usize;
+    if text.len() <= f {
+        format!("{sign}0.{:0>width$}{text}", "", width = f - text.len())
+    } else {
+        let (int, frac) = text.split_at(text.len() - f);
+        format!("{sign}{int}.{frac}")
+    }
+}
+
+/// JavaScript's `Number.prototype.toPrecision(p)`: `p` significant digits of
+/// the exact binary value, halves up on ties, the exponential form when the
+/// decimal exponent is below -6 or at least `p`.
+///
+/// Panics when `p` is outside 1..=100, mirroring the `RangeError`.
+pub fn to_precision(x: f64, p: u32) -> String {
+    assert!((1..=100).contains(&p), "to_precision: {p} digits, 1 to 100");
+    if x.is_nan() {
+        return "NaN".to_string();
+    }
+    if x.is_infinite() {
+        return if x > 0.0 {
+            "Infinity".to_string()
+        } else {
+            "-Infinity".to_string()
+        };
+    }
+    let sign = if x < 0.0 { "-" } else { "" };
+    if x == 0.0 {
+        // Both zeros print unsigned with `p - 1` decimals (`(0).toPrecision(3)`
+        // is `"0.00"`).
+        let zeros = "0".repeat(p as usize - 1);
+        return if p == 1 {
+            "0".to_string()
+        } else {
+            format!("0.{zeros}")
+        };
+    }
+    let (digits, exp) = exact_digits(x.abs());
+    let p_len = p as usize;
+    // The decimal exponent: `digits` has `len` places, so the value sits in
+    // `[10^(exp+len-1), 10^(exp+len))`.
+    let mut e = exp + digits.len() as i32 - 1;
+    let mut n = if digits.len() >= p_len {
+        let (head, rest) = digits.split_at(p_len);
+        // An empty rest is exact: nothing to round up.
+        if rest.first().is_some_and(|&b| b >= b'5') {
+            increment(head)
+        } else {
+            head.to_vec()
+        }
+    } else {
+        let mut padded = digits.clone();
+        padded.extend(std::iter::repeat_n(b'0', p_len - digits.len()));
+        padded
+    };
+    if n.len() > p_len {
+        // The rounding carried into a new leading digit (`999` → `1000`).
+        n.pop();
+        e += 1;
+    }
+    let text = String::from_utf8(n).unwrap_or_default();
+    if e < -6 || e >= p as i32 {
+        let (head, tail) = text.split_at(1);
+        let mantissa = if p_len == 1 {
+            head.to_string()
+        } else {
+            format!("{head}.{tail}")
+        };
+        let exp_sign = if e >= 0 { "+" } else { "-" };
+        return format!("{sign}{mantissa}e{exp_sign}{}", e.abs());
+    }
+    if e >= 0 {
+        let (int, frac) = text.split_at(e as usize + 1);
+        if frac.is_empty() {
+            format!("{sign}{int}")
+        } else {
+            format!("{sign}{int}.{frac}")
+        }
+    } else {
+        format!("{sign}0.{:0>width$}{text}", "", width = (-(e + 1)) as usize)
+    }
+}
+
+/// JavaScript's `String(x)` for a number: shortest digits that round-trip,
+/// plain decimals near 1, otherwise one leading digit with `e+`/`e-`.
+///
+/// `(-0).toString()` is `"0"`, as here: only `x < 0.0` takes the minus.
+pub fn js_to_string(x: f64) -> String {
+    if x.is_nan() {
+        return "NaN".to_string();
+    }
+    if x.is_infinite() {
+        return if x > 0.0 {
+            "Infinity".to_string()
+        } else {
+            "-Infinity".to_string()
+        };
+    }
+    if x == 0.0 {
+        return "0".to_string();
+    }
+    let sign = if x < 0.0 { "-" } else { "" };
+    // Rust's Display is shortest-round-trip and never scientific, so its
+    // digits are the spec's shortest `s`; trailing zeros never round-trip
+    // shorter than without them.
+    let text = format!("{}", x.abs());
+    let (int, frac) = text.split_once('.').unwrap_or((text.as_str(), ""));
+    let all = format!("{int}{frac}");
+    let stripped = all.trim_matches('0');
+    // A nonzero value keeps a nonzero digit.
+    let digits = if stripped.is_empty() { "0" } else { stripped };
+    // `n` in the spec's `s × 10^(n-k)`: the point stood after `int.len()`
+    // digits, and each stripped trailing zero moves it one place up.
+    let n = int.len() as i32 - all.len() as i32
+        + (all.len() - all.trim_end_matches('0').len()) as i32
+        + digits.len() as i32;
+    let k = digits.len() as i32;
+    if k <= n && n <= 21 {
+        format!("{sign}{digits}{}", "0".repeat((n - k) as usize))
+    } else if 0 < n && n <= 21 {
+        let (head, tail) = digits.split_at(n as usize);
+        format!("{sign}{head}.{tail}")
+    } else if -6 < n && n <= 0 {
+        format!("{sign}0.{}{digits}", "0".repeat((-n) as usize))
+    } else {
+        let (head, tail) = digits.split_at(1);
+        let mantissa = if tail.is_empty() {
+            head.to_string()
+        } else {
+            format!("{head}.{tail}")
+        };
+        let e = n - 1;
+        let exp_sign = if e >= 0 { "+" } else { "-" };
+        format!("{sign}{mantissa}e{exp_sign}{}", e.abs())
+    }
+}
+
 /// `v` to `digits` significant digits (JavaScript's `Number(v.toPrecision(digits))`); never -0.
 ///
 /// Ported from `number.odin:83` (`precision`).
@@ -476,6 +709,101 @@ mod tests {
             zero == 0.0 && !zero.is_sign_negative(),
             "quantize(-0.001, 0.01) = {zero}, want +0"
         );
+    }
+
+    #[test]
+    fn exact_digits_reads_the_binary_value_not_the_shortest_text() {
+        // 0.1's shortest text is "0.1"; its value carries the full tail.
+        let (digits, exp) = exact_digits(0.1);
+        assert_eq!(
+            (String::from_utf8(digits).unwrap(), exp),
+            (
+                "1000000000000000055511151231257827021181583404541015625".to_string(),
+                -55
+            )
+        );
+        // An integer carries a positive exponent.
+        let (digits, exp) = exact_digits(100.0);
+        assert_eq!(
+            (String::from_utf8(digits).unwrap(), exp),
+            ("1".to_string(), 2)
+        );
+    }
+
+    #[test]
+    fn to_fixed_rounds_the_binary_value_halves_up() {
+        // The binary value decides, not the decimal digits: 2.675 is
+        // 2.6749999... underneath, 0.125 is exact.
+        assert_eq!(to_fixed(2.675, 2), "2.67");
+        assert_eq!(to_fixed(-2.675, 2), "-2.67");
+        assert_eq!(to_fixed(1.0005, 3), "1.000");
+        assert_eq!(to_fixed(0.125, 2), "0.13");
+        assert_eq!(to_fixed(1.005, 2), "1.00");
+        // Exact ties take the larger n; the sign stays on the outside.
+        assert_eq!(to_fixed(2.5, 0), "3");
+        assert_eq!(to_fixed(-2.5, 0), "-3");
+        assert_eq!(to_fixed(0.5, 0), "1");
+        // Zeros print unsigned, nonzero values keep their minus.
+        assert_eq!(to_fixed(-0.0, 4), "0.0000");
+        assert_eq!(to_fixed(-0.00001, 4), "-0.0000");
+        assert_eq!(to_fixed(0.00004, 4), "0.0000");
+        assert_eq!(to_fixed(0.0, 2), "0.00");
+        // Plain cases and padding.
+        assert_eq!(to_fixed(2.0, 2), "2.00");
+        assert_eq!(to_fixed(99.6, 0), "100");
+        assert_eq!(to_fixed(1.23e-7, 6), "0.000000");
+        assert_eq!(
+            to_fixed(123456789012345680000.0, 0),
+            "123456789012345683968"
+        );
+        // From 1e21 up, `String(x)`.
+        assert_eq!(to_fixed(1e21, 2), "1e+21");
+        assert_eq!(to_fixed(-1e21, 0), "-1e+21");
+        // Non-finite values print as `String` prints them.
+        assert_eq!(to_fixed(f64::NAN, 2), "NaN");
+        assert_eq!(to_fixed(f64::INFINITY, 2), "Infinity");
+        assert_eq!(to_fixed(f64::NEG_INFINITY, 2), "-Infinity");
+    }
+
+    #[test]
+    fn to_precision_counts_significant_digits_halves_up() {
+        assert_eq!(to_precision(0.5, 1), "0.5");
+        assert_eq!(to_precision(0.00001, 3), "0.0000100");
+        assert_eq!(to_precision(123456.0, 3), "1.23e+5");
+        assert_eq!(to_precision(999.9, 3), "1.00e+3");
+        assert_eq!(to_precision(99.99, 3), "100");
+        assert_eq!(to_precision(0.0000123, 2), "0.000012");
+        assert_eq!(to_precision(1.005, 3), "1.00");
+        assert_eq!(to_precision(1.0, 1), "1");
+        assert_eq!(to_precision(100.0, 3), "100");
+        assert_eq!(to_precision(0.01, 3), "0.0100");
+        // A carry into a new leading digit moves the exponent.
+        assert_eq!(to_precision(9.999, 3), "10.0");
+        // Zeros print unsigned.
+        assert_eq!(to_precision(0.0, 3), "0.00");
+        assert_eq!(to_precision(-0.0, 3), "0.00");
+        assert_eq!(to_precision(-0.0, 1), "0");
+        // Non-finite values print as `String` prints them.
+        assert_eq!(to_precision(f64::NAN, 3), "NaN");
+        assert_eq!(to_precision(f64::INFINITY, 3), "Infinity");
+        assert_eq!(to_precision(f64::NEG_INFINITY, 3), "-Infinity");
+    }
+
+    #[test]
+    fn js_to_string_matches_number_to_string() {
+        assert_eq!(js_to_string(0.0), "0");
+        assert_eq!(js_to_string(-0.0), "0");
+        assert_eq!(js_to_string(2.5), "2.5");
+        assert_eq!(js_to_string(-2.5), "-2.5");
+        assert_eq!(js_to_string(0.30000000000000004), "0.30000000000000004");
+        assert_eq!(js_to_string(1e21), "1e+21");
+        assert_eq!(js_to_string(-1.5e21), "-1.5e+21");
+        assert_eq!(js_to_string(1.23e-7), "1.23e-7");
+        assert_eq!(js_to_string(1e-6), "0.000001");
+        assert_eq!(js_to_string(100.0), "100");
+        assert_eq!(js_to_string(f64::NAN), "NaN");
+        assert_eq!(js_to_string(f64::INFINITY), "Infinity");
+        assert_eq!(js_to_string(f64::NEG_INFINITY), "-Infinity");
     }
 
     #[test]

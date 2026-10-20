@@ -1,0 +1,19 @@
+# zoom-then-drag (h2-input): a drag starting mid-zoom (80 ms into a 400 px
+# wheel), going on while the zoom finishes, released fast enough to glide.
+# Behaviour: every frame moves the center further from the drag start (never
+# back), the zoom reaches its target, one URL write after the glide stops.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+wheel 0 400
+wait 80
+down
+move 1024 490 over 160
+wait 300
+up
+wait 1500
+shot zoom-then-drag

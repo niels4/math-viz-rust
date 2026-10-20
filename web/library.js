@@ -52,6 +52,13 @@ addToLibrary({
     Module.mvIterate = () => {
       if (MainLoop.func) MainLoop.runIter(MainLoop.func);
     };
+    // The harness's arming-turn hold (h2-input): after a button or wheel
+    // verb, the next turn publishes without stepping the camera, so the
+    // gesture's own change draws now and the loop's motion starts next turn
+    // — as the reference's next animation frame starts it. Moves never hold.
+    Module.mvHoldStep = () => {
+      _mv_hold_step();
+    };
     // The harness's `port model ...` lines: the port's model set where the
     // port can't yet make the gesture the reference makes. True when the
     // line was taken.

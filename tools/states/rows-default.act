@@ -1,0 +1,8 @@
+# rows-default (H4): the Transform card at rest, Arctic Ice on a dark system.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot rows-default

@@ -14,8 +14,6 @@
 
 use mv_sys::clay;
 
-use crate::app::App;
-
 /// The overlay sits this far inside the plane's edges (`--space-inset`).
 pub const INSET: f32 = 12.0;
 
@@ -222,22 +220,13 @@ pub fn overlay_colors(theme: &mv_theme::Theme) -> OverlayColors {
     }
 }
 
-impl App {
-    /// The return-to-centre click: the camera back to its defaults, flushed.
-    /// The TypeScript sets both params to their defaults with `{flush: true}`,
-    /// which deletes the keys at their defaults; h2-input extends this to its
-    /// live camera once it merges.
-    pub fn reset_view(&mut self) {
-        self.url.write("center", None);
-        self.url.write("scale", None);
-        self.dirty = true;
-    }
-}
-
+// The return-to-centre click resets through `App::reset_view`, which lives
+// in `plane_input.rs` (the only copy; this module's twin went away at
+// h2-input's merge): both params to their defaults, flushed, with the live
+// camera following a still one at once.
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::url::Url;
 
     fn plane() -> clay::BoundingBox {
         clay::BoundingBox {
@@ -296,7 +285,8 @@ mod tests {
     #[test]
     fn reset_view_clears_the_camera_keys() {
         let mut app = crate::fixture::headless_app();
-        app.url = Url::from_query("center=1.5000,-2.0000&scale=2.00");
+        app.url = crate::url::Url::from_query("center=1.5000,-2.0000&scale=2.00");
+        crate::plane_input::init_camera_from_url(&mut app);
         app.dirty = false;
         app.reset_view();
         assert_eq!(app.url.query(), "");

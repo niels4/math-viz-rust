@@ -240,6 +240,63 @@ SEEK_ANIMATIONS = """
 })();""".replace("__FRAME_MS__", str(FRAME_MS))
 
 
+# The reference's canvas labels per drawn frame, for the behaviour checks of the camera states
+# (h2-input): an init script wrapping clearRect/fillText records each frame's labels (text and
+# canvas px) on window.__planeFrames, as the user's browser-checks.md "Reading the camera a
+# frame drew" describes; plane_camera below reads the camera back out of them.
+PLANE_LABELS = """
+(() => {
+  window.__planeFrames = []
+  const proto = CanvasRenderingContext2D.prototype
+  const clear = proto.clearRect
+  const fill = proto.fillText
+  proto.clearRect = function (...a) {
+    window.__planeFrames.push([])
+    return clear.apply(this, a)
+  }
+  proto.fillText = function (text, x, y, ...rest) {
+    window.__planeFrames.at(-1)?.push([String(text), x, y])
+    return fill.call(this, text, x, y, ...rest)
+  }
+})();"""
+
+
+def plane_camera(
+    texts: list[tuple[str, float, float]], x: float, y: float
+) -> tuple[float, float, float]:
+    """One drawn frame's camera from its canvas labels: the plane point drawn at canvas-content
+    (x, y) and the px per unit there. Integer grid labels only (the scale legend's "1.11 u" is
+    skipped); two x labels a row apart give px per unit, and with one y label they give the
+    plane point under any position, as browser-checks.md describes. Labels sit 6 px from the
+    grid lines they name; positions are relative to the canvas content box."""
+    nums: list[tuple[int, float, float]] = []
+    for text, lx, ly in texts:
+        try:
+            nums.append((int(text), lx, ly))
+        except ValueError:
+            continue
+    if len(nums) < 3:
+        raise ValueError(f"fewer than 3 integer labels in {texts!r}")
+    counts_y: dict[float, int] = {}
+    for _, _, ly in nums:
+        counts_y[ly] = counts_y.get(ly, 0) + 1
+    y_row = max(counts_y, key=lambda ly: counts_y[ly])
+    counts_x: dict[float, int] = {}
+    for _, lx, _ in nums:
+        counts_x[lx] = counts_x.get(lx, 0) + 1
+    x_col = max(counts_x, key=lambda lx: counts_x[lx])
+    xs = sorted([n for n in nums if n[2] == y_row], key=lambda n: n[0])
+    ys = sorted([n for n in nums if n[1] == x_col and n[2] != y_row], key=lambda n: n[0])
+    if len(xs) < 2 or not ys:
+        raise ValueError(f"no label row and column in {texts!r}")
+    unit = (xs[-1][1] - xs[0][1]) / (xs[-1][0] - xs[0][0])
+    return (
+        xs[0][0] + (x - xs[0][1] - 6) / unit,
+        ys[0][0] - (y - ys[0][2] + 6) / unit,
+        unit,
+    )
+
+
 def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
@@ -276,6 +333,8 @@ HTMLCanvasElement.prototype.getContext = function (type, attributes) {
   if (type === "2d") attributes = { ...attributes, colorSpace: "srgb" };
   return getContext.call(this, type, attributes);
 };""")
+        # Every drawn frame's canvas labels, for the camera behaviour checks (h2-input).
+        lines.append(PLANE_LABELS)
         if paused:
             lines.append(SEEK_ANIMATIONS)
     return "\n".join(lines)
@@ -467,6 +526,18 @@ class Actor:
         self.page.mouse.move(*to)
         self.pointer = to
 
+    def hold_step(self) -> None:
+        """On the web build, holds the camera's next step for this turn's
+        publish-and-draw (h2-input): the arming turn draws the gesture's own
+        change, and the loop's motion starts next turn — as the reference's
+        next animation frame starts it. Called after button and wheel verbs
+        (moves never hold, so a glide under a drag keeps stepping); the
+        native harness sets the same hold from its facts, and the reference
+        never holds (its animation frames already start motion a frame late).
+        """
+        if is_web(self.target):
+            self.page.evaluate("Module.mvHoldStep()")
+
     def inputs_now(self) -> None:
         """Under the paused clock the inputs just dispatched take effect at this instant on every
         surface, as a browser renders after the input events it dispatches: React has updated its
@@ -510,10 +581,12 @@ class Actor:
                     mouse.down()
                 else:
                     mouse.up()
+                self.hold_step()
                 self.inputs_now()
             case Click(at, count):
                 (mouse.click if count == 1 else mouse.dblclick)(*at)
                 self.pointer = at
+                self.hold_step()
                 self.inputs_now()
             case Wheel(delta, ctrl):
                 if ctrl:
@@ -521,6 +594,7 @@ class Actor:
                 mouse.wheel(*delta)
                 if ctrl:
                     keyboard.up("Control")
+                self.hold_step()
                 self.inputs_now()
             case Pinch(scale):
                 # A trackpad pinch reaches a page as a wheel event with Ctrl held, -100 ln(scale)
@@ -713,7 +787,10 @@ def check_views(out: Path) -> list[str]:
     0), pan_x/pan_y (view units), origin_x/origin_y (plane px on the device grid), cursor (a CSS
     string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
-    frame 0)."""
+    frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
+    camera, written whenever it changes (h2-input). A line holding only `lit` ("a", "b", "h",
+    "k" or null) is the highlighted parameter, written whenever the highlight moves
+    (h4-readout; h4-rows reuses it for its rows)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -732,6 +809,29 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"url"}:
             if not isinstance(view.get("url"), str):
                 problems.append(f"views.json line {number}: 'url' is not a string")
+            continue
+        if set(view) == {"camera"}:
+            camera_raw: object = view.get("camera")
+            if not isinstance(camera_raw, dict):
+                problems.append(f"views.json line {number}: 'camera' is not an object")
+                continue
+            camera = cast(dict[str, object], camera_raw)
+            center: object = camera.get("center")
+            pair = cast(list[object], center) if isinstance(center, list) else []
+            if len(pair) != 2 or not all(
+                isinstance(v, (int, float)) and not isinstance(v, bool) for v in pair
+            ):
+                problems.append(f"views.json line {number}: 'camera.center' is not [x, y]")
+            scale = camera.get("scale")
+            if not isinstance(scale, (int, float)) or isinstance(scale, bool) or scale <= 0:
+                problems.append(f"views.json line {number}: 'camera.scale' is not above 0")
+            if not isinstance(camera.get("animating"), bool):
+                problems.append(f"views.json line {number}: 'camera.animating' is not a bool")
+            continue
+        if set(view) == {"lit"}:
+            lit: object = view.get("lit")
+            if lit is not None and lit not in ("a", "b", "h", "k"):
+                problems.append(f"views.json line {number}: 'lit' is not a parameter or null")
             continue
         for key in VIEW_KEYS:
             if key not in view:
