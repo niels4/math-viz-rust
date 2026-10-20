@@ -29,6 +29,7 @@ from script import (
     MODIFIERS,
     Click,
     Frames,
+    Hash,
     Hold,
     Key,
     Model,
@@ -85,10 +86,12 @@ def port(name: str) -> int:
 
 def url_for(target: str, query: str = "") -> str:
     """The page's URL: the reference served on REACT_REF_PORT at the Function Viewer route (with
-    ?query appended when the script opens with a `query` line), or the web build on WEB_PORT."""
-    tail = f"?{query}" if query else ""
+    ?query appended when the script opens with a `query` line), or the web build on WEB_PORT (at
+    the same route: the build reads only the hash, so a `?query` search would be dropped)."""
     if target == "ref":
+        tail = f"?{query}" if query else ""
         return f"http://localhost:{port('REACT_REF_PORT')}/{REFERENCE_ROUTE}{tail}"
+    tail = f"{REFERENCE_ROUTE}?{query}" if query else ""
     return f"http://localhost:{port('WEB_PORT')}/{tail}"
 
 
@@ -319,12 +322,14 @@ def run_browser(
             else:
                 url = serve(context, web_dir(build))
                 if query:
-                    url += f"?{query}"
+                    url += f"{REFERENCE_ROUTE}?{query}"
             if target == "web" and os.environ.get("MV_PANIC_AT_FRAME") == "1":
                 # The sweep's crash proof on the web build: the page reads
                 # `?panic-at-frame` through `mv_panic_at_frame` (web/library.js)
-                # and panics in frame 1.
-                url += ("&" if "?" in url else "?") + "panic-at-frame"
+                # and panics in frame 1. A search flag, so it goes before any hash.
+                head, mark, tail = url.partition("#")
+                head += ("&" if "?" in head else "?") + "panic-at-frame"
+                url = head + mark + tail
             page.goto(url, wait_until="load")
             first_frame(page, target, paused)
             actor = Actor(page, target, paused, out, result, on_shot)
@@ -538,6 +543,13 @@ class Actor:
                 self.inputs_now()
             case Wait(ms):
                 self.wait(ms)
+            case Hash(query):
+                # A mid-run edit of the page's hash: the page's own hashchange
+                # path runs on it (the reference's router, the port's shell
+                # listener), as an edit in the address bar would.
+                route = REFERENCE_ROUTE.lstrip("#")
+                self.page.evaluate("(hash) => { location.hash = hash; }", f"#{route}?{query}")
+                self.inputs_now()
             case Shot(name):
                 self.shot(name)
             case Frames(name, every, span):
@@ -639,6 +651,10 @@ def run_native(
         result.problems.append(f"no {shown(binary)}: run ./build.sh native (or release)")
         return result
     command = [str(binary), "--script", str(script.path), "--out", str(out)]
+    if script.start.query:
+        # The script's `query` line opens on every surface: --query natively
+        # (main.rs seeds App.url from it), at the hash on ref and web.
+        command += ["--query", script.start.query]
     if window:
         command.append("--window")
     began = time.monotonic()

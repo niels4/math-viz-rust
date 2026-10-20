@@ -62,6 +62,21 @@ MIX = re.compile(
 )
 
 
+def resolve_vars(decls: dict[str, str], text: str) -> str:
+    """The declaration with its `var(--x)` references replaced by the theme's
+    own declarations, so `color-mix(in oklch, var(--foreground) 12%,
+    transparent)` reads as the browser computes it (which resolves the
+    reference). Single-level references iterate to a fixpoint."""
+
+    def rep(match: re.Match[str]) -> str:
+        return decls.get(match.group(1), match.group(0))
+
+    prev = ""
+    while prev != text:
+        prev, text = text, VAR.sub(rep, text)
+    return text
+
+
 def react_ref() -> Path:
     value = os.environ.get("REACT_REF")
     if value is None:
@@ -225,6 +240,7 @@ KEPT: dict[str, dict[str, str]] = {
     },
 }
 
+
 def definition(theme: Theme, tokens: list[str]) -> str:
     d = theme.declarations
     lines = [
@@ -385,7 +401,9 @@ def verify(themes: list[Theme], pairs: list[tuple[str, str]]) -> None:
                     for selector, token in pairs:
                         if token not in decls:
                             continue  # a later milestone's token: h1 checks it
-                        want = " ".join(decls[token].split())
+                        want = resolve_vars(
+                            decls, " ".join(decls[token].split())
+                        )
                         got = str(
                             page.evaluate(
                                 "([s, t]) => getComputedStyle(document.querySelector(s))"

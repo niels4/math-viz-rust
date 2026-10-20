@@ -306,6 +306,34 @@ fn query_opens_the_page_with_the_hash_query() {
 }
 
 #[test]
+fn hash_edits_the_hash_mid_run() {
+    let (script, err) =
+        parse("query center=0,0&scale=1\nwait 500\nhash center=3,1&scale=2\nwait 500\nshot rest\n");
+    assert!(err.is_none(), "unexpected error: {err:?}");
+    assert_eq!(script.start.query, "center=0,0&scale=1");
+    let expected = vec![
+        Verb::Wait(Wait { ms: 500 }),
+        Verb::Hash(Hash {
+            query: "center=3,1&scale=2".to_string(),
+        }),
+        Verb::Wait(Wait { ms: 500 }),
+        Verb::Shot(Shot {
+            name: "rest".to_string(),
+        }),
+    ];
+    assert_eq!(
+        script.actions.len(),
+        expected.len(),
+        "actions: {:?}",
+        script.actions
+    );
+    for (i, verb) in expected.into_iter().enumerate() {
+        assert_eq!(script.actions[i].verb, verb, "action {i}");
+        assert_eq!(script.actions[i].surface, Surface::All, "action {i}");
+    }
+}
+
+#[test]
 // One case (`ref theme tron-cyan`) reaches `mv_theme::slug_scheme`.
 fn errors_name_their_line() {
     struct Case {
@@ -451,6 +479,26 @@ fn errors_name_their_line() {
         },
         Case {
             text: "move 1 2\nport shot a",
+            line: 2,
+            says: "take an input or a model line",
+        },
+        Case {
+            text: "hash",
+            line: 1,
+            says: "hash takes the page's hash query",
+        },
+        Case {
+            text: "hash a=1 b=2",
+            line: 1,
+            says: "hash takes the page's hash query",
+        },
+        Case {
+            text: "ref hash a=1",
+            line: 1,
+            says: "take an input or a model line",
+        },
+        Case {
+            text: "move 1 2\nport hash a=1",
             line: 2,
             says: "take an input or a model line",
         },

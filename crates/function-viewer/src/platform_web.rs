@@ -155,7 +155,7 @@ pub unsafe extern "C" fn mv_model_line(line: *const std::os::raw::c_char) -> boo
     // The script package's own words, so the copy keeps nothing of the line.
     let (run, err) = mv_script::parse(&format!("port {line}"));
     if let Some(err) = err {
-        eprintln!("function-viewer-rust: model line {line:?}: {}", err.message);
+        eprintln!("math-viz2-rust: model line {line:?}: {}", err.message);
         return false;
     }
     if run.actions.len() != 1 {
@@ -281,7 +281,7 @@ pub fn platform_init(app: &mut App) {
         mv_theme::Space::Srgb
     };
     println!(
-        "function-viewer-rust: colour space: the WebGL2 drawing buffer's {}{}",
+        "math-viz2-rust: colour space: the WebGL2 drawing buffer's {}{}",
         BUFFER_SPACES[app.space],
         if app.space == asked {
             ""
@@ -633,7 +633,7 @@ pub fn platform_write_hash(hash: &str) {
 
 /// No files on the web.
 pub fn platform_read_file(path: &str) -> (Vec<u8>, bool) {
-    eprintln!("function-viewer-rust: no files on the web: {path}");
+    eprintln!("math-viz2-rust: no files on the web: {path}");
     (Vec::new(), false)
 }
 

@@ -1,0 +1,9 @@
+# default-sage-editorial: the page at rest at 1440 x 900, density 2, on a light system in
+# sage-editorial. Time 0 is the first frame; the shot waits 2 s for the first paint.
+size 1440 900
+density 2
+scheme light
+mode light
+theme sage-editorial
+wait 2000
+shot default

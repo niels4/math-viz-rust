@@ -471,6 +471,8 @@ mod tests {
         Token::ChartLine,
         Token::ChartAccent,
         Token::ChartGlow,
+        Token::ChartAxis,
+        Token::ChartGridMajor,
         Token::Ordinal01,
         Token::Ordinal02,
         Token::Ordinal03,
@@ -483,6 +485,7 @@ mod tests {
         Token::Ordinal10,
         Token::Ordinal11,
         Token::Ordinal12,
+        Token::ShadowColor,
     ];
 
     #[test]
@@ -552,11 +555,11 @@ mod tests {
                 );
             }
         }
-        // The expected count: 186 tokens with a colour, all inside sRGB, none
-        // transparent; the 24 mixes inside too.
-        assert_eq!(tokens.inside, 186);
+        // The expected count: 201 tokens with a colour, all inside sRGB; the
+        // three dark shadow colours transparent; the 24 mixes inside too.
+        assert_eq!(tokens.inside, 201);
         assert_eq!(tokens.outside, 0);
-        assert_eq!(tokens.transparent, 0);
+        assert_eq!(tokens.transparent, 3);
         assert_eq!(mixes.outside, 0);
         for (what, tally) in [("tokens", &tokens), ("the page's mixes", &mixes)] {
             eprintln!(

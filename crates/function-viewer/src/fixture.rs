@@ -33,12 +33,19 @@ pub struct FixtureScroll {
     pub client: f32,
 }
 
-/// One engine's measures: boxes, texts, runs and scrolls by name.
+/// One engine's measures: boxes by name, with the selectors the reference
+/// had no element for. Later milestones add the texts, runs and scrolls
+/// their layouts measure.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct FixtureMeasures {
     pub boxes: HashMap<String, [f32; 4]>,
+    #[serde(default)]
+    pub missing: Vec<String>,
+    #[serde(default)]
     pub texts: HashMap<String, FixtureText>,
+    #[serde(default)]
     pub runs: HashMap<String, Vec<FixtureText>>,
+    #[serde(default)]
     pub scroll: HashMap<String, FixtureScroll>,
 }
 

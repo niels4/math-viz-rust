@@ -167,8 +167,7 @@ def _finish_state(
     entry: dict[str, object] = {
         "script": str(script.path.relative_to(REPO)),
         "runs": [
-            {"surface": r.name, "ok": r.ok, "problems": r.problems, "out": str(r.out)}
-            for r in runs
+            {"surface": r.name, "ok": r.ok, "problems": r.problems, "out": str(r.out)} for r in runs
         ],
         "comparisons": [
             {
@@ -218,7 +217,9 @@ def _run_serial(
 def _run_parallel(
     names: list[str], scripts: dict[str, Script], order: list[tuple[str, str]], out: Path, jobs: int
 ) -> int:
-    index = {f"{target}-{engine}" if engine else target: i for i, (target, engine) in enumerate(order)}
+    index = {
+        f"{target}-{engine}" if engine else target: i for i, (target, engine) in enumerate(order)
+    }
     finished: dict[str, dict[str, object]] = {}
     failed = False
     finish_seconds = 0.0
@@ -237,7 +238,9 @@ def _run_parallel(
             if len(collected[name]) == len(order):
                 runs = sorted(collected[name], key=lambda r: index[r.name])
                 began = time.monotonic()
-                lines, finished[name], state_failed = _finish_state(name, scripts[name], runs, out / name)
+                lines, finished[name], state_failed = _finish_state(
+                    name, scripts[name], runs, out / name
+                )
                 finish_seconds += time.monotonic() - began
                 print("\n".join(lines))
                 failed |= state_failed

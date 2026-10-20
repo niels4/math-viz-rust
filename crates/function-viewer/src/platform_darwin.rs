@@ -111,9 +111,7 @@ pub fn darwin_watch_wheel() {
     let added =
         unsafe { sdl3::sys::events::SDL_AddEventWatch(Some(wheel_watch), std::ptr::null_mut()) };
     if !added {
-        eprintln!(
-            "function-viewer-rust: wheel: no event watch: a wheel's ticks count as precise units"
-        );
+        eprintln!("math-viz2-rust: wheel: no event watch: a wheel's ticks count as precise units");
     }
 }
 
@@ -180,7 +178,7 @@ pub fn darwin_reduced_motion() -> bool {
 pub fn darwin_tag_space(window: &sdl3::video::Window, space: mv_theme::Space) -> mv_theme::Space {
     let ns = cocoa_window(window);
     if ns.is_null() {
-        eprintln!("function-viewer-rust: colour space: no Cocoa window to tag; SDL's sRGB stands");
+        eprintln!("math-viz2-rust: colour space: no Cocoa window to tag; SDL's sRGB stands");
         TAGGED_BY.with(|tagged| *tagged.borrow_mut() = "nobody".to_string());
         return mv_theme::Space::Srgb;
     }
@@ -255,7 +253,7 @@ pub fn darwin_color_report(window: &sdl3::video::Window) {
             .to_string_lossy()
             .into_owned()
     };
-    eprintln!("function-viewer-rust: colour space: {text}");
+    eprintln!("math-viz2-rust: colour space: {text}");
     // SAFETY: the same allocation as above.
     unsafe {
         libc::free(report.cast::<std::ffi::c_void>());
