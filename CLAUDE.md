@@ -1024,12 +1024,13 @@ no new tokens (all eight tabled).
   bundled WebKit 26.6 UA sheet lacks the link rule — recorded, not matched: real Safari
   shows the hand and the port keeps pointer). No CSS `cursor:` rule anywhere but the
   eight known ones (grep at the hash + current main: neither styles the selector cells).
-- Two findings: the menu's light/dark cells and theme rows were port Pointer while the
-  reference is default in all three engines (h1-settings' "cursor pointer while hovered"
-  described the port, not the reference) — set to Default; the selector cells were port
-  Default matching the reference arrow, but the user explicitly asked for the pointer —
-  set to Pointer as a marked overturnable deviation (one revert in `selector.rs`; the
-  cursor never screenshots, so pixels can't change). Everything else already matched.
+- Two rulings (decisions.md, driver's 2026-10-20 message): the selector cells keep the
+  pointer as the user's deliberate departure (the reference is the arrow everywhere);
+  the menu's light/dark cells and theme rows keep the port's pointer too (claude0's
+  consistency call, overturnable — the reference is default in all three engines, so
+  matching it is a two-line revert in `settings.rs`). h1-settings' "cursor pointer
+  while hovered" described the port, which now stays that way deliberately. Everything
+  else already matched. Cursors never screenshot, so pixels can't change either way.
 - No paint code reads cursors: changing region cursors cannot move a pixel (proved by
   `same-run` 0 differences on H1+H3 before/after, 20 states x 7 surfaces). The cursor
   leaves through `update_cursor` after every retarget (hover None, or the Text fallback

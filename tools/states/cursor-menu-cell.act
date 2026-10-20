@@ -1,7 +1,7 @@
-# cursor-menu-cell (fix-cursor): the default cursor over the settings menu's
-# System cell. The menu's labels carry no cursor rule: the reference computes
-# default in all three engines (measured at 68e1c7b). Cell centre probed at
-# (1159,129), box [1113,112,92,34].
+# cursor-menu-cell (fix-cursor): the pointer over the settings menu's
+# System cell (claude0's consistency call: the menu labels keep the pointer
+# like the selector cells; the reference computes default — see
+# decisions.md). Cell centre probed at (1159,129), box [1113,112,92,34].
 size 1440 900
 density 2
 scheme dark

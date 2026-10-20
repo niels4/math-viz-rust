@@ -282,12 +282,11 @@ fn cell(app: &mut App, slug: FunctionSlug, index: usize, checked: bool) {
             runs(app, slug, index, foreground);
         },
     );
-    // Pointer on the cells (fix-cursor, overturnable): the user reports the
-    // reference shows the pointer here, and asked for it. Measured at
-    // 68e1c7b the reference computes default (Chromium/Firefox UA on the
-    // covering radio input) or auto (WebKit) — the arrow, not the pointer —
-    // in all three engines, so this is a deliberate deviation from the hash,
-    // one revert to undo.
+    // Pointer on the cells (fix-cursor): the user's deliberate departure
+    // from math-viz2 at this hash, asked for in so many words (2026-10-20
+    // 11:20). Measured at 68e1c7b the reference computes default
+    // (Chromium/Firefox UA on the covering radio input) or auto (WebKit) —
+    // the arrow; see decisions.md.
     crate::input::region(
         app,
         mv_clay::id("FunctionCell", index as u32),

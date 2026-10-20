@@ -574,9 +574,11 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             false,
         );
     });
-    // Default on the cells (fix-cursor): the reference's labels carry no
-    // cursor rule and compute default in WebKit, Chromium and Firefox alike
-    // (measured at 68e1c7b), so the port's pointer was a divergence.
+    // Pointer on the cells (fix-cursor): claude0's consistency call in the
+    // user's place (2026-10-20, overturnable) — the same kind of control as
+    // the selector cells, which the user wants with the pointer. The
+    // reference measures default in all three engines (its labels carry no
+    // cursor rule), so matching it is a two-line revert; see decisions.md.
     crate::input::region(
         app,
         mv_clay::id("MenuCell", index as u32),
@@ -584,8 +586,8 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             kind: HitKind::SettingsLightDark,
             index: index as i64,
         },
-        Cursor::Default,
-        Cursor::Default,
+        Cursor::Pointer,
+        Cursor::Pointer,
         checked,
         crate::ui::corner_radius_all(0.0),
     );
@@ -732,8 +734,9 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             });
         }
     });
-    // Default on the rows (fix-cursor): as the cells above, the reference's
-    // labels compute default in all three engines (measured at 68e1c7b).
+    // Pointer on the rows (fix-cursor): as the cells above, claude0's
+    // consistency call (overturnable); the reference measures default.
+    // See decisions.md.
     crate::input::region(
         app,
         mv_clay::id("MenuRow", index as u32),
@@ -741,8 +744,8 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             kind: HitKind::SettingsTheme,
             index: index as i64,
         },
-        Cursor::Default,
-        Cursor::Default,
+        Cursor::Pointer,
+        Cursor::Pointer,
         selected,
         crate::ui::corner_radius_all(0.0),
     );
