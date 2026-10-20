@@ -1071,9 +1071,9 @@ no new tokens (all eight tabled).
 
 - The reference's cursor census is `getComputedStyle(document.elementFromPoint(x, y)).cursor`
   with a real mouse at the control's centre, in all three engines (probes in
-  `/tmp/cursor-probe/`, evidence `evidence.json`): labels compute `default` in
-  Chromium/Firefox (UA `label { cursor: default }`) and `auto` in WebKit; the radio input
-  covering each selector cell computes `default` (Chromium/Firefox UA) / `auto` (WebKit);
+  `/tmp/cursor-probe/`, archived as `/opt/dev/tmp/math-viz2-rust/fix-cursor/reference-cursors.json`):
+  the menu's labels compute `default` in all three engines (UA `label { cursor: default }`);
+  the radio input covering each selector cell computes `default` (Chromium/Firefox UA) / `auto` (WebKit);
   links compute `pointer` in Chromium/Firefox but `auto` in this WebKit (even a bare
   injected anchor on `about:blank`; explicit `cursor: pointer` computes fine, so the
   bundled WebKit 26.6 UA sheet lacks the link rule — recorded, not matched: real Safari
