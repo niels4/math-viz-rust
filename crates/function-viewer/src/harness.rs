@@ -469,6 +469,16 @@ fn grid_steps(time: i64, ms: i64) -> impl Iterator<Item = i64> {
 fn harness_frame(h: &mut Harness<'_>) {
     h.app.r#loop.script_time = Some(h.time * MS);
     let facts = std::mem::take(&mut h.pending);
+    // A button or wheel turn publishes without stepping (h2-input's hold):
+    // the gesture's own change draws now; the loop's motion starts next
+    // turn, as the reference's next animation frame starts it. Moves never
+    // hold, so a glide under a drag keeps stepping.
+    if facts
+        .iter()
+        .any(|fact| matches!(fact.input, Input::Button(_) | Input::Wheel(_)))
+    {
+        crate::plane_input::hold_camera_step();
+    }
     for fact in facts {
         crate::input::handle_input(h.app, fact.input, fact.time);
     }

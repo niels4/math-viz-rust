@@ -242,11 +242,33 @@ pub fn external_url_synced(app: &mut App) -> bool {
     true
 }
 
+/// Whether the next frame publishes without stepping the camera: the turn
+/// that armed motion draws the gesture's own change, and the loop steps from
+/// the turn after — as the hook's handlers arm `requestAnimationFrame` for a
+/// later frame instead of stepping in the event's own task. The scripted
+/// harnesses set this on the turns whose facts can arm motion (a button
+/// press or release, a wheel); moves never set it, so a glide under a drag
+/// keeps stepping, and production never sets it (its events and frames are
+/// separate turns already). Always consumed by the next [`frame_step`], so a
+/// hold never leaks into a later turn.
+static HOLD_CAMERA_STEP: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Holds the camera's next step for this turn's publish-and-draw (see
+/// [`HOLD_CAMERA_STEP`]). The scripted frame sites call this on arming turns:
+/// the native harness when its facts hold a button event or a wheel, the web
+/// harness through `mv_hold_step` after the same verbs.
+pub(crate) fn hold_camera_step() {
+    HOLD_CAMERA_STEP.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// One frame on the app's clock: the camera's step, the params' debounce and
 /// external sync, the web hash mirror. Runs in `app_loop::iterate` before the
 /// draw, so the frame draws what the camera moved to.
 pub fn frame_step(app: &mut App, now: Time) {
     let now_ms = frame_ms(now);
+    // An arming turn's hold, if any, is consumed here whether or not the
+    // camera flies, so it never leaks into a later turn.
+    let held = HOLD_CAMERA_STEP.swap(false, std::sync::atomic::Ordering::SeqCst);
     if app.camera.animating() {
         // The first frame after idle carries no measurable dt; the camera
         // holds its `FIRST_FRAME_DT` for exactly that frame.
@@ -255,7 +277,9 @@ pub fn frame_step(app: &mut App, now: Time) {
         } else {
             (now - app.camera_frame_at) as f64 / MS as f64
         };
-        let still_going = app.camera.step(dt_ms);
+        // A held turn publishes (below) but does not step: the gesture's own
+        // change draws now; the loop's motion starts next turn.
+        let still_going = if held { true } else { app.camera.step(dt_ms) };
         app.camera_frame_at = now;
         // The hook's `publish`: the handlers pan the camera at once while the
         // frame writes to React only what changed since the last publish, so
@@ -512,6 +536,35 @@ mod tests {
         app.dirty = false;
         crate::app_loop::schedule(&mut app, 100_000 * MS);
         assert!(!app.r#loop.awake);
+    }
+
+    #[test]
+    fn an_arming_turn_publishes_without_stepping() {
+        // The scripted harnesses hold the turn whose facts arm motion: the
+        // gesture's own change draws now, and the loop starts next turn — as
+        // the reference's next animation frame starts it. Moves never hold.
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        init_camera_from_url(&mut app);
+        // A wheel arms a zoom; the held turn draws the unzoomed plane while
+        // publishing nothing (nothing moved yet), and the next turn steps.
+        handle_input(&mut app, wheel_at([0.0, 100.0], [400.0, 300.0]), 0);
+        hold_camera_step();
+        frame(&mut app, 16);
+        assert!(app.camera.animating());
+        assert_eq!(app.camera.scale, 0.5);
+        frame(&mut app, 32);
+        assert!(app.camera.scale > 0.5);
+        // The hold is consumed whether or not the camera flies: this turn
+        // steps nothing (the scale stands still) while the zoom stays
+        // scheduled, and no hold leaks into the turn after.
+        hold_camera_step();
+        let held = app.camera.scale;
+        frame(&mut app, 48);
+        assert_eq!(app.camera.scale, held);
+        assert!(app.camera.animating());
+        frame(&mut app, 64);
+        assert!(app.camera.scale > held);
     }
 
     #[test]

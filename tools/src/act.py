@@ -526,6 +526,18 @@ class Actor:
         self.page.mouse.move(*to)
         self.pointer = to
 
+    def hold_step(self) -> None:
+        """On the web build, holds the camera's next step for this turn's
+        publish-and-draw (h2-input): the arming turn draws the gesture's own
+        change, and the loop's motion starts next turn — as the reference's
+        next animation frame starts it. Called after button and wheel verbs
+        (moves never hold, so a glide under a drag keeps stepping); the
+        native harness sets the same hold from its facts, and the reference
+        never holds (its animation frames already start motion a frame late).
+        """
+        if is_web(self.target):
+            self.page.evaluate("Module.mvHoldStep()")
+
     def inputs_now(self) -> None:
         """Under the paused clock the inputs just dispatched take effect at this instant on every
         surface, as a browser renders after the input events it dispatches: React has updated its
@@ -569,10 +581,12 @@ class Actor:
                     mouse.down()
                 else:
                     mouse.up()
+                self.hold_step()
                 self.inputs_now()
             case Click(at, count):
                 (mouse.click if count == 1 else mouse.dblclick)(*at)
                 self.pointer = at
+                self.hold_step()
                 self.inputs_now()
             case Wheel(delta, ctrl):
                 if ctrl:
@@ -580,6 +594,7 @@ class Actor:
                 mouse.wheel(*delta)
                 if ctrl:
                     keyboard.up("Control")
+                self.hold_step()
                 self.inputs_now()
             case Pinch(scale):
                 # A trackpad pinch reaches a page as a wheel event with Ctrl held, -100 ln(scale)
