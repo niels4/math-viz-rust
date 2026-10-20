@@ -484,6 +484,37 @@ mod tests {
     }
 
     #[test]
+    fn a_glide_keeps_the_loop_awake_until_it_settles() {
+        // `schedule` counts a camera in flight like a fade in flight: without
+        // it the draw consumes the step's dirty and the glide stalls after
+        // one step (every flick frame but the first showed a frozen camera).
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        init_camera_from_url(&mut app);
+        handle_input(&mut app, left_button([300.0, 200.0], true), 0);
+        let mut t = 0i64;
+        for i in 1..=5 {
+            t += 16;
+            handle_input(
+                &mut app,
+                pointer_to([300.0 + 20.0 * f64::from(i) as f32, 200.0]),
+                t * MS,
+            );
+            frame(&mut app, t);
+        }
+        t += 16;
+        handle_input(&mut app, left_button([400.0, 200.0], false), t * MS);
+        assert!(app.camera.animating());
+        app.dirty = false;
+        crate::app_loop::schedule(&mut app, t * MS);
+        assert!(app.r#loop.awake);
+        run_until_still(&mut app, 1000);
+        app.dirty = false;
+        crate::app_loop::schedule(&mut app, 100_000 * MS);
+        assert!(!app.r#loop.awake);
+    }
+
+    #[test]
     fn the_debounce_writes_mid_drag_without_a_release() {
         // The TypeScript's `setTimeout` fires while the pointer is still
         // held; here the next frame after the deadline fires it.
@@ -576,7 +607,6 @@ mod tests {
         frame(&mut app, 216);
         assert_eq!(app.url.query(), "center=-2.0000,0.0000");
         app.dirty = false;
-        app.reset_view();
         app.reset_view();
         assert_eq!(app.camera.center, [0.0, 0.0]);
         assert_eq!(app.camera.scale, 0.5);
