@@ -101,6 +101,10 @@ pub struct App {
     /// re-pick never restarts it: the turn draws the reset curves, the next
     /// frame diffs from the last callback, not the click).
     pub plot_hold: bool,
+    /// Who the highlight model follows: the pointer's parameter, the focused
+    /// one, and which moved last (h4-readout; `state.rs` owns the model, the
+    /// terms and h4-rows' rows write it through `sync_hover` and focus).
+    pub state: crate::state::HighlightState,
 }
 
 impl App {
@@ -246,6 +250,9 @@ impl App {
             )),
             plot_frame_at: None,
             plot_hold: false,
+            // Who the highlight model follows: the pointer's parameter, the
+            // focused one, and which moved last (h4-readout's `state.rs`).
+            state: crate::state::HighlightState::default(),
         }
     }
 }

@@ -8,3 +8,7 @@ H2 = ["plane-default", "plane-scale-0.25", "plane-scale-1.25", "plane-scale-5", 
 # H3 at 3560eb2: the sidebar at rest, the picks at rest, the switch frames on
 # the paused clock, the mid-switch re-pick, reduced motion, a func link.
 H3 = ["sidebar-default", "select-x2", "select-sinx", "switch-frames", "switch-mid-switch", "reduced-switch", "url-func"]
+# H4 at 5714319: the readout per function, with values, scaled by a long
+# equation, and with a lit by the pointer (h4-readout; h4-rows appends its
+# rows-* and url-params states to this line at its merge).
+H4 = ["readout-x1", "readout-x2", "readout-x3", "readout-sinx", "readout-values", "readout-narrow", "readout-hover-a"]

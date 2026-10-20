@@ -42,3 +42,10 @@ radio_0 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(1)"
 radio_1 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(2)"
 radio_2 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(3)"
 radio_3 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(4)"
+# H4 at 5714319: the readout's row, its value line's span and the form
+# line's paragraph, all inside the Function card (card_function above covers
+# the card itself). data-testid attributes select them (verified unique on
+# the reference).
+readout = "[data-testid=\"function-readout\"]"
+value_line = "[data-testid=\"function-readout\"] > span"
+form_line = "[data-testid=\"function-form\"]"
