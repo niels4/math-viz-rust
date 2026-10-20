@@ -6,7 +6,7 @@ scheme dark
 mode dark
 theme arctic-ice
 wait 2000
-click 360 450
+click 360 432
 wait 150
 key Backspace
 key Backspace
