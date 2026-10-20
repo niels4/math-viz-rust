@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at bd1663e (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at 68e1c7b (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as

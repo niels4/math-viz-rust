@@ -44,10 +44,10 @@ export REACT_REF_PORT=5190   # math-viz2 serves #function-viewer here
 ./build.sh release       # build/release/: native/function-viewer and web/, optimised (Release)
 ```
 
-- **Native window:** `build/native/function-viewer`. The page at 1440x900 logical (density 2): the top bar, the sidebar cards, the plane, drawn in Display P3 on macOS (the window is tagged with it before its GL context). `--space srgb` draws sRGB instead. It draws only when something changed or moves; idle, SDL's loop waits on events. The appearance prefs live in `prefs.json` under SDL's preference path (on macOS `~/Library/Application Support/mathviz/function-viewer-rust/`), the port's own key, never another app's; `--prefs DIR` keeps them in DIR instead. Quit with ⌘Q, the window's close button, or Ctrl-C (SIGTERM) in its terminal, idle or not.
+- **Native window:** `build/native/function-viewer`. The page at 1440x900 logical (density 2): the top bar, the sidebar cards, the plane, drawn in Display P3 on macOS (the window is tagged with it before its GL context). `--space srgb` draws sRGB instead. It draws only when something changed or moves; idle, SDL's loop waits on events. `--route function-viewer` opens the viewer (welcome by default, as the browser's `/`). The appearance prefs live in `prefs.json` under SDL's preference path (on macOS `~/Library/Application Support/mathviz/function-viewer-rust/`), the port's own key, never another app's; `--prefs DIR` keeps them in DIR instead. Quit with ⌘Q, the window's close button, or Ctrl-C (SIGTERM) in its terminal, idle or not.
 - **Native frame to PNG:** `build/native/function-viewer --png out.png --size 1440x900 --density 2` draws the page into a hidden window's offscreen framebuffer at that size, writes it, and quits. In Display P3 (the default on macOS) the PNG carries the Display P3 profile; `--space srgb` writes the sRGB frame the harness compares with the browsers.
 - **Theme, mode and space:** `--theme clean-teal`, `--mode light`, `--space srgb` override the stored prefs for one run (a script sets all three itself).
-- **Harness runs:** `--script tools/states/default.act --out DIR` plays a state script and writes shots, `views.json`, `motion.json` and `time.json`; `--window` draws to the visible window instead of the offscreen buffer; `--time 300` redraws the script's last state 300 more times and reports median, 95th percentile and slowest; `--trace` logs each input and timer.
+- **Harness runs:** `--script tools/states/default.act --out DIR` plays a state script and writes shots, `views.json`, `motion.json` and `time.json`; `--window` draws to the visible window instead of the offscreen buffer; `--time 300` redraws the script's last state 300 more times and reports median, 95th percentile and slowest; `--trace` logs each input and timer. The harness passes the script's `route` line as `--route` on every run.
 - **Browser:** serve `build/web/` as static files and open it, for example `python3 -m http.server 8000 --directory build/web` and `http://localhost:8000/`. A browser won't load wasm from `file://`. The main loop pauses while nothing moves and any input resumes it; `Module.iterations` and `Module.frames` count its turns and its frames. The prefs are `localStorage['mathviz-function-viewer-rust']`, the port's own key. `?trace` in the address logs each input and timer to the console; `?space=p3` or `?space=srgb` overrides the colour space, and the console says which it took.
 - **Panic switch:** `MV_PANIC_AT_FRAME=1` (or `--panic-at-frame`, the web's way in through `Module.arguments`) panics in the first frame, so the sweep can prove it sees a crash on each build. Natively the process exits non-zero with `panicked at <file>:<line>` on stderr (101 through the SDL loop: the first panic poisons the loop's lock and the quit path panics unwrapping it); on the web the same lines reach the console as errors.
 - **Smoke:** `tools/setup && tools/run states H0 --targets ref,web,native` runs the first state group on every target (needs the export in Setup); the report's identity columns read identical at threshold 0.
@@ -67,13 +67,16 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   server listens on); `web`, `tabs`, `raf` and `loop` on the web target need one on `WEB_PORT`,
   which a milestone starts in its own tmux window on a free port from 5200 and stops after.
 - **Scripts** (`tools/states/*.act`): lines before the first action say how the page opens
-  (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`, `query`); after it,
+  (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`, `query`, `route`); after it,
   `size`, `scheme` and `reduced-motion` change it live. Positions are logical pixels, times
   milliseconds (the paused clock: time 0 is the first animation frame, `wait` runs the clock
   forward, animation frames fall every 16 ms). `query center=1,2&scale=2` is the page's hash
   query: appended to the reference and web URLs, passed as `--query` natively (mv-script's
   twin parses it too: change `tools/src/script.py` and `crates/mv-script/src/script.rs`
-  together). `hash center=3,1&scale=2` edits that query mid-run on every surface, through
+  together). `route welcome|function-viewer` is the page route it opens on (function-viewer
+  unless the script says welcome: the web URL always carries the hash, including the empty
+  route; natively it rides as `--route`, welcome by hand). `hash center=3,1&scale=2` edits that
+  query mid-run on every surface, keeping the script's route, through
   the page's own hashchange path, as an address-bar edit while it runs (t1-hash; h2-input's
   `url-edit` state drives it).
 - **Storage keys:** the reference is seeded with math-viz2's keys (`mathviz-light-dark`,
@@ -91,8 +94,12 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   counting as a problem). `views.json` holds one object per shot with the exact 10 keys
   (`shot,time,zoom,pan_x,pan_y,origin_x,origin_y,cursor,theme,scaled`); a line holding only
   `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0,
-  `hash` whenever it changes it; runs without one write none, which reads as the empty query). Behaviour checks compare the
-  last `url` line with the reference's `location.hash` query after every scripted input.
+  `hash` whenever it changes it; runs without one write none, which reads as the empty query). A line
+  holding only `route` is the page's hash route (`""` on the welcome page, `"function-viewer"` on the
+  viewer), written at start and whenever the route changes (h10-page; until it lands no run writes one,
+  and the route reader reports that as a check that can't run, not a failure). Behaviour checks compare the
+  last `url` line with the reference's `location.hash` query after every scripted input, and the last
+  `route` line with its hash route the same way.
   `tools/run states` lays the surfaces' shots on a contact sheet and compares every pair at
   threshold 0; `tools/run judge` counts the native shot's pixels apart from the reference per
   engine (flat and more than 2 levels apart, clustered); `tools/run themes` regenerates

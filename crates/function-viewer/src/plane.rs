@@ -16,7 +16,7 @@ use mv_text::{Face, Features, Style};
 
 use crate::grid::{GridLabel, GridLayout, layout_grid, layout_labels};
 use crate::plane_geometry::{HandlePath, handle_path, line_path, to_px};
-use crate::scale_legend::{LegendColors, legend_geometry, paint_legend};
+use crate::scale_legend::LegendColors;
 
 /// The font size of every text on the plane (`constants.ts`).
 pub const PLANE_FONT_SIZE: f64 = 14.0;
@@ -46,7 +46,8 @@ pub struct PlaneColors {
     pub axis: [f32; 4],
     pub label: [f32; 4],
     pub page: [f32; 4],
-    /// The scale legend's colours, painted with the plane.
+    /// The scale legend's colours, drawn by the viewer after the bare plane
+    /// (its `drawPlaneWithScale`), never by `paint_plane` itself.
     pub legend: LegendColors,
 }
 
@@ -455,12 +456,14 @@ pub fn plane_texts(
     texts
 }
 
-/// Paints the plane over the canvas's content box: the grid, the axes, the
-/// curves, the handles, the point markers, and, once the font has loaded, the
-/// labels and the scale legend (the `drawCartesianPlane` order: the dashed
-/// originals, the lit parameter's lines, the solid curves, the handles, the
-/// guides, the drop lines, the markers with their labels, the legend).
-/// h6-curve paints its dashed originals behind each transformed curve;
+/// Paints the bare plane over the canvas's content box: the grid, the axes,
+/// the curves, the handles, the point markers and, once the font has loaded,
+/// the labels (the `drawCartesianPlane` order: the dashed originals, the lit
+/// parameter's lines, the solid curves, the handles, the guides, the drop
+/// lines, the markers with their labels). The scale legend is not painted
+/// here: the function viewer draws it after the bare plane (its
+/// `drawPlaneWithScale`), and the welcome page's hero draws the bare plane
+/// alone. h6-curve paints its dashed originals behind each transformed curve;
 /// the dispatch below splits its pass around the lines.
 // Fifteen paint inputs (the plane's six, the frame's curves with their
 // three inks, the handles and lines with theirs, the markers with their
@@ -494,10 +497,11 @@ pub fn paint_plane(
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     paint_grid(vg, content.width, content.height, &grid, colors);
     paint_axes(vg, content.width, content.height, &grid, colors);
-    // The labels and the legend wait for their font; the curves draw either
-    // way, between them in draw order (as `drawCartesianPlane` draws the
-    // curves before the font-gated legend).
-    let legend = if font_ready {
+    // The labels wait for their font; the curves draw either way, between
+    // them in draw order (as `drawCartesianPlane` draws the curves before
+    // the font-gated text). The legend is the viewer's to draw after this
+    // returns, so only the measured labels are kept here.
+    let labels = if font_ready {
         let style = label_style();
         // `layout_labels` takes a shared measure while shaping borrows the
         // fonts mutably: the cell lends them out call by call, which is sound
@@ -510,12 +514,9 @@ pub fn paint_plane(
             f64::from(mv_text::measure(fonts, style, text))
         };
         let labels = layout_labels(&grid, PLANE_FONT_SIZE, &measure);
-        let legend_label = crate::scale_legend::legend_text(scale);
-        let legend_width = measure(&legend_label);
-        let geometry = legend_geometry(&grid, legend_width);
         let fonts = cell.into_inner();
         paint_labels(fonts, vg, &labels, colors.label);
-        Some((fonts, geometry))
+        Some(fonts)
     } else {
         None
     };
@@ -546,12 +547,11 @@ pub fn paint_plane(
     );
     paint_handles(vg, &grid, handles, primary, colors.page);
     // The markers paint over the handles; their labels wait for the font
-    // with the axis labels (the `legend` option carries the measured fonts
+    // with the axis labels (the `labels` option carries the measured fonts
     // exactly when `font_ready` lent them).
-    match legend {
-        Some((fonts, geometry)) => {
+    match labels {
+        Some(fonts) => {
             crate::plane_markers::paint_markers(fonts, vg, &grid, markers, mcolors, true);
-            paint_legend(fonts, vg, &geometry, &colors.legend);
         }
         None => {
             crate::plane_markers::paint_markers(fonts, vg, &grid, markers, mcolors, false);
