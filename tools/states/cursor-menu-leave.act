@@ -1,0 +1,17 @@
+# cursor-menu-leave (fix-cursor): leaving a theme row restores the default
+# cursor. Clean Teal row centre probed at (1251,226), box [1112,208,278,36];
+# (1116,95) is the Appearance title's left padding inside the open menu: no
+# region, the menu stays open, the pointer never crosses the plane.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+move 1251 226
+wait 300
+move 1116 95
+wait 300
+shot cursor-menu-leave

@@ -31,3 +31,7 @@ H8 = ["marker-p-default", "marker-p-values", "marker-p-sinx", "marker-p-tron-cya
 # H10 at 68e1c7b: the welcome page at the root route (h10-t-route's
 # welcome-route state opens it; the coders append their states).
 H10 = ["welcome-route", "welcome-default", "welcome-default-tron-cyan", "welcome-default-midnight-violet", "welcome-default-clean-teal", "welcome-default-educational-warm", "welcome-default-sage-editorial", "welcome-settings-open", "welcome-pick-light", "welcome-tab-cta", "welcome-cta-click", "viewer-wordmark-click", "route-roundtrip"]
+# fix-cursor: the pointer on every control the reference gives it (plus the
+# selector cells the user asked for, overturnable) and the default restored
+# on leave.
+FIXCURSOR = ["cursor-cells-hover", "cursor-cells-leave", "cursor-menu-cell", "cursor-menu-leave", "cursor-cta"]

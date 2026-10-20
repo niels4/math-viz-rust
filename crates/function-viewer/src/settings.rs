@@ -574,6 +574,9 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             false,
         );
     });
+    // Default on the cells (fix-cursor): the reference's labels carry no
+    // cursor rule and compute default in WebKit, Chromium and Firefox alike
+    // (measured at 68e1c7b), so the port's pointer was a divergence.
     crate::input::region(
         app,
         mv_clay::id("MenuCell", index as u32),
@@ -581,8 +584,8 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             kind: HitKind::SettingsLightDark,
             index: index as i64,
         },
-        Cursor::Pointer,
-        Cursor::Pointer,
+        Cursor::Default,
+        Cursor::Default,
         checked,
         crate::ui::corner_radius_all(0.0),
     );
@@ -729,6 +732,8 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             });
         }
     });
+    // Default on the rows (fix-cursor): as the cells above, the reference's
+    // labels compute default in all three engines (measured at 68e1c7b).
     crate::input::region(
         app,
         mv_clay::id("MenuRow", index as u32),
@@ -736,8 +741,8 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             kind: HitKind::SettingsTheme,
             index: index as i64,
         },
-        Cursor::Pointer,
-        Cursor::Pointer,
+        Cursor::Default,
+        Cursor::Default,
         selected,
         crate::ui::corner_radius_all(0.0),
     );

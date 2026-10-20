@@ -282,12 +282,18 @@ fn cell(app: &mut App, slug: FunctionSlug, index: usize, checked: bool) {
             runs(app, slug, index, foreground);
         },
     );
+    // Pointer on the cells (fix-cursor, overturnable): the user reports the
+    // reference shows the pointer here, and asked for it. Measured at
+    // 68e1c7b the reference computes default (Chromium/Firefox UA on the
+    // covering radio input) or auto (WebKit) — the arrow, not the pointer —
+    // in all three engines, so this is a deliberate deviation from the hash,
+    // one revert to undo.
     crate::input::region(
         app,
         mv_clay::id("FunctionCell", index as u32),
         hit,
-        Cursor::Default,
-        Cursor::Default,
+        Cursor::Pointer,
+        Cursor::Pointer,
         checked,
         crate::ui::corner_radius_all(0.0),
     );

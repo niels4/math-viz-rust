@@ -1,0 +1,14 @@
+# cursor-cells-leave (fix-cursor): leaving the x2 cell restores the default
+# cursor. (400,179) is the Function card's padding past the sin x cell: no
+# region, no text, the pointer never crosses the plane.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 172.5 179
+wait 300
+move 400 179
+wait 300
+shot cursor-cells-leave

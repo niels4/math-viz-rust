@@ -1,0 +1,17 @@
+# cursor-cta (fix-cursor): the pointer over the welcome page's Function Viewer
+# link, default again over the title. CTA centre probed at (233,553.5),
+# title at (270,324); the move between them never crosses the hero.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+move 233 553.5
+wait 300
+shot cursor-cta
+move 270 324
+wait 300
+shot cursor-cta-leave
