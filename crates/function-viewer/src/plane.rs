@@ -114,7 +114,7 @@ pub fn paint_axes(
     vg: &mut mv_nvg::Context,
     content: &clay::BoundingBox,
     grid: &GridLayout,
-    axis: [f32; 4],
+    colors: &PlaneColors,
 ) {
     vg.begin_path();
     if let Some(x) = grid.x_origin {
@@ -137,7 +137,7 @@ pub fn paint_axes(
             vg.line_to(x, y + TICK_HALF as f32);
         }
     }
-    vg.stroke_color(axis);
+    vg.stroke_color(colors.axis);
     vg.stroke_width(2.0);
     vg.stroke();
 }
@@ -270,7 +270,7 @@ pub fn paint_plane(
     vg.scissor(content.x, content.y, content.width, content.height);
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     paint_grid(vg, content, &grid, colors);
-    paint_axes(vg, content, &grid, colors.axis);
+    paint_axes(vg, content, &grid, colors);
     if font_ready {
         let style = label_style();
         // `layout_labels` takes a shared measure while shaping borrows the

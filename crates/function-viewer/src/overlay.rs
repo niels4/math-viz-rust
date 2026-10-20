@@ -112,45 +112,26 @@ pub struct OverlayColors {
     pub focus_ring: [f32; 4],
 }
 
-/// Paints the four corner brackets: two [`CORNER_WIDTH`] arms each.
+/// Paints the four corner brackets: two [`CORNER_WIDTH`] arms each, one path.
 pub fn paint_corners(vg: &mut mv_nvg::Context, corners: &[clay::BoundingBox; 4], chrome: [f32; 4]) {
-    vg.fill_color(chrome);
+    vg.begin_path();
     for (i, corner) in corners.iter().enumerate() {
         let (top, left) = (i < 2, i % 2 == 0);
-        vg.begin_path();
-        if top {
-            crate::draw::fill_rect(vg, [corner.x, corner.y, corner.width, CORNER_WIDTH], chrome);
+        let arm_y = if top {
+            corner.y
         } else {
-            crate::draw::fill_rect(
-                vg,
-                [
-                    corner.x,
-                    corner.y + corner.height - CORNER_WIDTH,
-                    corner.width,
-                    CORNER_WIDTH,
-                ],
-                chrome,
-            );
-        }
-        if left {
-            crate::draw::fill_rect(
-                vg,
-                [corner.x, corner.y, CORNER_WIDTH, corner.height],
-                chrome,
-            );
+            corner.y + corner.height - CORNER_WIDTH
+        };
+        let arm_x = if left {
+            corner.x
         } else {
-            crate::draw::fill_rect(
-                vg,
-                [
-                    corner.x + corner.width - CORNER_WIDTH,
-                    corner.y,
-                    CORNER_WIDTH,
-                    corner.height,
-                ],
-                chrome,
-            );
-        }
+            corner.x + corner.width - CORNER_WIDTH
+        };
+        vg.rect(corner.x, arm_y, corner.width, CORNER_WIDTH);
+        vg.rect(arm_x, corner.y, CORNER_WIDTH, corner.height);
     }
+    vg.fill_color(chrome);
+    vg.fill();
 }
 
 /// Paints the button: the rounded plate, the target icon (the ring, the dot
