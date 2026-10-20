@@ -4,12 +4,15 @@
 //! `FunctionViewer.module.css` at `adb0534`: the page grid (16 px padding,
 //! 16 px gaps, title row over content row, 400 px sidebar column), the top
 //! bar spanning it, and the sidebar stub the later milestones replace. The
-//! frame paint walks Clay's commands through NanoVG; the theme cross-fade
-//! paints the last stable frame's snapshot over the new one.
+//! body cell holds the plane's canvas (h2-plane's slot: the bordered box,
+//! the grid paint and the overlay). The frame paint walks Clay's commands
+//! through NanoVG; the theme cross-fade paints the last stable frame's
+//! snapshot over the new one.
 
 use mv_sys::clay;
 
 use crate::app::App;
+use crate::input::{Cursor, Hit, HitKind};
 use crate::transition::Transition;
 
 /// The page grid: 16 px padding and gaps, 400 px sidebar column.
@@ -96,7 +99,15 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
-            crate::ui::ui_scope(app, mv_clay::id("Body", 0), &body, |_| {});
+            // The plane's canvas (h2-plane's slot): the border box fills the
+            // cell, as the canvas fills its wrapper; the 1 px border and 4 px
+            // radius are the CSS values, and the grid paints inside them.
+            body.border = clay::BorderElementConfig {
+                color: crate::ui::ink(crate::ui::current_theme(app), mv_theme::Token::Border),
+                width: mv_clay::border_outside(1),
+            };
+            body.cornerRadius = crate::ui::corner_radius_all(crate::plane::CANVAS_RADIUS);
+            crate::ui::ui_scope(app, mv_clay::id(crate::plane::PLANE_ID, 0), &body, |_| {});
         });
     });
     app.clay
@@ -104,6 +115,77 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
         .expect("clay context initialised")
         .end_layout()
         .to_vec()
+}
+
+/// The canvas's border box, once laid out.
+fn plane_box(app: &App) -> Option<clay::BoundingBox> {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
+    data.found.then_some(data.boundingBox)
+}
+
+/// Declares the overlay button's kept region: the pointer shows over it, the
+/// click lands on `ReturnToCenter`, and Tab stops on it after the gear. Runs
+/// after the layout (the button's box derives from the canvas's), before the
+/// regions resolve.
+fn declare_plane_button(app: &mut App) {
+    if !crate::overlay::button_visible() {
+        return;
+    }
+    let Some(canvas) = plane_box(app) else {
+        return;
+    };
+    let button = crate::overlay::overlay_button_box(&canvas);
+    crate::input::region_kept(
+        app,
+        Hit {
+            kind: HitKind::ReturnToCenter,
+            index: 0,
+        },
+        button,
+        Cursor::Pointer,
+        Cursor::Pointer,
+        true,
+        crate::ui::corner_radius_all(crate::overlay::BUTTON_RADIUS),
+    );
+}
+
+/// Paints the plane's slot over the canvas: the grid, axes, labels and scale
+/// legend on the content box, then the overlay's brackets and button. Runs
+/// after the Clay commands (over the page background), before the
+/// transition's fade.
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+    let Some(canvas) = plane_box(app) else {
+        return;
+    };
+    let content = crate::plane::canvas_content(&canvas);
+    let (center, scale) = crate::plane::plane_camera(&app.url);
+    let colors = crate::plane::plane_colors(theme);
+    // Natively fonts are always loaded, so the plane always shows its text;
+    // the pre-font grid-only state is recorded, not reproduced.
+    crate::plane::paint_plane(
+        &mut app.fonts,
+        &mut app.vg,
+        &content,
+        center,
+        scale,
+        &colors,
+        true,
+    );
+    let overlay = crate::overlay::overlay_box(&canvas);
+    let ocolors = crate::overlay::overlay_colors(theme);
+    crate::overlay::paint_corners(
+        &mut app.vg,
+        &crate::overlay::corner_boxes(&overlay),
+        ocolors.chrome,
+    );
+    let button = crate::overlay::overlay_button_box(&canvas);
+    let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
+    let focused = app.input.focus.kind == HitKind::ReturnToCenter;
+    crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -127,12 +209,15 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
+    declare_plane_button(app);
+    crate::input::collect_regions(app);
     paint_bar_shadow(app, &theme);
     let fading = app
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
     draw_commands(app, density, &commands);
+    draw_plane(app, &theme);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     } else {

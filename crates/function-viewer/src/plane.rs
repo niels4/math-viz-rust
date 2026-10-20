@@ -49,6 +49,9 @@ pub struct PlaneColors {
     pub legend: LegendColors,
 }
 
+/// The canvas element's Clay id, for the slot's lookup and tests.
+pub const PLANE_ID: &str = "Plane";
+
 /// The canvas's content box: the border box inside its 1 px CSS border (the
 /// page sets `box-sizing: border-box`, and the backing store is the content
 /// box times the density).
@@ -71,56 +74,96 @@ pub fn label_style() -> Style {
     }
 }
 
-/// Traces vertical lines over the content's full height and horizontal lines
-/// over its full width into one path.
+/// The camera the plane draws from: the page query's `center` and `scale`
+/// through `camera.rs`'s parses, defaulting where a key is missing or
+/// unparseable, as `queryParamAtom` falls back to its default. h2-input's
+/// merge switches the slot to its live camera.
+pub fn plane_camera(url: &crate::url::Url) -> ([f64; 2], f64) {
+    let center = url
+        .raw("center")
+        .as_deref()
+        .and_then(crate::camera::parse_center)
+        .unwrap_or(crate::camera::DEFAULT_CENTER);
+    let scale = url
+        .raw("scale")
+        .as_deref()
+        .and_then(crate::camera::parse_scale)
+        .unwrap_or(crate::camera::DEFAULT_SCALE);
+    (center, scale)
+}
+
+/// The plane's colours from the resolved theme.
+pub fn plane_colors(theme: &mv_theme::Theme) -> PlaneColors {
+    PlaneColors {
+        grid: theme.colors[mv_theme::Token::ChartGrid],
+        grid_major: theme.colors[mv_theme::Token::ChartGridMajor],
+        axis: theme.colors[mv_theme::Token::ChartAxis],
+        label: theme.colors[mv_theme::Token::ForegroundMuted],
+        page: theme.colors[mv_theme::Token::Background],
+        legend: crate::scale_legend::LegendColors {
+            rim: theme.colors[mv_theme::Token::ChartGrid],
+            fill: theme.colors[mv_theme::Token::Background],
+            bar: theme.colors[mv_theme::Token::Foreground],
+            text: theme.colors[mv_theme::Token::ForegroundMuted],
+        },
+    }
+}
+
+/// Traces vertical lines over the canvas's full height and horizontal lines
+/// over its full width into one path, in canvas-relative px (the caller
+/// translates to the content box).
 fn trace_lines(
     vg: &mut mv_nvg::Context,
-    content: &clay::BoundingBox,
+    width: f32,
+    height: f32,
     vertical: &[crate::grid::GridLine],
     horizontal: &[crate::grid::GridLine],
 ) {
     for line in vertical {
-        vg.move_to(line.px as f32, content.y);
-        vg.line_to(line.px as f32, content.y + content.height);
+        vg.move_to(line.px as f32, 0.0);
+        vg.line_to(line.px as f32, height);
     }
     for line in horizontal {
-        vg.move_to(content.x, line.px as f32);
-        vg.line_to(content.x + content.width, line.px as f32);
+        vg.move_to(0.0, line.px as f32);
+        vg.line_to(width, line.px as f32);
     }
 }
 
-/// Paints the minor and major grid lines, 1 px each.
+/// Paints the minor and major grid lines, 1 px each, in canvas-relative px.
 pub fn paint_grid(
     vg: &mut mv_nvg::Context,
-    content: &clay::BoundingBox,
+    width: f32,
+    height: f32,
     grid: &GridLayout,
     colors: &PlaneColors,
 ) {
     vg.begin_path();
-    trace_lines(vg, content, &grid.minor_x, &grid.minor_y);
+    trace_lines(vg, width, height, &grid.minor_x, &grid.minor_y);
     vg.stroke_color(colors.grid);
     vg.stroke_width(1.0);
     vg.stroke();
 
     vg.begin_path();
-    trace_lines(vg, content, &grid.major_x, &grid.major_y);
+    trace_lines(vg, width, height, &grid.major_x, &grid.major_y);
     vg.stroke_color(colors.grid_major);
     vg.stroke_width(1.0);
     vg.stroke();
 }
 
-/// Paints the axes, 2 px, with a tick at every major line.
+/// Paints the axes, 2 px, with a tick at every major line, in
+/// canvas-relative px.
 pub fn paint_axes(
     vg: &mut mv_nvg::Context,
-    content: &clay::BoundingBox,
+    width: f32,
+    height: f32,
     grid: &GridLayout,
     colors: &PlaneColors,
 ) {
     vg.begin_path();
     if let Some(x) = grid.x_origin {
         let x = x as f32;
-        vg.move_to(x, content.y);
-        vg.line_to(x, content.y + content.height);
+        vg.move_to(x, 0.0);
+        vg.line_to(x, height);
         for line in &grid.major_y {
             let y = line.px as f32;
             vg.move_to(x - TICK_HALF as f32, y);
@@ -129,8 +172,8 @@ pub fn paint_axes(
     }
     if let Some(y) = grid.y_origin {
         let y = y as f32;
-        vg.move_to(content.x, y);
-        vg.line_to(content.x + content.width, y);
+        vg.move_to(0.0, y);
+        vg.line_to(width, y);
         for line in &grid.major_x {
             let x = line.px as f32;
             vg.move_to(x, y - TICK_HALF as f32);
@@ -166,31 +209,19 @@ pub fn paint_labels(
     }
 }
 
-/// Fills the content box's corner triangles with the page colour: the canvas
+/// Fills the canvas's corner triangles with the page colour: the canvas
 /// bitmap paints square corners and the CSS radius rounds them after, so the
-/// port cuts the same triangles out after painting its ink.
-fn paint_corner_cutouts(vg: &mut mv_nvg::Context, content: &clay::BoundingBox, page: [f32; 4]) {
+/// port cuts the same triangles out after painting its ink. Canvas-relative.
+fn paint_corner_cutouts(vg: &mut mv_nvg::Context, width: f32, height: f32, page: [f32; 4]) {
     /// The bezier control offset for a quarter circle of radius 1.
     const KAPPA: f32 = 0.552_284_8;
     let r = CANVAS_RADIUS;
     // Each corner: its sharp point and its arc centre.
     let corners = [
-        ([content.x, content.y], [content.x + r, content.y + r]),
-        (
-            [content.x + content.width, content.y],
-            [content.x + content.width - r, content.y + r],
-        ),
-        (
-            [content.x, content.y + content.height],
-            [content.x + r, content.y + content.height - r],
-        ),
-        (
-            [content.x + content.width, content.y + content.height],
-            [
-                content.x + content.width - r,
-                content.y + content.height - r,
-            ],
-        ),
+        ([0.0, 0.0], [r, r]),
+        ([width, 0.0], [width - r, r]),
+        ([0.0, height], [r, height - r]),
+        ([width, height], [width - r, height - r]),
     ];
     vg.fill_color(page);
     for (c, a) in corners {
@@ -268,9 +299,11 @@ pub fn paint_plane(
     let grid = layout_grid(center, scale, width, height, LABEL_MARGIN);
     vg.save();
     vg.scissor(content.x, content.y, content.width, content.height);
+    // The layouts are canvas-relative; the frame draws in window px.
+    vg.translate(content.x, content.y);
     vg.line_cap(mv_nvg::LineCapType::BUTT);
-    paint_grid(vg, content, &grid, colors);
-    paint_axes(vg, content, &grid, colors);
+    paint_grid(vg, content.width, content.height, &grid, colors);
+    paint_axes(vg, content.width, content.height, &grid, colors);
     if font_ready {
         let style = label_style();
         // `layout_labels` takes a shared measure while shaping borrows the
@@ -291,24 +324,9 @@ pub fn paint_plane(
         paint_legend(fonts, vg, &geometry, &colors.legend);
     }
     vg.reset_scissor();
-    paint_corner_cutouts(vg, content, colors.page);
-    // The CSS border, `1px solid var(--border)`: a 1 px stroke centred on the
-    // border box inset half a px covers the border's exact pixels, with the
-    // outer radius concentric (4 px outside, 3 px inside).
-    vg.begin_path();
-    vg.rounded_rect_varying(
-        content.x - 0.5,
-        content.y - 0.5,
-        content.width + 1.0,
-        content.height + 1.0,
-        CANVAS_RADIUS - 0.5,
-        CANVAS_RADIUS - 0.5,
-        CANVAS_RADIUS - 0.5,
-        CANVAS_RADIUS - 0.5,
-    );
-    vg.stroke_color(colors.grid);
-    vg.stroke_width(1.0);
-    vg.stroke();
+    paint_corner_cutouts(vg, content.width, content.height, colors.page);
+    // The CSS border stays Clay's: the canvas element's Border command strokes
+    // the border box inset half a px, the border's exact pixels.
     vg.restore();
 }
 
@@ -493,5 +511,39 @@ mod tests {
             "labels sit on multiples of twice the major step"
         );
         assert_eq!(crate::scale_legend::legend_text(100.0), "100.00 u");
+    }
+
+    /// The canvas slot fills the body cell: the laid-out `Plane` box matches
+    /// the reference's canvas box within the plan's 0.5 CSS px.
+    #[test]
+    fn canvas_slot_matches_fixture() {
+        const SLACK: f32 = 0.5;
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let data = clay.get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
+        assert!(data.found, "Plane element laid out");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot =
+            crate::fixture::fixture_shot(&fixture, "default").expect("default shot in fixture");
+        let want = crate::fixture::fixture_box(&shot.webkit, "canvas").expect("canvas in fixture");
+        let b = data.boundingBox;
+        for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+            .iter()
+            .zip(want.iter())
+            .enumerate()
+        {
+            assert!(
+                (got - want).abs() <= SLACK,
+                "canvas[{i}]: laid out {got}, reference {want}"
+            );
+        }
+        crate::ui::release_clay(&mut app);
+        mv_text::destroy(&mut app.fonts);
     }
 }

@@ -4,9 +4,9 @@
 //! Ported from `src/components/views/CartesianPlane/HtmlOverlay.tsx` and the
 //! overlay half of `CartesianPlain.module.css` at c409aad. Geometry is pure
 //! (tested against the reference's boxes); the brackets and the button paint
-//! through NanoVG, and the button declares an input region for hover and the
-//! click. The click resets through [`App::reset_view`], which h2-input wires
-//! to its live camera.
+//! through NanoVG, and the page slot declares the button's kept region for
+//! hover and the click. The click resets through [`App::reset_view`], which
+//! h2-input wires to its live camera.
 //!
 //! At this hash the button renders on every view: `HtmlOverlay.tsx` holds no
 //! visibility conditional (the reference shows it at the default camera too,
@@ -15,7 +15,6 @@
 use mv_sys::clay;
 
 use crate::app::App;
-use crate::input::{Cursor, Hit, HitKind, Region};
 
 /// The overlay sits this far inside the plane's edges (`--space-inset`).
 pub const INSET: f32 = 12.0;
@@ -203,25 +202,19 @@ pub fn paint_button(
     vg.stroke();
 }
 
-/// The button's input region: the pointer shows over it, and the click lands
-/// on [`HitKind::ReturnToCenter`].
-pub fn button_region(button: &clay::BoundingBox) -> Region {
-    Region {
-        hit: Hit {
-            kind: HitKind::ReturnToCenter,
-            index: 0,
-        },
-        r#box: *button,
-        cursor: Cursor::Pointer,
-        pressed: Cursor::Pointer,
-        radius: clay::CornerRadius {
-            topLeft: BUTTON_RADIUS,
-            topRight: BUTTON_RADIUS,
-            bottomLeft: BUTTON_RADIUS,
-            bottomRight: BUTTON_RADIUS,
-        },
-        clip: None,
-        z: 0,
+/// The overlay's colours from the resolved theme.
+pub fn overlay_colors(theme: &mv_theme::Theme) -> OverlayColors {
+    let primary = theme.colors[mv_theme::Token::Primary];
+    OverlayColors {
+        chrome: theme.colors[mv_theme::Token::ForegroundMuted],
+        button: theme.colors[mv_theme::Token::Card],
+        button_hover: theme.colors[mv_theme::Token::Secondary],
+        button_rim: theme.colors[mv_theme::Token::Border],
+        button_ink: theme.colors[mv_theme::Token::Foreground],
+        // `color-mix(in oklch, var(--primary) 32%, transparent)` as a plain
+        // alpha: no state focuses the button, so the mix's exact oklch path
+        // is unjudged.
+        focus_ring: [primary[0], primary[1], primary[2], 0.32],
     }
 }
 

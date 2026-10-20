@@ -237,6 +237,8 @@ pub struct Declared {
     pub region: Region,
     pub stop: bool,
     pub clip: Option<super::scroll::Scroller>,
+    /// Keep the declared box: a painted target no Clay element resolves.
+    pub keep_box: bool,
 }
 
 /// Declares a target for this frame's layout, unless inert.
@@ -280,24 +282,81 @@ pub fn region(
         },
         stop,
         clip,
+        keep_box: false,
+    });
+}
+
+/// Declares a painted target: the layout computed its box (no Clay element
+/// resolves it), so `collect_regions` keeps the declared box. The plane's
+/// overlay button uses this; Clay-laid targets use `region`.
+pub fn region_kept(
+    app: &mut App,
+    hit: Hit,
+    r#box: clay::BoundingBox,
+    cursor: Cursor,
+    pressed: Cursor,
+    stop: bool,
+    radius: clay::CornerRadius,
+) {
+    if app.input.inert {
+        let z = app.input.z;
+        if (0..64).contains(&z) {
+            app.input.inert_layers |= 1u64 << z;
+        }
+        return;
+    }
+    let z = app.input.z;
+    let clip = app.input.clip;
+    app.input.declared.push(Declared {
+        // Never resolved: `collect_regions` keeps the declared box.
+        id: mv_clay::id("KeptBox", 0),
+        region: Region {
+            hit,
+            r#box,
+            cursor,
+            pressed: if pressed != Cursor::Default {
+                pressed
+            } else {
+                cursor
+            },
+            radius,
+            clip: None,
+            z,
+        },
+        stop,
+        clip,
+        keep_box: true,
     });
 }
 
 /// Resolves the declared boxes through the layout into regions and stops.
 ///
-/// The layout data lives in the Clay context the frame laid out with, which
-/// the caller (the layout pass) holds; the app keeps only the arena backing.
-pub fn collect_regions(app: &mut App, clay: &mv_clay::Clay) {
+/// Clay-laid targets resolve their boxes from their elements; painted targets
+/// declared through [`region_kept`] keep their declared boxes. The layout
+/// data lives in the Clay context the frame laid out with, which the caller
+/// (the layout pass) holds; the app keeps only the arena backing.
+///
+/// Callers hold `&mut App` whole, beside the Clay context they read: the
+/// context outlives the call on this thread and no layout runs beside it
+/// (the same shape as [`crate::ui::ui_scope`]'s aliasing).
+pub fn collect_regions(app: &mut App) {
+    let clay = app.clay.as_ref().expect("clay context initialised") as *const mv_clay::Clay;
+    // SAFETY: the frame lays out and collects on this thread while the app
+    // lives; the context is read (element boxes) while the input state is
+    // written, disjoint fields no layout touches beside this call.
+    let clay = unsafe { &*clay };
     let (input, scroll) = (&mut app.input, &app.scroll);
     input.regions.clear();
     input.stops.clear();
     for d in &input.declared {
-        let data = clay.get_element_data(d.id);
-        if !data.found {
-            continue;
-        }
         let mut r = d.region;
-        r.r#box = data.boundingBox;
+        if !d.keep_box {
+            let data = clay.get_element_data(d.id);
+            if !data.found {
+                continue;
+            }
+            r.r#box = data.boundingBox;
+        }
         if let Some(s) = d.clip {
             // The container's padding box: it clips its content inside its border.
             let c = clay.get_element_data(mv_clay::id(crate::scroll::SCROLLER_IDS[s], 0));
@@ -1025,5 +1084,48 @@ mod tests {
                 panic!("a display-scale change decodes as Unknown, got {other:?}");
             }
         }
+    }
+
+    /// A painted target keeps its declared box through the resolve: the
+    /// overlay button's box (no Clay element resolves it) lands in the
+    /// regions as declared, with its stop.
+    #[test]
+    fn kept_region_resolves_to_its_declared_box() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        crate::ui::init_clay(&mut app);
+        let button = mv_sys::clay::BoundingBox {
+            x: 1359.5,
+            y: 780.5,
+            width: 36.0,
+            height: 36.0,
+        };
+        region_kept(
+            &mut app,
+            Hit {
+                kind: HitKind::ReturnToCenter,
+                index: 0,
+            },
+            button,
+            Cursor::Pointer,
+            Cursor::Pointer,
+            true,
+            crate::ui::corner_radius_all(4.0),
+        );
+        collect_regions(&mut app);
+        assert_eq!(app.input.regions.len(), 1);
+        let region = app.input.regions[0];
+        assert_eq!(region.hit.kind, HitKind::ReturnToCenter);
+        assert_eq!(
+            [
+                region.r#box.x,
+                region.r#box.y,
+                region.r#box.width,
+                region.r#box.height
+            ],
+            [1359.5, 780.5, 36.0, 36.0]
+        );
+        assert_eq!(app.input.stops, vec![region.hit]);
+        crate::ui::release_clay(&mut app);
     }
 }
