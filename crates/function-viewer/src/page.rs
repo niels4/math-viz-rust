@@ -220,6 +220,27 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
+    // The scrub tips float above the rows (the DOM's `z-index: 1` on `.tip`):
+    // the commands a laid-out tip's box holds walk after the rows' post-pass
+    // rings, which would otherwise print over them (h5-fix-tip: k's inset
+    // ring over a's tip). The walks keep Clay's order within each layer; a
+    // neighbour's text fully inside the tip keeps its place ahead of the
+    // tip's plate in both, so it paints the same.
+    let tip_ids = crate::scrub_value::tip_box_ids();
+    let mut tip_rects: Vec<clay::BoundingBox> = Vec::new();
+    for command in &commands {
+        if command.commandType == clay::RenderCommandType::Rectangle
+            && tip_ids.contains(&command.id)
+        {
+            tip_rects.push(command.boundingBox);
+        }
+    }
+    let (tips, rest): (Vec<clay::RenderCommand>, Vec<clay::RenderCommand>) =
+        commands.into_iter().partition(|command| {
+            tip_rects
+                .iter()
+                .any(|tip| contains_box(*tip, &command.boundingBox))
+        });
     // The canvas first, then the overlay button, so the button wins their
     // overlap at equal z.
     crate::plane_input::declare_plane_region(app);
@@ -232,7 +253,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
-    draw_commands(app, density, &commands);
+    draw_commands(app, density, &rest);
     draw_plane(app, &theme);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
@@ -246,6 +267,12 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
+    // The tip layer above the rings (partitioned above): the tip's plate,
+    // caps and words cover whatever ring segments run beneath them, as the
+    // DOM paints the positioned tip over the boxes. The arrows land on the
+    // caps last, as `paint_rows` held them.
+    draw_commands(app, density, &tips);
+    crate::scrub_value::paint_extras(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }
@@ -310,6 +337,17 @@ fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
         .expect("clay context initialised")
         .get_element_data(id);
     data.found.then_some(data.boundingBox)
+}
+
+/// Whether the tip's box holds the command's box: the tip's own plate and
+/// border share its box exactly, its caps and words sit strictly inside.
+/// Neighbour boxes only overlap it (their far edges stick out), so exact
+/// comparison needs no slack.
+fn contains_box(tip: clay::BoundingBox, inner: &clay::BoundingBox) -> bool {
+    tip.x <= inner.x
+        && tip.y <= inner.y
+        && inner.x + inner.width <= tip.x + tip.width
+        && inner.y + inner.height <= tip.y + tip.height
 }
 
 /// Paints a 0 6 px 18 px shadow behind the box.

@@ -388,6 +388,34 @@ no new tokens (all eight tabled).
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
 
+### h5-fix-tip (tip above the post-pass rings; flip-focus verdict)
+
+- The scrub tip is the DOM's `z-index: 1` layer: `draw_page` partitions the
+  frame's commands and walks everything a laid-out tip's box holds after
+  the rows' post-pass rings (which print over it otherwise — measured: k's
+  inset ring over a's tip, 304 saturated-gold px in the tip box vs 5 in the
+  reference). Clay order holds within each walk; a neighbour's text fully
+  inside the tip keeps its place ahead of the tip's plate in both, so it
+  paints the same.
+- Only a Rectangle command carries its element's id: Clay derives Border
+  ids (`HashNumber(elementId, children.length)`) and Text ids
+  (`HashNumber(lineIndex, elementId)`) from it (`clay.h`'s
+  `Clay__CalculateFinalLayout`). Matching a layer by id set alone moves the
+  plate and buries its border and words under it (measured: +3827 px);
+  anchor on the id-matched plate Rectangle's box and take everything the
+  box holds. The arrow glyph scopes declare no commands; their paths paint
+  in `paint_extras`, which moved from the end of `paint_rows` to after the
+  tip walk.
+- flip-focus settles from the CSS/TS at `b8a0e1d`, not the pixels: `.box`
+  digits are unconditionally `var(--row-ink)` (the lit state drives row
+  tint, inset width and `data-lit`, never digit colour), and the toggle's
+  focus lights b's row through `onFocus` → `focusAtom` → `litAtom`
+  (lead-wins). Measured in ref-Chromium and ref-Firefox alike: b's toggle
+  focused with its ring, only b lit, all digits full param colour — the
+  port matches on every target, so the union's gold-vs-peach claim does not
+  reproduce and there is no defect and no new quirk; the only engine split
+  stays the known WebKit Tab quirk (focuses b's box, buttons skipped).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
