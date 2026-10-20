@@ -528,7 +528,9 @@ mod tests {
     /// The port's boxes against `testdata/page.json` (the reference at this
     /// hash, `tools/run dom --fixture`): the canvas and the overlay button
     /// within the plan's 0.5 CSS px, and the content and button boxes derived
-    /// from the canvas exactly.
+    /// from the canvas exactly. At `5cef052` the button only renders off the
+    /// default camera (the tooltip commit), so its box reads from the
+    /// overlay-visible shot (h6-curve's fixture fix).
     #[test]
     fn boxes_match_fixture() {
         const SLACK: f64 = 0.5;
@@ -550,7 +552,10 @@ mod tests {
             assert!((got - want).abs() <= SLACK, "content {got} against {want}");
         }
         let button = crate::overlay::overlay_button_box(&canvas);
-        let want = boxes["overlay_button"].as_array().expect("button box");
+        let moved_boxes = &fixture["shots"]["overlay-visible"]["webkit"]["boxes"];
+        let want = moved_boxes["overlay_button"]
+            .as_array()
+            .expect("button box");
         for (i, (got, want)) in [
             f64::from(button.x),
             f64::from(button.y),

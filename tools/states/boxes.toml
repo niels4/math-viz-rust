@@ -30,8 +30,10 @@ header = "#root > div > div"
 title = "h1"
 gear = "button"
 # H2 at c409aad: the return-to-centre button over the canvas (CSS-module hashes
-# make class selectors unusable, so the accessible name selects it).
-overlay_button = "button[aria-label=\"Return to center\"]"
+# make class selectors unusable, so the accessible name selects it). Renamed
+# at 5cef052 (the tooltip commit) to "Reset view to origin" (h6-curve's
+# rename fix; h6-handles owns the tooltip's own selectors).
+overlay_button = "button[aria-label=\"Reset view to origin\"]"
 # H3 at 3560eb2: the sidebar column, the Function card (the sidebar's first
 # div child), and the four option labels (the buttons div's children).
 # CSS-module hashes make class selectors unusable; structural selectors

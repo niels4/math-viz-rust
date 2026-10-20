@@ -171,6 +171,11 @@ FIXTURE_STATES = (
     # ruler-a-30 (a's box held 30 px in).
     "ruler-a-30",
     "reset-visible",
+    # h6 at 5cef052: the return-to-centre button only renders off the default
+    # camera (the tooltip commit), so the fixture runs overlay-visible for
+    # its box (h6-curve's fixture fix; the button's own visibility and tip
+    # are h6-handles').
+    "overlay-visible",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"
