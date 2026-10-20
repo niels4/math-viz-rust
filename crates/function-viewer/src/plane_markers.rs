@@ -22,7 +22,8 @@ use mv_text::{Face, Features, Style};
 use crate::grid::GridLayout;
 use crate::plane_geometry::{
     DROP_DASH, DROP_WIDTH, GUIDE_DASH, GUIDE_WIDTH, LABEL_BORDER, LABEL_RUN_GAP, LabelLayout,
-    MarkerInk, PlotMarker, arrow_path, drop_lines, guide_x, label_layout, marker_arcs, marker_look,
+    MarkerInk, PlotLabel, PlotMarker, arrow_path, drop_lines, guide_x, label_layout, marker_arcs,
+    marker_look,
 };
 
 /// The P marker's name face: STIX Two Text italic 400, 20 px
@@ -278,6 +279,13 @@ pub fn paint_label(
     );
 }
 
+/// The marker's label this frame: `None` until the plane's fonts have loaded
+/// (`drawCartesianPlane.test.ts`: no label shows until then), else the
+/// marker's own label.
+fn labels(marker: &PlotMarker, font_ready: bool) -> Option<&PlotLabel> {
+    if font_ready { marker.label.as_ref() } else { None }
+}
+
 /// Paints the frame's markers in the source's order: the guides of the
 /// markers with `guide`, then the drop lines of those with `drop_lines`, then
 /// each marker's arcs and, once the font has loaded, its label. Widths are
@@ -299,7 +307,7 @@ pub fn paint_markers(
     for marker in markers {
         let at = crate::plane_geometry::to_px(grid, marker.point);
         paint_marker(vg, marker, at, colors);
-        if font_ready && let Some(label) = &marker.label {
+        if let Some(label) = labels(marker, font_ready) {
             let name_width =
                 f64::from(mv_text::measure(fonts, marker_name_style(), &label.name)).ceil();
             let coords_width = f64::from(mv_text::measure(
@@ -486,5 +494,20 @@ mod tests {
             [above.vertical, above.horizontal],
             [Some([[250.0, 0.0], [250.0, 150.0]]), None]
         );
+    }
+
+    /// No label shows until the plane's fonts have loaded
+    /// (`drawCartesianPlane.test.ts`): the gate holds with a label on the
+    /// marker, and lifts with it.
+    #[test]
+    fn no_label_shows_until_the_fonts_have_loaded() {
+        let mut marked = marker(PlotPoint { x: 1.0, y: 1.0 });
+        marked.label = Some(PlotLabel {
+            name: "P".to_string(),
+            coords: "(1.00, 1.00)".to_string(),
+        });
+        assert_eq!(labels(&marked, false), None);
+        assert_eq!(labels(&marked, true), marked.label.as_ref());
+        assert_eq!(labels(&marker(PlotPoint { x: 1.0, y: 1.0 }), true), None);
     }
 }
