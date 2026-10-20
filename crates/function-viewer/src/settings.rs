@@ -277,6 +277,10 @@ pub mod layout {
     pub const CELL_ICON: f32 = 16.0;
     /// A theme row: 36 px tall, `space-inset` side padding, 8 px gaps.
     pub const ROW_HEIGHT: f32 = 36.0;
+    /// Height the reference's menu carries for the excluded Developer pages
+    /// row that the port does not render (ruling: dev pages out of scope):
+    /// 36 px row + (16 px `--space-section` gap - 8 px `calc(--space-inline - --space-section)` margin) = 44 px.
+    pub const MENU_DEV_LINK_DELTA: f32 = 44.0;
     pub const ROW_PAD_X: f32 = 12.0;
     pub const ROW_GAP: f32 = 8.0;
     /// The selected row's check: 14 px, `margin-left: auto`, 1 px down from centre.
@@ -1275,14 +1279,24 @@ mod tests {
             assert!(data.found, "{name}: no such element");
             let b = data.boundingBox;
             let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
-            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+            let wants = if name == "menu" {
+                [
+                    want[0],
+                    want[1],
+                    want[2],
+                    want[3] - layout::MENU_DEV_LINK_DELTA,
+                ]
+            } else {
+                [want[0], want[1], want[2], want[3]]
+            };
+            for (i, (got, w)) in [b.x, b.y, b.width, b.height]
                 .iter()
-                .zip(want.iter())
+                .zip(wants.iter())
                 .enumerate()
             {
                 assert!(
-                    (got - want).abs() <= SLACK,
-                    "{name}[{i}]: laid out {got}, reference {want}"
+                    (got - w).abs() <= SLACK,
+                    "{name}[{i}]: laid out {got}, reference {w}"
                 );
             }
         }
