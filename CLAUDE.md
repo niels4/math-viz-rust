@@ -190,6 +190,49 @@ shape and radius 4 (`--radius-card` is defined at this hash, unlike h1's
 `--radius-lg`). No new views.json line (the function rides the URL line) and
 no new tokens (all eight tabled).
 
+### h4-readout (from its progress file; merges after h3, before h4-rows)
+
+- `state.rs` owns `TransformParam` (A B H K + `as_str`, `colour_token` to the
+  `--param-*` tokens); h4-rows' and h6-p-transform's copies delete at their
+  merges and use this one. `HighlightState{hover, focus}` holds
+  `Touch{param, at}` records with an internal move sequence; `lit()` is the
+  present touch with the greater `at` (equals the source's lead/fallback
+  rules); `set_hover/set_focus(None)` clears unconditionally (the input layer
+  sends it only when its side is on no parameter).
+- `readout.rs` builds the value and form lines as token runs (`Part`: plain
+  text, parameter term, stacked fraction, sup digit; reader-only spans feed
+  `spoken()` only). Values print through `mv_numfmt::to_fixed(v, 2)` with the
+  ASCII minus swapped for U+2212 (exact binary toFixed; the never-`-0`
+  `format_number` diverges on ties). The fit is `min(1, (outer-1)/inner)`
+  on whole-px inputs, about the line's left centre.
+- Layout is Clay spacers for geometry plus a post-pass paint: one spacer per
+  run (frac rows carry the row spans' 4 px side padding; the column 3 px),
+  term outers with `ReadoutTerm` regions (text cursor), paint from the same
+  model accumulating advances, scaled by the fit through a NanoVG transform
+  about the span's left centre. Baselines hang from a centred strut
+  (half the frac overflow above the 35/25 px line box, else the top); sup
+  rises 0.58em, stacked parens sink 0.0775em; tint and bars are exact rects
+  from the run boxes. The readout row is fixed 350 px wide so an unscaled
+  span overflows it the way the browser's block row does (a grow row would
+  stretch the card).
+- A lit term's tint paints opaque and pre-blended (ink at 18% over the
+  section backdrop, in the encoded space): the framebuffer blends linear
+  while the reference composites gamma, so a translucent fill reads ~30
+  levels light (measured 107 vs 74). Backdrop is always the opaque card.
+- The Function card paints `--section` (added to the themes at 5714319 by
+  the inner-background fix), the grid `--card`; sidebar padding is 12+1
+  (the selector split changed it from 20+1); option cells are 87 px on the
+  374 px card. `views.json` gains a `lit` line (null or the letter) whenever
+  the highlight moves; `sync_hover` runs at the end of `retarget`. Text runs
+  note their ink boxes for the I-beam (the reference reports text under the
+  pointer); the port's `note_text` had no callers.
+- Reference forensics that paid: DOM boxes inside a scaled line need
+  unscaling before comparing advances (the 0.98 fit masquerades as a
+  per-run shortfall); term boxes extend 3 px above the text runs (inline
+  block) and 1 px below (padding), rows with terms are 36/26 px; the form
+  frac is always 57.5 px; `div:has(> [data-testid=...])` selects the card
+  through CSS-module hashes.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
