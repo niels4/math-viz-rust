@@ -1164,6 +1164,42 @@ mod tests {
         assert!(!app.settings.open);
     }
 
+    /// The open menu's rows keep their hits where they float over the
+    /// plane's canvas: the canvas region (declared after the layout, over
+    /// the same pixels) must not shadow them, or a row click
+    /// light-dismisses the menu instead of switching the theme (the
+    /// H1-H6 union's theme-switch-frames frame 0: menu closed, Arctic
+    /// throughout). The Tron Cyan row's centre is where the state scripts
+    /// click.
+    #[test]
+    fn open_menu_rows_win_their_hits_over_the_plane() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        app.theme.light_dark = LightDark::Dark;
+        app.settings.open();
+        let _commands = crate::page::layout_page(&mut app);
+        crate::plane_input::declare_plane_region(&mut app);
+        crate::input::collect_regions(&mut app);
+        assert!(
+            app.input
+                .regions
+                .iter()
+                .any(|r| r.hit.kind == HitKind::Plane),
+            "the canvas region overlaps the menu in this setup"
+        );
+        assert_eq!(
+            crate::input::hit_at(&app.input.regions, [1251.0, 262.0]),
+            Hit {
+                kind: HitKind::SettingsTheme,
+                index: 1,
+            }
+        );
+    }
+
     #[test]
     fn arrows_wrap_round_the_group() {
         assert_eq!(arrow_index(0, 3, Arrow::Right), 1);

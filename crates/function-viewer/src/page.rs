@@ -107,8 +107,14 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
             body.cornerRadius = crate::ui::corner_radius_all(crate::plane::CANVAS_RADIUS);
             crate::ui::ui_scope(app, mv_clay::id(crate::plane::PLANE_ID, 0), &body, |_| {});
         });
-        // The settings menu floats under the gear, above the page.
+        // The settings menu floats under the gear, above the page: its
+        // regions ride one layer up, so the plane's canvas region (declared
+        // after the layout, over the same pixels) never shadows the cells
+        // and rows it floats over. The gear keeps the page's layer: nothing
+        // overlaps it.
+        app.input.z = 1;
         crate::settings::menu(app);
+        app.input.z = 0;
         // The scrub ruler floats under its row while a box scrubs (h5-ruler).
         crate::ruler::layout_open_drag(app);
     });
@@ -278,20 +284,25 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
                 .iter()
                 .any(|tip| contains_box(*tip, &command.boundingBox))
         });
-    // The canvas first, then the overlay button, so the button wins their
-    // overlap at equal z.
+    // The canvas first: the grid, curves and overlay paint under the
+    // page's Clay content, as the canvas paints under the DOM that floats
+    // over it. The floating menu (and its shadow) then paint over the
+    // canvas they overlap, as the popover stacks above the page. The bar
+    // and sidebar shadows keep their place under the canvas, as before.
+    // The canvas's region first, then the overlay button's, so the button
+    // wins their overlap at equal z.
     crate::plane_input::declare_plane_region(app);
     declare_plane_button(app);
     crate::input::collect_regions(app);
     paint_bar_shadow(app, &theme);
     paint_sidebar_shadow(app, &theme);
-    paint_menu_shadow(app, &theme);
     let fading = app
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
-    draw_commands(app, density, &rest);
     draw_plane(app, &theme, now);
+    paint_menu_shadow(app, &theme);
+    draw_commands(app, density, &rest);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
