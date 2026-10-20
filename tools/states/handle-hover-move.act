@@ -1,0 +1,17 @@
+# handle-hover-move (h7-plane): the pointer from the diamond straight onto
+# the square in ONE move: the index change fires the diamond's hover-end
+# after the square's hover (the TS order), so hovering is false — cursor
+# pan — while a and b light and h and k do not. A stepped move would
+# re-hover; the single jump is the state.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 300
+move 1028 540
+wait 300
+shot handle-hover-move

@@ -1,0 +1,22 @@
+# handle-drag-out (h7-plane): the diamond dragged past the canvas's right
+# edge (1423) out to x=1500 and held: the handle keeps following (the
+# pan's pointer capture retargets the canvas moves; probed h=11.44), the
+# camera unchanged, grab-active with the h,k rulers out. Ends held; the
+# release past the edge still ends the drag (probed: modes cleared,
+# cursor pan), but its hover state is lag-divergent by construction, so no
+# release read belongs to this state.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 200
+down
+wait 150
+move 1500 640 over 160
+wait 300
+shot handle-drag-out
+up

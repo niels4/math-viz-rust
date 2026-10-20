@@ -297,6 +297,24 @@ def plane_camera(
     )
 
 
+def plane_cursor(page) -> str | None:
+    """The canvas's data-cursor (CartesianPlane.tsx: pan / grab-hover /
+    grab-active), read after a scripted input for the cursor behaviour check
+    of the handle and pan-cursor states (h7-plane)."""
+    return page.locator("canvas").get_attribute("data-cursor")
+
+
+def plane_lit(page) -> str:
+    """The lit params in document order, as the user's handle-drag probe reads
+    them: [data-param][data-lit] (readout spans and transform-row divs). Plain
+    [data-lit] also matches param-less divs, so the [data-param] guard is
+    load-bearing."""
+    return page.evaluate(
+        """[...document.querySelectorAll("[data-param][data-lit]")]"""
+        """.map((e) => `${e.dataset.param}:${e.tagName.toLowerCase()}`).join(" ")"""
+    )
+
+
 def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
@@ -791,7 +809,9 @@ def check_views(out: Path) -> list[str]:
     camera, written whenever it changes (h2-input). A line holding only `lit` (a list of
     "a"/"b"/"h"/"k", or null at rest) is the highlighted parameters in order, written whenever
     the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
-    one parameter to the list, still accepting the old single-parameter shape). A line holding only `shown` ({a, b, h, k,
+    one parameter to the list, still accepting the old single-parameter shape). A line holding only `cursor`
+    (pan / grab-hover / grab-active) is the canvas's cursor, written whenever it changes between
+    the plane's three (h7-plane). A line holding only `shown` ({a, b, h, k,
     animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
     problems: list[str] = []
     try:
@@ -840,6 +860,10 @@ def check_views(out: Path) -> list[str]:
                 or not all(isinstance(param, str) and param in ("a", "b", "h", "k") for param in params)
             ):
                 problems.append(f"views.json line {number}: 'lit' is not a parameter list or null")
+            continue
+        if set(view) == {"cursor"}:
+            if view.get("cursor") not in ("pan", "grab-hover", "grab-active"):
+                problems.append(f"views.json line {number}: 'cursor' is not a plane cursor")
             continue
         if set(view) == {"shown"}:
             shown_raw: object = view.get("shown")

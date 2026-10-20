@@ -364,6 +364,11 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         snapshot_frame(app);
     }
     crate::input::update_cursor(app);
+    // The canvas's own cursor wins per frame (h7-plane): the regions'
+    // cursor doesn't know the hover rule (a diamond-to-square jump leaves
+    // pan under the pointer), so the state rule re-resolves after every
+    // layout's retarget.
+    crate::plane_input::plane_cursor(app);
 }
 
 /// Paints the top bar's shadow: 0 6 px 18 px in the shadow colour

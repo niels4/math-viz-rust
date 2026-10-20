@@ -20,3 +20,7 @@ H5 = ["box-drag-a-50", "box-drag-shift", "box-drag-ctrl", "box-drag-out", "box-r
 # switch composed with the transform; then h6-handles' handles-*, lines-*
 # and overlay-tip* states.
 H6 = ["curve-values", "curve-b", "curve-sinx-values", "flip-frames", "flip-typed-mid", "reduced-flip", "switch-with-values", "handles-x1", "handles-x2", "handles-x3", "handles-sinx", "handles-x1-novalues", "handles-x2-novalues", "handles-x3-novalues", "handles-sinx-novalues", "lines-lit-k", "lines-lit-h", "lines-lit-a", "lines-lit-b", "lines-none", "overlay-tip", "overlay-tip-default"]
+# H7 at 251c080: the cursor over the plane, hover and drag on the shift and
+# scale handles, no pan while dragging, the release flush, the drag past the
+# canvas edge, and the pan cursor (h7-plane).
+H7 = ["handle-hover-shift", "handle-hover-scale", "handle-hover-move", "handle-hover-end", "handle-drag-shift", "handle-drag-scale", "handle-drag-release", "handle-drag-no-pan", "handle-drag-out", "pan-cursor"]
