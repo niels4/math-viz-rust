@@ -371,6 +371,40 @@ no new tokens (all eight tabled).
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
 
+### h6-handles (the shift/scale handles, the lit-parameter lines, the overlay tooltip)
+
+- Handles and lines paint in `theme.primary`, never the parameter colours:
+  the source sets `strokeStyle`/`fillStyle` to primary for every handle and
+  line (probed on every op), with the page colour as the handle fill.
+- NanoVG inherits the context the last painter left, while Canvas 2D
+  `save`/`restores` each curve and line back to butt caps and miter joins:
+  the handle and line painters set butt + round (handles) and butt + miter
+  (lines) explicitly and restore miter after, so the legend's bar strokes as
+  probed whatever the curve painters leave.
+- The dashes are `dash_polyline` pieces, not an API (`mv-nvg` has none):
+  the first port's `dash.rs` technique with its 0.01 px cutoff, one subpath
+  per piece, `lineDashOffset = dash[0] / 2`; solid shafts stroke directly.
+  The shared `pub(crate) dash_pieces` in `plane.rs` is h6-curve's for the
+  dashed original too.
+- The hover redraw lands a task late on the reference (a hover lights the
+  row at once but the canvas repaints after): every hover state is its own
+  fresh page with `wait 1000` after the move, as the user's
+  `transform-lines.mjs` reloads per param. Settled shots are exact.
+- The tooltip needs a timer, not a timestamp: the app sleeps between input
+  turns, so arming `overlay_tip_since` in the draw never fires — the delay
+  is `loop::Timer::OverlayTip` (+400 ms, armed with the hover, cancelled on
+  leave, `tip_fired` dirties while still hovered), mirroring the scrub rest
+  tip. Forgetting the button gate the first time painted it at the default
+  view (a 3335 px max-235 cluster on the button box in every state); the
+  gate covers the region, the paint and the tip together.
+- The fixture's WebKit and Chromium tip boxes disagree by 0.58 px (their
+  shapers differ); the port's stb advance matches Chromium to 0.01. The tip
+  geometry test pins the math from a given advance (the legend precedent),
+  not the port's measure against WebKit.
+- Judge boxes from `judge.json` are CSS px, not device px: a 34x32 "mystery
+  cluster" at (1360, 781) is the button box, and element boxes need the
+  canvas offset (433, 97) added — costs an hour when missed.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
