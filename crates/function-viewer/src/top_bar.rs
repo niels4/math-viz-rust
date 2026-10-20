@@ -16,6 +16,10 @@ pub const TOPBAR_HEIGHT: f32 = 64.0;
 pub const TOPBAR_PAD: f32 = 20.0;
 pub const TOPBAR_GAP: f32 = 20.0;
 pub const TOPBAR_RADIUS: f32 = 4.0;
+/// The bar's 1 px border. Clay's border takes no layout space (children sit
+/// at the padding from the edge), while the browser's `border-box` puts the
+/// content inside the border: the horizontal padding carries the border.
+pub const TOPBAR_BORDER: f32 = 1.0;
 
 /// The wordmark: 28 px flake, 8 px gap, 24 px word.
 pub const WORDMARK_ICON: f32 = 28.0;
@@ -59,8 +63,8 @@ pub fn top_bar(app: &mut App) {
         height: mv_clay::sizing_fixed(TOPBAR_HEIGHT),
     };
     bar.layout.padding = clay::Padding {
-        left: TOPBAR_PAD as u16,
-        right: TOPBAR_PAD as u16,
+        left: (TOPBAR_PAD + TOPBAR_BORDER) as u16,
+        right: (TOPBAR_PAD + TOPBAR_BORDER) as u16,
         top: 0,
         bottom: 0,
     };
@@ -101,6 +105,7 @@ pub fn top_bar(app: &mut App) {
                 crate::typography::Type::Wordmark,
                 WORDMARK,
                 fg,
+                false,
             );
         });
         // The divider: a 1 px border-left, 28 px tall.
@@ -120,12 +125,14 @@ pub fn top_bar(app: &mut App) {
         block.layout.childGap = TITLE_GAP as u16;
         block.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
         crate::ui::ui_scope(app, mv_clay::id("TitleBlock", 0), &block, |app| {
+            // The h1 spans the block, like a block-level heading.
             crate::typography::text(
                 app,
                 mv_clay::id("Title", 0),
                 crate::typography::Type::Title,
                 TITLE,
                 fg,
+                true,
             );
             crate::typography::text(
                 app,
@@ -133,6 +140,7 @@ pub fn top_bar(app: &mut App) {
                 crate::typography::Type::Subtitle,
                 &SUBTITLE.to_uppercase(),
                 ink(mv_theme::Token::ForegroundMuted),
+                false,
             );
         });
         // The free width the gear's `margin-left: auto` absorbs.
@@ -213,11 +221,7 @@ mod tests {
     const SLACK: f32 = 0.5;
 
     /// The top bar's boxes match the reference's, in CSS pixels.
-    ///
-    /// Ignored until t0-harness regenerates `testdata/page.json` with the
-    /// milestone's boxes (`header`, `title`, `gear`).
     #[test]
-    #[ignore = "needs t0-harness page.json"]
     fn top_bar_matches_reference() {
         let _guard = mv_clay::tests_lock();
         let mut app = crate::fixture::headless_app();

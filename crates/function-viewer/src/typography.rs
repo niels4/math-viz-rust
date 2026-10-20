@@ -148,12 +148,25 @@ pub fn measure_text(
 }
 
 /// Lays out one line of text in a style: the Clay text element with the
-/// style's id, size and line box, in `ink` (a Clay 0-to-255 colour).
-pub fn text(app: &mut App, id: clay::ElementId, ty: Type, content: &str, ink: clay::Color) {
+/// style's id, size and line box, in `ink` (a Clay 0-to-255 colour). The
+/// element shrink-wraps the text, like an inline; pass `fill` for a block
+/// that spans its parent, like a heading.
+pub fn text(
+    app: &mut App,
+    id: clay::ElementId,
+    ty: Type,
+    content: &str,
+    ink: clay::Color,
+    fill: bool,
+) {
     let styled = type_style(ty);
     let mut sizing = crate::ui::empty_decl();
     sizing.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        width: if fill {
+            mv_clay::sizing_grow(crate::ui::ZERO_MINMAX)
+        } else {
+            mv_clay::sizing_fit(crate::ui::ZERO_MINMAX)
+        },
         height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
     };
     crate::ui::ui_scope(app, id, &sizing, |app| {

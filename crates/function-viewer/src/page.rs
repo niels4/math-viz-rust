@@ -65,11 +65,13 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_fixed(SIDEBAR_WIDTH),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
+            // `--space-card` inside the 1 px border: Clay's border takes no
+            // layout space, the browser's `border-box` does.
             side.layout.padding = clay::Padding {
-                left: crate::top_bar::TOPBAR_PAD as u16,
-                right: crate::top_bar::TOPBAR_PAD as u16,
-                top: crate::top_bar::TOPBAR_PAD as u16,
-                bottom: crate::top_bar::TOPBAR_PAD as u16,
+                left: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                right: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                top: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                bottom: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
             };
             side.backgroundColor = crate::ui::ink(
                 crate::ui::current_theme(app),
@@ -86,6 +88,7 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                     crate::typography::Type::Body,
                     SIDEBAR_TEXT,
                     crate::ui::ink(crate::ui::current_theme(app), mv_theme::Token::Foreground),
+                    false,
                 );
             });
             let mut body = crate::ui::empty_decl();
@@ -124,6 +127,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
+    paint_bar_shadow(app, &theme);
     let fading = app
         .transition
         .active
@@ -136,6 +140,53 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     }
     app.vg.end_frame();
     crate::input::update_cursor(app);
+}
+
+/// Paints the top bar's shadow: 0 6 px 18 px in the shadow colour
+/// (`--shadow-card`), skipped where transparent (the dark themes).
+fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
+    let ink = theme.colors[mv_theme::Token::ShadowColor];
+    if ink[3] <= 0.0 {
+        return;
+    }
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id("TopBar", 0));
+    if !data.found {
+        return;
+    }
+    let b = data.boundingBox;
+    let shadow = crate::draw::nvg_color(ink);
+    let transparent = [shadow[0], shadow[1], shadow[2], 0.0];
+    let blur = 18.0;
+    let feather = ((blur / 2.0) * (2.0 * std::f32::consts::PI).sqrt()).max(1.0);
+    let paint = app.vg.box_gradient(
+        b.x,
+        b.y + 6.0,
+        b.width,
+        b.height,
+        crate::top_bar::TOPBAR_RADIUS,
+        feather,
+        shadow,
+        transparent,
+    );
+    app.vg.begin_path();
+    app.vg.rect(
+        b.x - blur * 2.0,
+        b.y + 6.0 - blur * 2.0,
+        b.width + blur * 4.0,
+        b.height + blur * 4.0,
+    );
+    crate::draw::rounded_rect(
+        &mut app.vg,
+        b,
+        crate::ui::corner_radius_all(crate::top_bar::TOPBAR_RADIUS),
+    );
+    app.vg.path_winding(mv_nvg::Winding::CW);
+    app.vg.fill_paint(&paint);
+    app.vg.fill();
 }
 
 /// Paints Clay's render commands: boxes, borders, text and icons.
