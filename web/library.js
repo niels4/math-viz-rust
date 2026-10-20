@@ -216,6 +216,14 @@ addToLibrary({
   mv_write_hash: (hash) => {
     history.replaceState(null, "", `#${UTF8ToString(hash)}`);
   },
+  // An anchor's navigation (h10-page's welcome button, the wordmark):
+  // assigning `location.hash` makes a history entry and fires `hashchange`,
+  // which the app's subscription reads back as the address bar does. A
+  // function Rust calls, so no export is needed.
+  mv_navigate_hash__deps: ["$UTF8ToString"],
+  mv_navigate_hash: (hash) => {
+    location.hash = UTF8ToString(hash);
+  },
 
   // The prefs in localStorage, one value per key, as math-viz2 stores them
   // (a JSON string per key): the stored text's length in bytes (copied to

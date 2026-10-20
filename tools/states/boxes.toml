@@ -119,3 +119,18 @@ readout_q = "div:has(> [role=slider]) + div > div:first-child > span:last-child"
 # it and the rest states miss it).
 field_p = "input[aria-label=\"x of P, value\"]"
 tip_p = "div:has(> [role=slider]) > div[aria-hidden=\"true\"]"
+
+# h10-page: the welcome page's boxes, read on a welcome state (welcome-default;
+# CSS module classes are hashed in Vite's dev build, so class names select by
+# attribute and structure). mark is the root's first svg (the Logo, before the
+# gear's); gear is the only button while the menu is closed; the hint is the
+# actions div's paragraph after the description's.
+mark = '[data-testid="root-view"] svg'
+description = '[data-testid="root-view"] main h1 + p'
+cta = '[data-testid="root-view"] a[href="#function-viewer"]'
+hint = '[data-testid="root-view"] main p + div p'
+welcome_chip_a = '[data-testid="root-view"] span[data-param="a"]'
+welcome_chip_k = '[data-testid="root-view"] span[data-param="k"]'
+welcome_chip_b = '[data-testid="root-view"] span[data-param="b"]'
+welcome_chip_h = '[data-testid="root-view"] span[data-param="h"]'
+hero_plane = '[data-testid="root-view"] canvas'

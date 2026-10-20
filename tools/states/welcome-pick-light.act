@@ -1,0 +1,16 @@
+# welcome-pick-light (h10-page): seeded light Clean Teal (as the vitest
+# test); the gear, then the "Sage Editorial" row; the cross-fade's 500 ms
+# wait; the shot: the page in Sage Editorial.
+route welcome
+size 1440 900
+density 2
+scheme light
+mode light
+theme clean-teal
+reduced-motion on
+wait 2000
+click 1388 44
+wait 500
+click 1256 294
+wait 500
+shot welcome-pick-light

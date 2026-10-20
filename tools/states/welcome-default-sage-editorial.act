@@ -1,0 +1,10 @@
+# welcome-default-sage-editorial (h10-page): the welcome page at rest in sage-editorial, reduced motion.
+route welcome
+size 1440 900
+density 2
+scheme light
+mode light
+theme sage-editorial
+reduced-motion on
+wait 2000
+shot welcome-default-sage-editorial

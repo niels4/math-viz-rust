@@ -1,0 +1,13 @@
+# welcome-settings-open (h10-page): the gear's menu open under the gear at
+# rest (gear centre (1388, 44) on the welcome top row).
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 1388 44
+wait 500
+shot welcome-settings-open

@@ -175,3 +175,19 @@ token = "--point-p"
 [[pair]]
 selector = '[role="slider"][aria-label="x of P"]'
 token = "--point-q"
+
+# h10-page: the welcome page's inks, on the page root (WelcomePage.module.css's
+# `.page` block with its per-theme overrides; themes.py reads them from that
+# file, since the theme files never define them). The port resolves
+# Token::{WelcomeTitle, WelcomeCta, WelcomeCtaForeground} through them.
+[[pair]]
+selector = '[data-testid="root-view"]'
+token = "--title"
+
+[[pair]]
+selector = '[data-testid="root-view"]'
+token = "--cta"
+
+[[pair]]
+selector = '[data-testid="root-view"]'
+token = "--cta-foreground"

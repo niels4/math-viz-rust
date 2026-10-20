@@ -830,10 +830,32 @@ pub(crate) fn x_slot(app: &mut App, x_text: &str, x_chars: usize, slotted: bool)
 /// The readout's width: the open paren, the x slot, the close, the relation
 /// with its side padding, and y — each the max of its `min-width` slot and
 /// its content, as the browser sizes the spans.
+/// The y run's slot and content width for fixed text: the lead's `--chars`
+/// minimum against the measured text, as the readout sizes the spans. The
+/// text right-aligns in the slot (`text-align: right`), so the paint needs
+/// both.
+#[must_use]
+fn y_fixed_width(app: &mut App, text: &str) -> (f32, f32) {
+    let slots = readout_slots(app.visible_range);
+    let ch = ch_advance(app);
+    let min = ceil_px(text.chars().count().max(slots.map_or(0, |slots| slots.y)) as f32 * ch);
+    let content = mv_text::measure(&mut app.fonts, number_style(), text);
+    (min.max(content), content)
+}
+
+/// The readout's numbers: 500 18 px mono, tabular, right-aligned.
+fn number_style() -> mv_text::Style {
+    mv_text::Style {
+        face: mv_text::Face::RobotoMono500,
+        size: NUMBER_SIZE,
+        tracking: 0.0,
+        features: tabular(),
+    }
+}
+
 #[must_use]
 pub(crate) fn readout_width(app: &mut App, readout: &XReadout<'_>) -> f32 {
-    let slots = readout_slots(app.visible_range);
-    let (x_slot, ch) = x_slot(app, readout.text, readout.chars, readout.slotted);
+    let (x_slot, _) = x_slot(app, readout.text, readout.chars, readout.slotted);
     let number = mv_text::Style {
         face: mv_text::Face::RobotoMono500,
         size: NUMBER_SIZE,
@@ -850,11 +872,7 @@ pub(crate) fn readout_width(app: &mut App, readout: &XReadout<'_>) -> f32 {
             ref exponent,
             ..
         }) => sci_advance(app, mantissa) + sup_advance(app, exponent),
-        Some(NumberParts::Fixed { ref text, .. }) => {
-            let min =
-                ceil_px(text.chars().count().max(slots.map_or(0, |slots| slots.y)) as f32 * ch);
-            min.max(mv_text::measure(&mut app.fonts, number, text))
-        }
+        Some(NumberParts::Fixed { ref text, .. }) => y_fixed_width(app, text).0,
     };
     open + x_slot + close + rel + y_slot
 }
@@ -1327,25 +1345,57 @@ fn paint_readout(
             NUMBER_SIZE,
             NUMBER_LINE,
         );
-    let (x_slot, _) = x_slot(app, x_text, x_chars, slotted);
+    let (x_slot, ch) = x_slot(app, x_text, x_chars, slotted);
     let open = ceil_px(OPEN_EM * MATH_SIZE);
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel_w = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
     // The lead right-aligns its [open paren + x] group (`justify-content:
-    // flex-end`): the field's input is only the value's chars wide
-    // (`--chars: max(1, text.length)`, unrounded), so the group shifts right
-    // by the slot's leftover. Q's dash span has no field and keeps the
-    // slot's right alignment.
+    // flex-end`): the group is the open span plus the input's full width
+    // (chars at 1ch with the editing padding, unrounded), so a wider input
+    // eats the slot's leftover instead of covering the paren. Q's dash span
+    // has no input and keeps the slot's right alignment.
     let input_w = mv_text::measure(&mut app.fonts, number, x_text);
     // The dash span never shifts: only a field's group right-aligns.
-    let push = if slotted { x_slot - input_w } else { 0.0 };
+    let push = if field {
+        let pad = crate::x_field::edit_pad(app);
+        let fw = x_chars as f32 * ch + 2.0 * pad;
+        (x_slot - fw).max(0.0)
+    } else if slotted {
+        x_slot - input_w
+    } else {
+        0.0
+    };
+    // `f` is a `var` (italic); the paren is upright text in the same span.
+    let math_italic = mv_text::Style {
+        face: mv_text::Face::Stix400Italic,
+        size: MATH_SIZE,
+        tracking: 0.0,
+        features: mv_text::Features::new(),
+    };
+    let math_base_italic = r#box.y
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::Stix400Italic,
+            MATH_SIZE,
+            READOUT_HEIGHT,
+        );
+    let f_adv = mv_text::measure(&mut app.fonts, math_italic, "f");
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        math_italic,
+        r#box.x + push,
+        math_base_italic,
+        "f",
+        ink,
+    );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
         math,
-        r#box.x + push,
+        r#box.x + push + f_adv,
         math_base,
-        "f(",
+        "(",
         ink,
     );
     if field {
@@ -1433,11 +1483,13 @@ fn paint_readout(
             );
         }
         Some(NumberParts::Fixed { text, .. }) => {
+            // Right-aligned in the slot, as the span is.
+            let (slot, content) = y_fixed_width(app, text);
             mv_text::draw(
                 &mut app.fonts,
                 &mut app.vg,
                 number,
-                y_x,
+                y_x + slot - content,
                 number_base,
                 text,
                 ink,
@@ -1702,6 +1754,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         // The paint's refresh, as the app runs it: seed the cache from the
         // laid-out plane so the second pass lays the card out converged.
@@ -1752,7 +1805,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
-        app.url = crate::url::Url::from_query("func=x3&p=-123.4");
+        app.url = crate::url::Url::new("#function-viewer?func=x3&p=-123.4");
         crate::transform_section::init_params_from_url(&mut app);
         let _commands = crate::page::layout_page(&mut app);
         app.visible_range = crate::visible_range::live(&app);

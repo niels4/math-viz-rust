@@ -111,8 +111,16 @@ pub fn build_markers(app: &App) -> Vec<crate::plane_geometry::PlotMarker> {
 }
 
 /// Lays out the page in `app`'s Clay context and returns the frame's render
-/// commands. The caller opens the layout first and ends it after.
+/// commands. The caller opens the layout first and ends it after. Branches
+/// on the route (h10-page): the welcome page lays out only its own elements
+/// (no sidebar, no plane region, no viewer hit kinds), the viewer as today.
 pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
+    if matches!(
+        crate::welcome::Route::of(&app.url),
+        crate::welcome::Route::Welcome
+    ) {
+        return crate::welcome::layout_welcome(app, app.size, 1.0);
+    }
     app.clay
         .as_mut()
         .expect("clay context initialised")
@@ -245,9 +253,9 @@ fn declare_plane_button(app: &mut App) {
     );
 }
 
-/// Paints the plane's slot over the canvas: the grid, axes, labels and scale
-/// legend on the content box, then the overlay's brackets and button. Runs
-/// after the Clay commands (over the page background), before the
+/// Paints the plane's slot over the canvas: the bare plane (grid, axes,
+/// labels, curves, handles, markers) then the scale legend on the content
+/// box, then the overlay's brackets and button. Runs after the Clay commands (over the page background), before the
 /// transition's fade.
 fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
@@ -282,6 +290,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     let mcolors = crate::plane_markers::marker_colors(theme);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
+    let font_ready = true;
     crate::plane::paint_plane(
         &mut app.fonts,
         &mut app.vg,
@@ -289,7 +298,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         center,
         scale,
         &colors,
-        true,
+        font_ready,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
         theme.colors[mv_theme::Token::ForegroundMuted],
@@ -299,6 +308,32 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         &markers,
         &mcolors,
     );
+    // The scale legend after the bare plane (the viewer's `drawPlaneWithScale`
+    // draws the plane, then the legend once the font has loaded): the same
+    // grid and measure the painter used, in the canvas's translated and
+    // scissored space, as it painted inside `paint_plane`.
+    if font_ready {
+        let grid = crate::grid::layout_grid(
+            center,
+            scale,
+            f64::from(content.width),
+            f64::from(content.height),
+            crate::plane::LABEL_MARGIN,
+        );
+        let label = crate::scale_legend::legend_text(scale);
+        let text_width = f64::from(mv_text::measure(
+            &mut app.fonts,
+            crate::plane::label_style(),
+            &label,
+        ));
+        let geometry = crate::scale_legend::legend_geometry(&grid, text_width);
+        app.vg.save();
+        app.vg
+            .scissor(content.x, content.y, content.width, content.height);
+        app.vg.translate(content.x, content.y);
+        crate::scale_legend::paint_legend(&mut app.fonts, &mut app.vg, &geometry, &colors.legend);
+        app.vg.restore();
+    }
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
     crate::overlay::paint_corners(
@@ -336,7 +371,9 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
-/// fade when one is in flight.
+/// fade when one is in flight. Branches on the route (h10-page): the welcome
+/// page paints only its own elements, the viewer as today; the fade and the
+/// frame's end are shared.
 pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     crate::icons::clear_customs();
     let size = app.size;
@@ -355,6 +392,95 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         [0.0, 0.0, size[0], size[1]],
         crate::draw::nvg_color(bg),
     );
+    let fading = app
+        .transition
+        .active
+        .map(|active| (active, Transition::progress(active, now)));
+    match crate::welcome::Route::of(&app.url) {
+        crate::welcome::Route::Welcome => draw_welcome(app, &theme, density),
+        crate::welcome::Route::FunctionViewer => draw_viewer(app, &theme, now, density),
+    }
+    if let Some((active, progress)) = fading {
+        paint_transition(app, active, progress, now);
+    }
+    app.vg.end_frame();
+    if fading.is_none() {
+        // After the flush: `read_pixels` inside the frame would read the
+        // unflushed (stale) backbuffer, so the fade's snapshot waits here.
+        snapshot_frame(app);
+    }
+    crate::input::update_cursor(app);
+}
+
+/// Paints the welcome page's frame: the backdrop h10-hero fills in, the
+/// still in its frame, the layout's boxes, the menu's chrome and the button's
+/// focus ring. The pass keeps the port's premultiplied blend (h10-page's
+/// finding: NanoVG's GL backend premultiplies the paint's rgb by its alpha
+/// when uploading the uniforms, so straight theme inks composite exactly as
+/// the browser does — including the title's alpha ink; only a CPU-side
+/// `css_background` would apply twice, and the welcome pass paints no
+/// translucent Clay rect).
+fn draw_welcome(app: &mut App, theme: &mv_theme::Theme, density: f32) {
+    crate::welcome::paint_backdrop(app);
+    let commands = crate::welcome::layout_welcome(app, app.size, 1.0);
+    crate::input::collect_regions(app);
+    // The still in its frame first: the frame's opaque fill sits under the
+    // ink in the same pass, so the menu's background (in the commands after)
+    // covers the still where the popover overlaps it.
+    if let Some(b) = element_box(app, mv_clay::id("WelcomeHeroPlane", 0)) {
+        crate::welcome::paint_hero(app, theme, &b, density);
+    }
+    paint_menu_shadow(app, theme);
+    draw_commands(app, density, &commands);
+    // The menu's swatches, then the gear's hover border and focus ring.
+    crate::settings::paint_swatches(app);
+    crate::settings::paint_chrome(app);
+    paint_cta_ring(app);
+}
+
+/// Paints the welcome button's focus ring: the UA ring on an anchor,
+/// measured on ref-h10 (1 px at a 1 px offset), while the link holds
+/// keyboard focus.
+fn paint_cta_ring(app: &mut App) {
+    if app.input.focus.kind != HitKind::WelcomeCta || !app.input.focus_visible {
+        return;
+    }
+    let Some(b) = element_box(app, mv_clay::id("WelcomeCta", 0)) else {
+        return;
+    };
+    let density = if app.size[0] > 0.0 {
+        app.pixels[0] as f32 / app.size[0]
+    } else {
+        1.0
+    };
+    // The 1 px outline band from the offset outward: a centred stroke on the
+    // box grown by offset plus half the width.
+    let grown = clay::BoundingBox {
+        x: b.x - crate::welcome::CTA_RING_OFFSET - crate::welcome::CTA_RING_WIDTH / 2.0,
+        y: b.y - crate::welcome::CTA_RING_OFFSET - crate::welcome::CTA_RING_WIDTH / 2.0,
+        width: b.width
+            + 2.0 * (crate::welcome::CTA_RING_OFFSET + crate::welcome::CTA_RING_WIDTH / 2.0),
+        height: b.height
+            + 2.0 * (crate::welcome::CTA_RING_OFFSET + crate::welcome::CTA_RING_WIDTH / 2.0),
+    };
+    app.vg.begin_path();
+    crate::draw::rounded_rect(
+        &mut app.vg,
+        crate::draw::snap_box(grown, density),
+        crate::ui::corner_radius_all(0.0),
+    );
+    // Already a 0-to-1 NanoVG colour, like the theme's: passed straight
+    // through, never through `nvg_color` (which takes Clay's 0-to-255).
+    app.vg.stroke_color(crate::welcome::CTA_RING_INK);
+    app.vg.stroke_width(crate::welcome::CTA_RING_WIDTH);
+    app.vg.stroke();
+}
+
+/// Paints the viewer page's frame: the layout with its tips partition, the
+/// canvas and overlay under the Clay content, the menu above it, and every
+/// post-pass paint. The pass keeps the port's premultiplied blend (opaque
+/// fills pre-blended on the CPU, as h4-readout settled).
+fn draw_viewer(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time, density: f32) {
     let commands = layout_page(app);
     // The scrub tips float above the rows (the DOM's `z-index: 1` on `.tip`):
     // the commands a laid-out tip's box holds walk after the rows' post-pass
@@ -390,14 +516,10 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     crate::plane_input::declare_plane_region(app);
     declare_plane_button(app);
     crate::input::collect_regions(app);
-    paint_bar_shadow(app, &theme);
-    paint_sidebar_shadow(app, &theme);
-    let fading = app
-        .transition
-        .active
-        .map(|active| (active, Transition::progress(active, now)));
-    draw_plane(app, &theme, now);
-    paint_menu_shadow(app, &theme);
+    paint_bar_shadow(app, theme);
+    paint_sidebar_shadow(app, theme);
+    draw_plane(app, theme, now);
+    paint_menu_shadow(app, theme);
     draw_commands(app, density, &rest);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
@@ -426,16 +548,6 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The P edit tip's arrows on its plate, as the scrub tip's
     // (h8-points-field).
     crate::x_field::paint_tip_arrows(app);
-    if let Some((active, progress)) = fading {
-        paint_transition(app, active, progress, now);
-    }
-    app.vg.end_frame();
-    if fading.is_none() {
-        // After the flush: `read_pixels` inside the frame would read the
-        // unflushed (stale) backbuffer, so the fade's snapshot waits here.
-        snapshot_frame(app);
-    }
-    crate::input::update_cursor(app);
     // The canvas's own cursor wins per frame (h7-plane): the regions'
     // cursor doesn't know the hover rule (a diamond-to-square jump leaves
     // pan under the pointer), so the state rule re-resolves after every
