@@ -71,8 +71,9 @@ pub fn scrubbed(from: f64, dx: f64, is_scale: bool, mode: ScrubMode) -> f64 {
 
 /// The value after an arrow-key nudge by `delta` (`nudged`).
 ///
-/// A shift adds `delta` outright; a scale moves its size, floored at 0.01 so
-/// a scale never crosses or touches 0, keeping its sign.
+/// A shift adds `delta` outright; a scale moves its size, floored at the
+/// current size below 0.01 (`max(min(|v|, 0.01), …)` holds 0.005 still
+/// instead of crossing 0), keeping its sign.
 pub fn nudged(value: f64, is_scale: bool, delta: f64) -> f64 {
     if !is_scale {
         let stepped = quantize(value + delta, 0.001);
@@ -228,6 +229,9 @@ mod tests {
         assert_eq!(shown(-0.04, false), "-0.04");
         assert_eq!(nudged(-0.04, true, -0.1), -0.01);
         assert_eq!(nudged(-0.01, true, 0.01), -0.02);
+        // Below 0.01 the floor is the current size: 0.005 nudged down stays.
+        assert_eq!(nudged(0.005, true, -0.1), 0.005);
+        assert_eq!(nudged(0.005, true, 0.001), 0.006);
     }
 
     // "puts back the value from before the box opened, over nudges and typed
