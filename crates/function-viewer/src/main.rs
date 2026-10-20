@@ -24,6 +24,7 @@ pub mod equation;
 pub mod explainer;
 pub mod fixture;
 pub mod flex;
+pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
 pub mod harness;
 pub mod icons;
