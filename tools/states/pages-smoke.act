@@ -1,0 +1,16 @@
+# pages-smoke (t-pages): the web smoke's hover state. main.py's web() still loads the
+# Odin tar's hover-row-1, which t0-harness deleted (it never existed in this repo), so the
+# smoke never ran here. This state replaces it: the pointer onto row a's name (216, 450:
+# row a's centre at 1440x900, as rows-hover-a), one frame later a lit in the row and in
+# both readout lines through the sync, with a rest shot first so the smoke holds that
+# nothing outside the lit regions changed.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot rest
+move 216 450
+wait 200
+shot hover

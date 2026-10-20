@@ -15,7 +15,7 @@ from typing import cast
 
 from playwright.sync_api import Page, sync_playwright
 
-from act import REPO, port
+from act import REPO, port, web_origin
 from browser import engine_type
 
 OUT = REPO / ".local" / "shots" / "raf"
@@ -80,7 +80,7 @@ def open_page(page: Page, target: str) -> None:
     url = (
         f"http://localhost:{port('REACT_REF_PORT')}/#function-viewer"
         if target == "ref"
-        else f"http://localhost:{port('WEB_PORT')}/"
+        else web_origin()
     )
     page.goto(url, wait_until="load")
     if target == "ref":
