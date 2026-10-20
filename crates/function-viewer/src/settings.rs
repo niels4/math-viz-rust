@@ -140,48 +140,43 @@ impl fmt::Display for FocusSlot {
     }
 }
 
-/// The menu's interactive state: the popover's open flag plus where keyboard
-/// focus sits (`None` means focus is on the gear button or outside the menu).
-/// Tab/Shift+Tab walk the group stops; Esc or an outside click closes.
+/// The menu's interactive state: the popover's open flag. Keyboard focus
+/// itself lives in the shell's input state (`app.input.focus`); the menu maps
+/// it to stops with `stop_of`, and Tab/Shift+Tab walk the group stops.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SettingsMenuState {
     pub open: bool,
-    pub focus: Option<FocusSlot>,
 }
 
 impl SettingsMenuState {
     pub fn closed() -> Self {
-        Self {
-            open: false,
-            focus: None,
-        }
+        Self { open: false }
     }
 
     pub fn open(&mut self) {
         self.open = true;
-        self.focus = None;
     }
 
     pub fn close(&mut self) {
         self.open = false;
-        self.focus = None;
     }
 
     pub fn toggle(&mut self) {
-        if self.open {
-            self.close();
-        } else {
-            self.open();
-        }
+        self.open = !self.open;
     }
 
     /// Tab from the current stop: gear, then the checked light-dark cell, then
     /// the checked theme row, then out. The menu stays open throughout.
-    pub fn tab(&self, light_dark: LightDark, theme_index: usize) -> Option<FocusSlot> {
+    pub fn tab(
+        &self,
+        current: Option<FocusSlot>,
+        light_dark: LightDark,
+        theme_index: usize,
+    ) -> Option<FocusSlot> {
         if !self.open {
             return None;
         }
-        match self.focus {
+        match current {
             None => Some(FocusSlot::LightDark(light_dark)),
             Some(FocusSlot::LightDark(_)) => Some(FocusSlot::Theme(theme_index)),
             Some(FocusSlot::Theme(_)) => None,
@@ -189,16 +184,29 @@ impl SettingsMenuState {
     }
 
     /// Shift+Tab walks the stops backwards.
-    pub fn shift_tab(&self, light_dark: LightDark, theme_index: usize) -> Option<FocusSlot> {
+    pub fn shift_tab(
+        &self,
+        current: Option<FocusSlot>,
+        light_dark: LightDark,
+        theme_index: usize,
+    ) -> Option<FocusSlot> {
         if !self.open {
             return None;
         }
-        match self.focus {
+        match current {
             None => Some(FocusSlot::Theme(theme_index)),
             Some(FocusSlot::Theme(_)) => Some(FocusSlot::LightDark(light_dark)),
             Some(FocusSlot::LightDark(_)) => None,
         }
     }
+}
+
+/// Closes the menu and drops keyboard focus from its stops, which are gone.
+pub fn close_menu(app: &mut App) {
+    app.settings.close();
+    app.input.focus = Hit::default();
+    app.input.focus_visible = false;
+    app.dirty = true;
 }
 
 /// An arrow key within a radio group: the new checked index, wrapping round.
@@ -802,7 +810,7 @@ pub fn press_down(app: &mut App) {
     }
     match app.input.pressed.kind {
         HitKind::Gear | HitKind::SettingsLightDark | HitKind::SettingsTheme => {}
-        HitKind::None => app.settings.close(),
+        HitKind::None => close_menu(app),
     }
 }
 
@@ -854,8 +862,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
     match event.key {
         Keycode::Escape => {
             if app.settings.open {
-                app.settings.close();
-                app.dirty = true;
+                close_menu(app);
                 return true;
             }
             false
@@ -863,10 +870,12 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
         Keycode::Tab => {
             if app.settings.open {
                 let checked_row = checked_row(&app.theme);
+                let current = stop_of(app.input.focus);
                 let next = if shift {
-                    app.settings.shift_tab(app.theme.light_dark, checked_row)
+                    app.settings
+                        .shift_tab(current, app.theme.light_dark, checked_row)
                 } else {
-                    app.settings.tab(app.theme.light_dark, checked_row)
+                    app.settings.tab(current, app.theme.light_dark, checked_row)
                 };
                 match next {
                     None => crate::input::set_focus(app, Hit::default(), false),
@@ -1043,37 +1052,29 @@ mod tests {
 
     #[test]
     fn tab_walks_group_to_group_then_out() {
-        let state = SettingsMenuState {
-            open: true,
-            focus: None,
-        };
+        let state = SettingsMenuState { open: true };
         // Probe: gear, then system (checked), then arctic-ice (checked), then out.
-        let first = state.tab(LightDark::System, 0);
+        let first = state.tab(None, LightDark::System, 0);
         assert_eq!(first, Some(FocusSlot::LightDark(LightDark::System)));
-        let state = SettingsMenuState {
-            open: true,
-            focus: first,
-        };
-        assert_eq!(state.tab(LightDark::System, 0), Some(FocusSlot::Theme(0)));
-        let state = SettingsMenuState {
-            open: true,
-            focus: Some(FocusSlot::Theme(0)),
-        };
-        assert_eq!(state.tab(LightDark::System, 0), None);
+        assert_eq!(
+            state.tab(first, LightDark::System, 0),
+            Some(FocusSlot::Theme(0))
+        );
+        assert_eq!(
+            state.tab(Some(FocusSlot::Theme(0)), LightDark::System, 0),
+            None
+        );
     }
 
     #[test]
     fn tab_starts_at_the_checked_options() {
-        let state = SettingsMenuState {
-            open: true,
-            focus: None,
-        };
+        let state = SettingsMenuState { open: true };
         assert_eq!(
-            state.tab(LightDark::Dark, 2),
+            state.tab(None, LightDark::Dark, 2),
             Some(FocusSlot::LightDark(LightDark::Dark))
         );
         assert_eq!(
-            state.shift_tab(LightDark::Dark, 2),
+            state.shift_tab(None, LightDark::Dark, 2),
             Some(FocusSlot::Theme(2))
         );
     }
@@ -1081,8 +1082,8 @@ mod tests {
     #[test]
     fn closed_menu_takes_no_tab_stop() {
         let state = SettingsMenuState::closed();
-        assert_eq!(state.tab(LightDark::System, 0), None);
-        assert_eq!(state.shift_tab(LightDark::System, 0), None);
+        assert_eq!(state.tab(None, LightDark::System, 0), None);
+        assert_eq!(state.shift_tab(None, LightDark::System, 0), None);
     }
 
     #[test]
