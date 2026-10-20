@@ -479,6 +479,35 @@ no new tokens (all eight tabled).
   cluster" at (1360, 781) is the button box, and element boxes need the
   canvas offset (433, 97) added — costs an hour when missed.
 
+### fix-theme-switch (union H1-H6 finding: theme-switch-frames frame 0)
+
+- A floating overlay needs its stacking layer, not just its paint order:
+  the plane's canvas region (declared after the layout) shadowed the open
+  menu's cells/rows at equal z=0, so row clicks light-dismissed the menu
+  instead of switching the theme. `app.input.z` is the designed mechanism
+  (nothing had ever assigned it); the menu now lays out at layer 1. Hit
+  regressions from shadowing show as cursor `default` + theme stuck in
+  views.json, and a headless test (layout + declare_plane_region +
+  collect_regions, then `hit_at` on the click point) pins the layer.
+- The plane paints under the page's Clay content: grid/curves printed over
+  the open menu. `draw_plane` runs before `draw_commands`, with only the
+  menu shadow moved after the plane (bar/sidebar shadows keep their place
+  under it). Nothing else overlaps the canvas, so no other state moves.
+- Mid-fade whole-frame diffs are the transition's shape, not its timing:
+  math-viz2 leaves the view transition uncustomised, so each engine runs
+  its UA default — Chromium's is linear (h1's probe), WebKit's ease-like
+  (measured per-frame: the port's linear fade sits ~0.2 progress behind
+  mid-fade, endpoints equal). One build can't match both; the port stays
+  linear (Chromium-measured, h1's call). The fade's start can lag the click
+  up to one 16 ms grid frame (facts run on the grid), worth ≤6 levels at
+  the end — inherent, like the last-grid-draw note.
+- WebKit doesn't focus buttons on click (macOS convention): after a gear
+  click focus stays on body, so Tab lands on the first page stop (the "a"
+  field, with selection + hint bar), while the port clears focus to the
+  menu's system cell. Chromium agrees with the port. That is the
+  `settings-focus-radio` remainder (engine quirk (d) + h6's new stops),
+  left for the tab-order owner — the menu paint half of it is fixed here.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
