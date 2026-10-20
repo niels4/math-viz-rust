@@ -9,9 +9,9 @@
 //!   the hint with four parameter chips) beside the 840 × 520 hero.
 //! - `src/components/views/WelcomePage/HeroPlane.tsx`: the hero's bare plane
 //!   at the default camera with the still's curves, no legend, no handles,
-//!   lines or markers. Until h10-seam's bare `paint_plane` lands, the hero
-//!   composes `plane`'s parts (`paint_grid`, `paint_axes`, `paint_curves`,
-//!   `paint_labels`); then it calls that.
+//!   lines or markers: one call to the plane's bare `paint_plane` (h10-seam's
+//!   split) with empty extras, over the frame's own fill and under its
+//!   border, so the menu's background covers the still where they overlap.
 //! - `src/components/router/Router.tsx`, `router-hooks.ts`, `router-util.ts`
 //!   and `src/pages/_root.page.tsx`: the route (`""` the welcome page,
 //!   `function-viewer` the viewer, any other word the welcome page; the
