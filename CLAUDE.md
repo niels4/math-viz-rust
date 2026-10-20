@@ -134,7 +134,6 @@ One block per milestone, appended in merge order; empty until the first mileston
   scripts need no such guard while they hold states.
 
 ### h4-rows (the Transform card's rows)
-
 - The 9.5 px box side padding is fractional (Clay's padding and gaps are
   whole px): 3.5 px edge spacers plus the 6 px gap hold each side, as the
   picker's dividers hold its 1 px. Lay the card out and read every element's
@@ -161,6 +160,37 @@ One block per milestone, appended in merge order; empty until the first mileston
 - Eyeballing downscaled screenshots misleads (a correct pair once read
   swapped): md5 identity of reruns plus DOM reads settle it. Measure, don't
   eyeball.
+
+### h5-buttons (the reset and flip buttons, Reset all)
+
+- A kept slot beats a conditional element: the reset's 24 px slot stays in
+  every row whether or not the button shows, so the flip toggle and the box
+  never move (name 107 wide on scale rows, 143 on shift rows — five children
+  means four gaps, not three).
+- Mouse clicks blur, keyboard clicks don't: the flip and reset blur on
+  `detail > 0`, Reset all never blurs, and a keyboard Space/Enter keeps the
+  focus (and its ring). The blur is what lets the row go unlit once the
+  pointer moves off.
+- Tab must fall through to the milestones when the settings menu is closed:
+  `settings::key` consuming Tab broke every Tab state (focus moved, the
+  highlight never followed). The milestones walk their own stops and sync,
+  with a default arm that walks on from any other stop.
+- The hover must stamp on change only: re-stamping it every frame in
+  `retarget` keeps it ahead of the focus forever, so a Tabbed focus never
+  takes the lead. Move the unconditional sync inside the change.
+- WebKit skips buttons on Tab (no Full Keyboard Access in the launched
+  browser): a flip-focus state lands on the box in ref-webkit and on the
+  toggle everywhere else. The port implements the DOM order; webkit is the
+  recorded engine quirk, chromium/firefox the check.
+- Opaque-then-glyph, never glyph-then-opaque: a lit tint panel covers
+  whatever paints before it (the form's `+` prefix went missing). Compute
+  the term's outer box first, paint the tint, then draw.
+- An inset underline follows the radius: ink the full rounded panel, cover
+  all but the band with the tint (top corners rounded for the cover), and
+  the bar wraps the corner exactly.
+- The readout's 78 px moves everything below it 18 px: every absolute-y
+  script coordinate in later states goes stale (h4's row clicks missed their
+  fields and a Backspace navigated WebKit back). Re-probe, don't trust.
 
 ### h2-input: the plane's input wiring
 

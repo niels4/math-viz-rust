@@ -1017,7 +1017,8 @@ mod tests {
     }
 
     #[test]
-    fn clicking_a_button_blur_puts_the_rows_light_out() {        // The highlight-stuck fix (`b6457b7`): the reset and flip clicks blur
+    fn clicking_a_button_blur_puts_the_rows_light_out() {
+        // The highlight-stuck fix (`b6457b7`): the reset and flip clicks blur
         // the button, so once the pointer moves off, the row is unlit. The
         // click moves no touch itself; the blur drops the row's focus and the
         // pointer-off drops its hover.
