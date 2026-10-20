@@ -189,7 +189,14 @@ ENGINES = ("webkit", "chromium", "firefox")
 # A differing pixel takes the first row that fits it; any left over fails the shot.
 # The allowances start empty: each milestone records the rows its judgment needs, in the
 # order they apply, with the measurement behind each.
-ALLOWANCES: tuple[Allowance, ...] = ()
+ALLOWANCES: tuple[Allowance, ...] = (
+    # H2 at c409aad: Chromium's SwiftShader rasterises anti-aliased edges up
+    # to 11/255 apart from native GL (the sRGB states comparison measures the
+    # same 11 max on ~1190 edge px per state; the P3 comparison 1056-1165 px
+    # at max 11 on every H2 state, all on non-flat native pixels). Bounded to
+    # the native frame's edges: a flat pixel apart is still a defect.
+    Allowance("Chromium's SwiftShader edges", ("chromium",), False, EDGES, 11),
+)
 
 
 def p3_script(script: Script, out: Path) -> Script:
