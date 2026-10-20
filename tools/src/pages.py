@@ -243,7 +243,7 @@ def _runs(port: int, base: str, engines: list[str], out: Path, env: dict[str, st
                 print(f"  {name} {engine}: draws the viewer until h10-page (route: can't run)")
             if name == "url-roundtrip" and seen:
                 last_href = next(reversed(seen.values()))[1]
-                mark = f"#function-viewer"
+                mark = "#function-viewer"
                 if f"{base}{mark}" not in last_href:
                     print(f"  {name} {engine}: last href {last_href!r} holds no {mark} past the base")
                     ok = False
