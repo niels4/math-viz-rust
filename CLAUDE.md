@@ -792,6 +792,41 @@ no new tokens (all eight tabled).
   shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
   for the union `gamut all`, not a defect.
 
+### h9 (Arctic Ice Secondary recolor)
+
+- One CSS line (`--secondary` `oklch(0.2885 0.0208 248.55)` →
+  `oklch(0.34 0.05 242)`, Arctic Ice only): no Rust change; `tools/run
+  themes` + `tools/run tokens` + `tools/run dom --fixture` against ref-h9
+  touch exactly three files (themes.rs header hash + Secondary l/c/h;
+  tokens.json arctic-ice `--secondary` computed/oklch/rgb/engines;
+  page.json `"reference"` header). Consumers all resolve
+  `Token::Secondary` at run time (gear plate, hovered settings
+  row/swatch, hovered selector row, hovered value box, flip/reset
+  hovers, Reset-all hover, overlay button hover, tip key caps).
+- Measured draws, all engines agree: old plate rgb (35,44,53), new
+  (31,59,80) (tokens.json engines rows chromium+firefox identical;
+  sampled off the PNGs). Fail-pass on `default` vs ref-h9 WebKit: before
+  2847 flat px apart in the gear box (4636 changed), after 0 flat
+  (1107 changed, stroke/AA edges only). Base-vs-new native diff on
+  `default`: 4452 px changed, all inside the gear box, max 27.
+- Census vs union-h8 (the level's evidence): all 87 H1/H3/H4/H5/H6
+  states identical in chromium+firefox; webkit identical except
+  flip-focus +3546 and settings-focus-radio +3487 inside their
+  pre-existing focus-divergence clusters (same box/max) and
+  theme-switch-frames mids +0.5% (fade-timing family). Triangulation
+  (new port vs ref-h8 on 5198 + direct ref-h8-vs-ref-h9 diff) proves the
+  growth is ref-side: the reference paints its focused-box tip caps
+  Secondary (8140 px at CSS (54,485.5,310.5,503)), recolored h8→h9.
+- Finding (open, sibling-owned, not fixed here): in those two states the
+  port's focused-box key-help bar paints 0 px Secondary (section/muted
+  family in both builds; the typing-variant tip follows the token —
+  rows-typed paints 9164 px Secondary in the same box), so its cap
+  plates don't resolve `Token::Secondary` although `tip.rs key_cap`
+  sets it. Pre-existing at union-h8 (same shape), exposed by the
+  recolor. Owner: h8-points-field's tip/input code (wrap/field settles
+  the mechanism — suspect a second bar path beside `layout_tip`, since
+  `scrub_value::tip` early-returns unless typing/resting).
+
 ### h10-p-loop (the welcome loop and the fit-to-window scale)
 
 - `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
