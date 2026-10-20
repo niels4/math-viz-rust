@@ -1,0 +1,16 @@
+# url-roundtrip (h2-input): open on center=1.5,-2&scale=2, pan 50 px right,
+# release, settle. Behaviour: the URL keeps scale=2 with the panned center
+# (at scale 2 a unit is 12.5 px wide: 50 px moves 4 units).
+query center=1.5,-2&scale=2
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+down
+move 978 490 over 80
+up
+wait 1500
+shot url-roundtrip

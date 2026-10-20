@@ -1,3 +1,4 @@
 # The states each milestone renders with `tools/run states <milestone>` (README: The harness):
 # the scripts in this directory, named without .act. Each milestone appends its group.
 H0 = ["default"]
+H2 = ["pan-drag", "pan-release-still", "pan-flick", "pan-twitch-release", "zoom-wheel-3", "zoom-trackpad-small", "zoom-then-drag", "url-roundtrip"]

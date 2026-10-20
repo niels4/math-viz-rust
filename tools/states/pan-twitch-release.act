@@ -1,0 +1,17 @@
+# pan-twitch-release (h2-input): a drag, a 500 ms rest, a 1 px twitch, release.
+# The plane follows the twitch (center -4.04) and stops: the twitch's speed
+# over the flick window is ~zero, so no glide. Behaviour as pan-release-still.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 728 490
+down
+move 928 490 over 128
+wait 500
+move 929 490
+up
+wait 1000
+shot pan-twitch-release
