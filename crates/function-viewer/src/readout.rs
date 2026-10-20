@@ -474,6 +474,14 @@ mod tests {
     }
 
     #[test]
+    fn readout_row_reserves_the_division_bar_height() {
+        // `2e6069e` (h5-buttons): the value line's row is at least 78 px
+        // tall, so a stacking fraction (b=2 on x²) moves nothing below it
+        // (the readout-b-height state pins the behaviour).
+        assert_eq!(READOUT_MIN_HEIGHT, 78.0);
+    }
+
+    #[test]
     fn shows_the_bare_function_when_every_value_is_at_its_default() {
         // A fresh page graphs x, untransformed.
         let line = value_line(FunctionSlug::X1, &none());
