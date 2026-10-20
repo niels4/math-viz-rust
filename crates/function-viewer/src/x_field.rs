@@ -348,7 +348,7 @@ pub fn display_chars(app: &App) -> (String, usize) {
 }
 
 /// The field's horizontal padding: 5 px while editing, none at rest.
-fn pad(app: &App) -> f32 {
+pub(crate) fn edit_pad(app: &App) -> f32 {
     if app.x_field.editing() {
         FIELD_PAD_EDITING
     } else {
@@ -361,7 +361,7 @@ fn pad(app: &App) -> f32 {
 fn field_width(app: &mut App) -> (f32, f32) {
     let chars = app.x_field.chars(p_value(app));
     let ch = crate::points_section::ch_advance(app);
-    (chars as f32 * ch + 2.0 * pad(app), ch)
+    (chars as f32 * ch + 2.0 * edit_pad(app), ch)
 }
 
 /// The x slot's scope: the field's box, right-aligned in the x run, holding
@@ -599,6 +599,7 @@ pub fn paint_field(
     // as the scrub box's does: the plate covers the text area (the field
     // minus its editing padding) less 2 px top and bottom.
     let selected = app.input.focus == field_hit() && app.x_field.is_selected(&display);
+    let pad = edit_pad(app);
     if selected {
         let dark = matches!(
             app.theme.resolved_scheme(),
@@ -609,7 +610,6 @@ pub fn paint_field(
         } else {
             crate::scrub_value::SELECTION_LIGHT
         };
-        let pad = pad(app);
         crate::draw::fill_rect(
             &mut app.vg,
             [
@@ -624,7 +624,7 @@ pub fn paint_field(
     let style = number_style();
     let text_w = mv_text::measure(&mut app.fonts, style, &display);
     // `ink` arrives in NanoVG space (the readout's ink); only the invalid
-    // tone re-inks from the theme.
+    // tone re-inks from the theme. The text right-aligns in the padded box.
     let text_ink = if invalid {
         crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Destructive))
     } else {
@@ -634,7 +634,7 @@ pub fn paint_field(
         &mut app.fonts,
         &mut app.vg,
         style,
-        readout_x + open + x_slot - text_w,
+        readout_x + open + x_slot - pad - text_w,
         number_base,
         &display,
         text_ink,
