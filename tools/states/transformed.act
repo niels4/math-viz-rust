@@ -1,0 +1,36 @@
+# transformed (plan section 6, M6's judgment): R3, a 2, h −1, k 1, P at 0.5, in Midnight Violet,
+# whose --sig-curve-glow (primary at 60 %, radius 14) is the one glow a theme shows. The curve
+# 2(x + 1)² + 1 glows; the ghost x² under it, 2 px dashed 6 6 at 75 %; the anchor ◆ at (−1, 1),
+# the stretch grip ■ at (0, 3); P (0.50, 5.50) labelled; the Original toggle in the tools.
+# Both type the values (M7 rewrote M6's model lines to the gesture, plan 5.1.5 (1)): a click on a
+# box (its field, the reference's DOM at 1440 x 900: a's (352.5, 413.5, 62 x 22), k's 457.5, h's
+# 562.5) opens it with its value selected, the typed text replaces it, Enter applies it; then P's
+# x into its readout's field (308.78, 678.5, 43.22 x 24), which M8 made a field in the port too
+# (its Enter hands the focus to P's track). A press on the top bar's empty middle then takes the
+# focus off on both, and the pointer rests there. Each click waits a frame before the typing, as
+# text input starts when the field opens.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme midnight-violet
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 383 468
+wait 16
+type "1"
+key Enter
+click 383 573
+wait 16
+type "-1"
+key Enter
+click 330 690
+wait 16
+type "0.5"
+key Enter
+click 760 48
+wait 2000
+shot transformed

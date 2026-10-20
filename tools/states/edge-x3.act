@@ -1,0 +1,14 @@
+# edge-x3 (M6): P off the view, marked on the edge it lies past (FV 10 X1). Both pick x³ in the
+# picker (its option (246.5, 164, 97.25 x 34) at 1440 x 900; M8 made the port's a control); P at
+# x = 2 is at y = 8, above the plane's 7.92, so its marker leaves and an edge marker sits on the
+# top edge at P's x, "▲ P (2.00, 8.00)"; in P's row the ▲ before "above the view".
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 295 181
+move 760 48
+wait 2000
+shot edge-x3

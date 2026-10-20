@@ -1,0 +1,22 @@
+# M2's demo: the plane (right of x 488 at 1440 x 900) pinched by wheels with Ctrl held, which is
+# how a trackpad pinch reaches a page and how both builds read one: 25 px for exp(0.25), then
+# 50 px for exp(0.5), so 50 x 2.12 px per unit. Whole pixels, because WebKit delivers a wheel's
+# delta in whole pixels (Playwright's pinch 1.25, -22.31 px, arrives as -22); Chromium delivers
+# half the delta under a device scale of 2, here as on the reference. Then a drag pans it.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 956 488
+wheel 0 -25 ctrl
+wait 16
+wheel 0 -50 ctrl
+wait 16
+shot pinched
+down
+move 1056 548 over 160
+up
+wait 16
+shot panned

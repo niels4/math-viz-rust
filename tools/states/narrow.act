@@ -1,0 +1,11 @@
+# M5b's narrow window (plan section 6): at 460 x 900 the page stacks (under 900), the rows drop
+# their names (ParamRow.module.css @media max-width 469px), the theme chip goes (ThemeChip.module.css,
+# under 640) and the wordmark keeps only its icon (TopBar.module.css, under 520); the subtitle,
+# wider than what is left of the bar, ends in an ellipsis (text-overflow). Shot at rest.
+size 460 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot narrow

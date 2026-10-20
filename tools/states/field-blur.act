@@ -1,0 +1,22 @@
+# field-blur (M7): h's box (330, 557.5, 107 x 32 at 1440 x 900) clicked and "-1" typed, then a
+# press on the Transform card's empty head (200, 376): the focus leaves the field, which applies
+# −1.00 and closes; nothing holds the focus. Then "x" typed into k's field and the focus taken by
+# a press on the panel's foot (the Points card's head, (200, 650)): not a number, so k keeps 0.00.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 383 573
+wait 16
+type "-1"
+click 200 376
+wait 1000
+shot applied
+click 383 468
+wait 16
+type "x"
+click 200 650
+wait 16
+shot put-back

@@ -1,0 +1,34 @@
+# term-hover-k (plan section 6, M8's judgment): R3 (a 2, k 1, h −1 typed into their boxes, P's x
+# 0.5 typed into P's field) in Arctic Ice, the pointer on k's live term "+ 1.00" (323, 227, 82 x 36
+# in the reference's DOM at 1440 x 900: its centre (364, 245)). FV 04's partners both ways: k's
+# term lit in both lines (its 18 % plate and 2 px underline), k's row lit (band, name, the box's
+# stroke), k's dimension line on the plane (x = h, y 0 to 1); the term's tip under it (term-tip-fv:
+# "k = 1.00 · vertical shift" inverted, 4 px under the term, centred: (280.98, 267, 166.03 x 34)).
+# Each click waits a frame before the typing, as text input starts when the field opens.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 383 468
+wait 16
+type "1"
+key Enter
+click 383 573
+wait 16
+type "-1"
+key Enter
+click 330 690
+wait 16
+type "0.5"
+key Enter
+click 760 48
+wait 2000
+move 364 245
+wait 500
+shot term-hover-k

@@ -1,0 +1,30 @@
+# picker-keys (M8): the picker from the keyboard (SegmentedControl.tsx, radioKeys.ts). Three plain
+# Tabs reach the picked option, x², as Chromium tabs (call 3 f; WebKit's first): its ring. → chooses
+# x³ at once (P (2, 8) above the view: its edge marker, the ▲ in its row), End sin x, → wraps to x;
+# the ring follows the choice. Each shot catches the function switch a frame in (FV 05: the old
+# curve fading over 160 ms, the new one drawing on over 900 ms; M10 made the port's), then the
+# switch runs its course before the next key; the last choice is shot at rest too.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+tab
+tab
+wait 16
+shot focused
+key ArrowRight
+wait 16
+shot x3
+wait 1484
+key End
+wait 16
+shot sin
+wait 1484
+key ArrowRight
+wait 16
+shot wrapped
+wait 1484
+shot wrapped-rest

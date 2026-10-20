@@ -1,0 +1,70 @@
+# tab-series-short (M8; the M5b review's carry-over): the short window (1100 x 720), whose panel
+# scrolls (610 px of 719 show). Tab brings a stop its panel hides into view as WebKit and Chromium
+# do (their CenterIfNeeded): P's track (711.5..731.5, hidden under 703) would come to the panel's
+# middle, which the panel can't reach, so it goes to its foot (109); the plane shows the plane's keys
+# under the cards, mostly hidden at that scroll. Shift+Tab back through the stops: the track and the
+# boxes show at 109; the picker (164..198, hidden above at 109) brings the panel back to its top.
+# Judged against Chromium (its Tab order, call 3 f).
+size 1100 720
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+shot tab-09-h-box
+tab
+wait 16
+shot tab-10-track
+tab
+wait 16
+shot tab-11-plane
+tab
+wait 16
+shot tab-12-origin
+tab
+wait 16
+shot tab-13-zoom
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+shot back-03-plane
+tab shift
+wait 16
+shot back-04-track
+tab shift
+wait 16
+shot back-05-h-box
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+shot back-11-picker

@@ -1,0 +1,17 @@
+# M5b's top bar under the keyboard's focus: Tab from no focus reaches the wordmark first (its
+# 3 px ring in --primary at 32 %, radius 6), then the gear (its line --primary under the ring),
+# FV 07's order. Chromium tabs to links and buttons as the port does (plan call 3 f); WebKit's
+# plain Tab skips them (Safari's "Press Tab to highlight each item" off), so judge this against
+# Chromium's reference.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+wait 16
+shot focus-wordmark
+tab
+wait 16
+shot focus-gear

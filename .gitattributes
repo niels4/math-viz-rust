@@ -1,0 +1,3 @@
+# A batch file's labels read reliably only with CRLF line endings (as the Odin
+# app's .gitattributes has it).
+*.bat text eol=crlf

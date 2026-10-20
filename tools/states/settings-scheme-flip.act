@@ -1,0 +1,31 @@
+# settings-scheme-flip (D4, D7): System follows the system while the panel is open. Opened by a
+# click on a dark system, Tron Cyan picked by a click and the arrows (down to Midnight Violet and
+# back, so the focus line shows on its row in both engines: a click focuses a row without it), the
+# pointer resting in the gap; then the system turns light (emulateMedia on the reference and the
+# web build, SDL's theme event natively): the page and the panel take Clean Teal at once, the help
+# line says light, the list keeps its rows and its new content fades in over 160 ms, and the focus
+# moves to the checked theme, Clean Teal's row; then the system turns dark again.
+# Positions at 1440 x 900 from the reference's DOM with the panel open (tools/run dom): the gear
+# (1363, 28, 40 x 40), the panel (1099, 76, 304 x 256); the Appearance toggle's options 91.33 x 34
+# from (1113, 112) (System, Light, Dark: centres 1159, 1251, 1343 at y 129); the theme rows 278 x 36
+# from (1112, 211), 36 apart (centres at y 229, 265, 301); the help line (1112, 155, 278 x 18); the
+# gap between the two settings y 173 to 189. The panel's opening runs 643 ms, so a shot of it at
+# rest waits 700.
+size 1440 900
+density 2
+scheme dark
+mode system
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 700
+click 1251 265
+key ArrowDown
+key ArrowUp
+move 1250 181
+wait 16
+shot dark
+scheme light
+frames light every 16 for 176
+scheme dark
+frames dark-again every 16 for 176

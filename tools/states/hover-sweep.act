@@ -1,0 +1,14 @@
+# Two seconds at real speed from the first frame: the pointer sweeps down the Transform card's
+# four rows (y 402.5 to 595.5 at 1440 x 900). A video runs on the real clock in the browsers, so
+# it is judged by eye, not compared frame by frame.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+video start hover-sweep
+wait 300
+move 200 380
+move 200 620 over 1400
+wait 300
+video stop

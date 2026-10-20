@@ -1,0 +1,14 @@
+# explainer-a (plan section 6, M11; R7): the pointer resting on a's letter chip (57, 411.5, 26 x 26 at
+# 1440 x 900 in the reference's DOM: its centre (70, 424.5)) opens a's explainer after 400 ms
+# (explainer.ts EXPLAINER_REST_MS), right of the panel at (489, 404.5), 300 x 389, its caret's tip
+# on the chip's centre; a's row, its letter in the form line and its unit box on the plane lit while
+# it is open. Shot at rest: the opening's spring has settled 643 ms after the rest.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 70 424
+wait 1100
+shot explainer-a

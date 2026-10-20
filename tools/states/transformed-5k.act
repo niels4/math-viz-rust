@@ -1,0 +1,31 @@
+# transformed-5k (M13b): transformed (R3, a 2, h -1, k 1, P at 0.5, in midnight-violet, the curve
+# glowing over the dashed original) full screen on a 5K display, 2560 x 1440 at density 2: the
+# heaviest redraw M6 timed, timed on the release build at both sizes (README: Release). The panel
+# keeps its width and its rows their places at any height, so transformed's clicks and typing apply
+# unchanged: the boxes' fields (a's at 383, 424; k's 468; h's 573), P's readout field (330, 690),
+# typed on both sides since M8 as transformed's is, and the top bar's empty middle (760, 48).
+size 2560 1440
+density 2
+scheme dark
+mode dark
+theme midnight-violet
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 383 468
+wait 16
+type "1"
+key Enter
+click 383 573
+wait 16
+type "-1"
+key Enter
+click 330 690
+wait 16
+type "0.5"
+key Enter
+click 760 48
+wait 2000
+shot transformed

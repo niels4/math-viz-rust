@@ -1,0 +1,18 @@
+# focus-a-box (plan section 6, M7): Tab to a's number box (330, 408.5, 107 x 32 at 1440 x 900):
+# from no focus the wordmark, the gear, the picker, a's flip toggle, a's box (FV 07's order, as
+# Chromium tabs: plan call 3 f; WebKit's plain Tab skips the link and the buttons, so its fifth
+# stop is h's box). The box's 3 px ring in primary at 32 %, its 2 px stroke, row a lit, and the
+# keyboard's tip under the row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+tab
+tab
+tab
+tab
+wait 16
+shot focus-a-box

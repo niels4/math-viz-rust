@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+cd "$(dirname "$0")"
+[ -x .venv/bin/python ] || ./setup
+. .venv/bin/activate
+
+isort src
+black src

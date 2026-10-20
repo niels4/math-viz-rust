@@ -1,0 +1,26 @@
+# handle-shift (M9): a handle dragged with Shift locking it to one axis (CartesianPlane.test.tsx:
+# "drags a handle freely, Shift locking it to the axis it moved along most (FV 11)"). On x² the
+# stretch grip ■ sits at (1, 1), (1006, 438) at 1440 x 900; pressed, Shift held, moved 50 right and
+# 10 down over 160 ms: since the press it has moved 1 along x and 0.2 along y, so only x follows and
+# it lands at (2, 1) (D21: the grip sets a and b: b 0.5, a 1, the curve (0.5x)²). Shift let go and
+# moved a px more, it follows both ways: (2, 0.78), a 0.78.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 1006 438
+wait 500
+down
+hold Shift
+move 1056 448 over 160
+wait 16
+shot locked
+release Shift
+move 1056 449
+wait 16
+shot free
+up
+wait 500
+shot released

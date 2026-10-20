@@ -1,0 +1,18 @@
+# wheel-burst-k (M7): three wheel notches up on k's box (centre (383, 468) at 1440 x 900) in one
+# frame, a burst: each notch is 15 px of drag (scrub.ts wheelDxPx: 100 px of deltaY), 0.3 for a
+# shift, and each starts where the last left the value, so k reads 0.90 (Chromium hands
+# Playwright's wheel over at half its delta under a device scale of 2, so 0.45 there, on the
+# reference too). The page doesn't scroll, and no drag shows.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 383 468
+wait 16
+wheel 0 -100
+wheel 0 -100
+wheel 0 -100
+wait 1000
+shot burst

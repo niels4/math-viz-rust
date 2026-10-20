@@ -1,0 +1,52 @@
+# track-keys (M8): P's track from the keyboard (FV 07 › P scrubber; ExtentSlider.tsx). Ten plain Tabs
+# reach it as Chromium tabs (call 3 f; WebKit's sixth): its thumb's ring and the value tip over it.
+# → steps 0.1, Shift+→ 1 (3.10), Home and End jump to the range's lattice ends (−9.36, 9.36: P off
+# the view, the ▲ before its role); Enter opens P's field with its text selected and the typing tip
+# under P's head; "-1.5" typed and Enter applies it, the track taking the focus back with its ring
+# (call 3 g); Enter again and Esc put the value back, the ring on the track again. The shots as P
+# leaves the view catch its edge marker a frame into its arrival (160 ms, 8 px in on the enter
+# spring; M10 made the port's).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+tab
+tab
+tab
+tab
+tab
+tab
+tab
+tab
+tab
+wait 16
+shot focused
+key ArrowRight
+key ArrowRight shift
+wait 500
+shot stepped
+key Home
+wait 16
+shot home
+wait 484
+key End
+wait 16
+shot end
+wait 484
+key Enter
+wait 16
+shot field-open
+type "-1.5"
+wait 16
+shot typed
+key Enter
+wait 500
+shot applied
+key Enter
+wait 16
+key Escape
+wait 500
+shot escaped

@@ -1,0 +1,20 @@
+# explainer-each (M11): the other three explainers at rest, the pointer resting on each chip in turn
+# (centres (70, 468.5), (70, 529.5), (70, 573.5)): k's (a shift: the anchor carried up 2), b's (a
+# scale: the unit point carried right; its sentence's first line 263.79 px in its 266, which Clay's
+# own wrap would break early) and h's (the anchor carried right; "x − 2" kept on one line by its
+# no-break spaces). Leaving a chip for the next closes one explainer and the rest opens the next.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 70 468
+wait 1104
+shot explainer-k
+move 70 529
+wait 1104
+shot explainer-b
+move 70 573
+wait 1104
+shot explainer-h

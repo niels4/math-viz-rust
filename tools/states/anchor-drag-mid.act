@@ -1,0 +1,37 @@
+# anchor-drag-mid (plan section 6, M9's judgment): R3 (a 2, h −1, k 1) with P at 0.5, the anchor ◆
+# dragged from (h, k) = (−1, 1) to (1.5, 1) and held: R6's h 1.5, k 1, the anchor's drop lines to
+# both axes, P's ghost where the drag found it (FV 04). Both type the values as transformed does
+# (a box's field: a's (352.5, 413.5, 62 x 22) at 1440 x 900, k's 457.5, h's 562.5; the reference's
+# DOM) and P's x into its readout's field (308.78, 678.5, 43.22 x 24), on both surfaces; a press on
+# the top bar's empty middle takes the focus off the last field. The anchor at (−1, 1) is (906, 438) in the page; pressed and moved 125 px right over
+# 160 ms, it moves 2.5 along x (D21: the anchor sets h and k).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 383 468
+wait 16
+type "1"
+key Enter
+click 383 573
+wait 16
+type "-1"
+key Enter
+click 330 690
+wait 16
+type "0.5"
+key Enter
+click 760 48
+wait 2000
+move 906 438
+wait 500
+down
+move 1031 438 over 160
+wait 500
+shot anchor-drag-mid

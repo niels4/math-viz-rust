@@ -1,0 +1,28 @@
+# track-hover (M8): the pointer on P's track away from its thumb (150, 721): the thumb at 112 % and
+# the value tip "x = 2.00" over it (ExtentSlider: .track:hover), P's row lit. Then P's x typed past
+# the view's ends: 12 parks the thumb dashed on the track's right end with "x = 12.00 ▶", the tip
+# clamped to the track's end (353.03..443), the ring the keyboard's after Enter; −14.2 parks it on
+# the left with "◀ x = −14.20".
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 150 721
+wait 500
+shot hover
+click 330 690
+wait 16
+type "12"
+key Enter
+wait 16
+move 760 48
+wait 500
+shot parked-right
+click 330 690
+wait 16
+type "-14.2"
+key Enter
+wait 16
+shot parked-left

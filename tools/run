@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+# Uses the project venv directly, so it works without direnv (agent shells don't load it).
+dir="$(dirname "$0")"
+[ -x "$dir/.venv/bin/python" ] || "$dir/setup"
+exec "$dir/.venv/bin/python" "$dir/src/main.py" "$@"

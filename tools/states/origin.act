@@ -1,0 +1,20 @@
+# origin (M8): Return to origin (ZoomControl.tsx OriginButton; the user's ruling, 2026-10-07: as
+# Google Maps' locate button). The plane dragged 100 px right and 60 down from (700, 600), held
+# 200 ms before the release so it flings nowhere (no move in the last 120 ms); then the button
+# (1360, 745, 36 x 36: its centre (1378, 763)) centres the origin again at the zoom it has.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 700 600
+down
+move 800 660 over 300
+wait 200
+up
+wait 500
+shot panned
+click 1378 763
+wait 500
+shot origin

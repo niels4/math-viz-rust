@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Builds and runs the t0c twin (scene.odin): the render scene through the Odin app's own
+# ports, the oracle for the C patches. Usage: tools/twin/run [--out twin.png]
+# Needs odin, cc and SDL3; not part of ./build.sh check (Odin is not a dependency of the port).
+#
+# o2/ is a byte-identical copy of the oracle's tree ($ODIN_SRC at 3d23626: vendor/nanovg,
+# vendor/fontstash, vendor/sdl3, vendor/kb_text_shape, vendor/stb, vendor/gl, src/text,
+# assets/fonts) with the C libraries built from it, because the oracle's checkout is
+# read-only and its bindings refuse to compile without the built libraries beside them.
+# SOURCES.md records the origin; the manifest check below fails loudly on drift.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+ODIN_SRC="${ODIN_SRC:-/opt/dev/agent/src/math-viz-odin}"
+OUT="../../.local/shots/t0c-b/twin.png"
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--out)
+		OUT="$2"
+		shift 2
+		;;
+	*)
+		echo "usage: tools/twin/run [--out twin.png]" >&2
+		exit 2
+		;;
+	esac
+done
+
+if [[ ! -f o2.sha256 ]]; then
+	echo "twin: o2.sha256 missing (o2/ is the oracle's tree, see o2/SOURCES.md)" >&2
+	exit 1
+fi
+# Every o2/ file but the built libraries must match the manifest (drift = a human decision).
+if ! shasum -c o2.sha256 --status 2>/dev/null; then
+	shasum -c o2.sha256 2>&1 | grep -v ': OK$' || true
+	echo "twin: o2/ drifted from its manifest (above)" >&2
+	exit 1
+fi
+
+# The C libraries from o2/, as the Odin app's build.sh builds them for the host.
+CFLAGS=(-O2 -ffp-contract=off -mmacosx-version-min=11.0)
+mkdir -p o2/vendor/stb/lib/darwin o2/vendor/kb_text_shape/lib .local-build
+if [[ ! -e o2/vendor/stb/lib/darwin/stb_truetype.a || o2/vendor/stb/src/stb_truetype.c -nt o2/vendor/stb/lib/darwin/stb_truetype.a ]]; then
+	cc -c "${CFLAGS[@]}" o2/vendor/stb/src/stb_truetype.c -o .local-build/stb_truetype.o
+	rm -f o2/vendor/stb/lib/darwin/stb_truetype.a && ar rcs o2/vendor/stb/lib/darwin/stb_truetype.a .local-build/stb_truetype.o
+fi
+if [[ ! -e o2/vendor/stb/lib/darwin/stb_rect_pack.a || o2/vendor/stb/src/stb_rect_pack.c -nt o2/vendor/stb/lib/darwin/stb_rect_pack.a ]]; then
+	cc -c "${CFLAGS[@]}" o2/vendor/stb/src/stb_rect_pack.c -o .local-build/stb_rect_pack.o
+	rm -f o2/vendor/stb/lib/darwin/stb_rect_pack.a && ar rcs o2/vendor/stb/lib/darwin/stb_rect_pack.a .local-build/stb_rect_pack.o
+fi
+if [[ ! -e o2/vendor/kb_text_shape/lib/kb_text_shape.a || o2/vendor/kb_text_shape/src/kb_text_shape.c -nt o2/vendor/kb_text_shape/lib/kb_text_shape.a ]]; then
+	cc -c "${CFLAGS[@]}" o2/vendor/kb_text_shape/src/kb_text_shape.c -o .local-build/kb_text_shape.o
+	rm -f o2/vendor/kb_text_shape/lib/kb_text_shape.a && ar rcs o2/vendor/kb_text_shape/lib/kb_text_shape.a .local-build/kb_text_shape.o
+fi
+
+# As the Odin app's build.sh: odin's parser threads race about one call in 20 (SIGSEGV
+# before any output), so such a crash is rerun.
+attempt=1
+while true; do
+	if odin build . -out:.local-build/scene; then
+		break
+	fi
+	code=$?
+	if [[ $code -ne 139 || $attempt -ge 3 ]]; then
+		exit "$code"
+	fi
+	echo "twin: odin crashed before printing anything (exit 139): rerun $attempt of 2" >&2
+	attempt=$((attempt + 1))
+done
+
+mkdir -p "$(dirname "$OUT")"
+.local-build/scene --out "$OUT"

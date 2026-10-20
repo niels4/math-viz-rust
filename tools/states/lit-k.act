@@ -1,0 +1,34 @@
+# lit-k (M6): k's meaning on the plane while k is the active value (FV 04: the pointer on k's
+# row). R3 as in `transformed` (a 2, h −1, k 1 and P's 0.5 typed into their fields on both: M8 made
+# P's a field in the port), in Arctic Ice; then the pointer onto k's
+# row (its name at (200, 468); the row is (49, 446.5, 394 x 44) in the reference's DOM): k's
+# dimension line, 2.5 px of --primary from y = 0 up to y = k at x = h, (−1, 0) to (−1, 1), with
+# its 9 px start tick and its arrowhead, under the curve; k's row and term lit in the sidebar. Each
+# click waits a frame before the typing, as text input starts when the box's field opens.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 383 468
+wait 16
+type "1"
+key Enter
+click 383 573
+wait 16
+type "-1"
+key Enter
+click 330 690
+wait 16
+type "0.5"
+key Enter
+click 760 48
+wait 2000
+move 200 468
+wait 500
+shot lit-k

@@ -1,0 +1,65 @@
+# settings-keys (SM · States › Keyboard): the keyboard through the menu. Tab twice reaches the gear
+# (the wordmark first: Chromium's stops, plan call 3 f; WebKit's plain Tab skips both, so judge
+# this against Chromium's shots); Enter opens the panel with the focus on the checked theme, its
+# 2 px line showing (D3, D10); the arrows pick and wrap, Home and End go to the ends, each theme
+# applying at once; Shift+Tab reaches the toggle, whose arrows apply the mode (Light swaps the list
+# to the light themes, its content fading in); Tab back to the list; Esc closes the panel and the
+# gear shows its ring (plan call 3 g).
+# Positions at 1440 x 900 from the reference's DOM with the panel open (tools/run dom): the gear
+# (1363, 28, 40 x 40), the panel (1099, 76, 304 x 256); the Appearance toggle's options 91.33 x 34
+# from (1113, 112) (System, Light, Dark: centres 1159, 1251, 1343 at y 129); the theme rows 278 x 36
+# from (1112, 211), 36 apart (centres at y 229, 265, 301); the help line (1112, 155, 278 x 18); the
+# gap between the two settings y 173 to 189. The panel's opening runs 643 ms, so a shot of it at
+# rest waits 700.
+size 1440 900
+density 2
+scheme dark
+mode system
+theme arctic-ice
+wait 2000
+tab
+tab
+wait 16
+shot gear-focus
+key Enter
+wait 700
+shot open-by-key
+key ArrowDown
+wait 16
+shot down-tron-cyan
+key ArrowRight
+wait 16
+shot right-midnight-violet
+key ArrowDown
+wait 16
+shot down-wraps-arctic-ice
+key ArrowUp
+key ArrowLeft
+key Home
+wait 16
+shot home-arctic-ice
+key End
+wait 16
+shot end-midnight-violet
+tab shift
+wait 16
+shot toggle-focus
+key ArrowRight
+wait 200
+shot toggle-light
+key ArrowRight
+wait 200
+shot toggle-dark
+key ArrowRight
+wait 200
+shot toggle-wraps-system
+key End
+key Home
+wait 200
+shot toggle-home
+tab
+wait 16
+shot list-focus
+key Escape
+wait 300
+shot escape

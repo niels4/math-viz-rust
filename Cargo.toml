@@ -1,0 +1,64 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+
+[workspace.dependencies]
+sdl3 = "0.20"
+sdl3-main = "0.7"
+glow = "0.18"
+cc = "1"
+png = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+enumset = "1"
+enum-map = "2"
+libc = "0.2"
+libm = "0.2"
+
+# t0a owns this table and fills it (plan 1.2, 3.1 t0a). r0c adds it empty so every
+# crate can carry `[lints] workspace = true` from its first commit.
+[workspace.lints.rust]
+# Op-in lint, still allow-by-default in edition 2024: unsafe blocks inside an
+# `unsafe fn` body must name themselves. The unsafe crates (mv-sys, mv-clay,
+# mv-nvg, function-viewer) write those blocks anyway; this keeps them honest.
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+# Plan 1.2: clippy at deny. Every crate sets `[lints] workspace = true`, and
+# `./build.sh check` re-denies all warnings on the command line as well, so a
+# rustc warning fails the check too.
+all = "deny"
+# Plan §1.3: the pedantic lints denied from the first commit.
+needless_pass_by_value = "deny"
+redundant_clone = "deny"
+ptr_arg = "deny"
+explicit_iter_loop = "deny"
+manual_let_else = "deny"
+map_unwrap_or = "deny"
+unnecessary_wraps = "deny"
+semicolon_if_nothing_returned = "deny"
+cloned_instead_of_copied = "deny"
+uninlined_format_args = "deny"
+needless_collect = "deny"
+match_wildcard_for_single_variants = "deny"
+
+# Profiles. The dev profile is cargo's default (optimised for build speed);
+# only the release profile is tuned here.
+[profile.release]
+# Both targets build `--release` in check builds (plan 1.6): a debug wasm is
+# slow to load and the harness drives the web build at speed. Optimisation
+# stays at cargo's default (opt-level 3); i3-release owns release tuning.
+#
+# Panics unwind on both targets (plan 1.4): t0a measured that the message
+# reaches stderr natively (exit 1) and the page console on the web (see
+# .local/briefs/progress/t0a.md), so no `panic = "abort"` and no
+# `-fwasm-exceptions` on the link.
+#
+# `--remap-path-prefix` and the SDL rpath the plan names are not profile
+# keys (cargo has no per-profile rustflags on stable): `./build.sh release`
+# passes them as RUSTFLAGS for the release build only.
+debug = false

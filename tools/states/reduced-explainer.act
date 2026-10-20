@@ -1,0 +1,31 @@
+# reduced-explainer (M11): under reduced motion (prefers-reduced-motion: reduce; macOS's Reduce
+# motion natively) the explainer only fades, 120 ms each way, where it rests (Callout.module.css: no
+# --callout-from). a's chip rested on: the opening's frames at 0, 40, 80 and 120 ms; then the
+# pointer onto the top bar: the closing's frames at 0, 48, 96 and gone. Inputs and closing shots
+# fall on the 16 ms grid: a closing explainer is gone at its exit's end, React's at that instant,
+# the port's from its next frame.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+move 70 424
+wait 400
+shot open-0000
+wait 40
+shot open-0040
+wait 40
+shot open-0080
+wait 40
+shot open-0120
+wait 504
+move 760 48
+shot leave-0000
+wait 48
+shot leave-0048
+wait 48
+shot leave-0096
+wait 32
+shot leave-gone

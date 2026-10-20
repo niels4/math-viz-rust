@@ -1,0 +1,17 @@
+# motion-q (plan section 6, M10): FV 05's pointer entering and leaving the plane. The pointer onto
+# the empty plane at x = −1.5 (881, 376 at 1440 x 900, as q-at): Q fades in over 160 ms on the enter
+# spring, its drop lines growing to the axes over 120 ms; Q's row turns live, its role and readout
+# fading in (PointRows.module.css values-in: 160 ms on --motion-ease-enter, CSS's linear() of the
+# spring). Every frame of it; then the pointer off the plane onto the top bar (760, 48): Q fades out
+# with its lines over 120 ms, linearly, and the row's placeholders fade in, 120 ms linearly.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 881 376
+frames q-in every 16 for 176
+wait 300
+move 760 48
+frames q-out every 16 for 144

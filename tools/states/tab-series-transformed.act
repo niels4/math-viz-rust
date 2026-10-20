@@ -1,0 +1,61 @@
+# tab-series-transformed (M8): with a transform set (2 typed into a's box at (383, 424), then a press
+# on the top bar's empty middle) Reset all comes after h's box (SubCard puts it last in the DOM,
+# laid out in the card's head) and the Original toggle after the plane: 15 stops, Chromium's (WebKit's
+# plain Tab skips the buttons).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 760 48
+wait 1500
+tab
+wait 16
+shot tab-01-wordmark
+tab
+wait 16
+shot tab-02-gear
+tab
+wait 16
+shot tab-03-picker
+tab
+wait 16
+shot tab-04-a-flip
+tab
+wait 16
+shot tab-05-a-box
+tab
+wait 16
+shot tab-06-k-box
+tab
+wait 16
+shot tab-07-b-flip
+tab
+wait 16
+shot tab-08-b-box
+tab
+wait 16
+shot tab-09-h-box
+tab
+wait 16
+shot tab-10-reset-all
+tab
+wait 16
+shot tab-11-track
+tab
+wait 16
+shot tab-12-plane
+tab
+wait 16
+shot tab-13-original
+tab
+wait 16
+shot tab-14-origin
+tab
+wait 16
+shot tab-15-zoom

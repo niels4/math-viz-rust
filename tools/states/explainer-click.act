@@ -1,0 +1,24 @@
+# explainer-click (M11): a click on a's chip (centre (70, 424.5)) opens its explainer at once, as
+# the pointer's (useChipExplainer.ts: a mouse's click; a touch's tap would toggle), with no rest:
+# the opening's start, 80 ms in and at rest; a second click changes nothing; the pointer then leaves
+# the chip for the top bar and the explainer closes. Inputs and closing shots fall on the 16 ms
+# grid: a closing explainer is gone at its exit's end, React's at that instant, the port's from its
+# next frame.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 70 424
+shot click-0000
+wait 80
+shot click-0080
+wait 560
+shot click-0640
+click 70 424
+wait 16
+shot click-again
+move 760 48
+wait 208
+shot click-gone

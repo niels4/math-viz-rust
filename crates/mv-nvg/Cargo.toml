@@ -1,0 +1,22 @@
+[package]
+name = "mv-nvg"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+mv-sys.path = "../mv-sys"
+glow.workspace = true
+
+[dev-dependencies]
+sdl3.workspace = true
+glow.workspace = true
+png.workspace = true
+
+[target.'cfg(target_os = "emscripten")'.dev-dependencies.sdl3]
+workspace = true
+features = ["build-from-source"]

@@ -1,0 +1,39 @@
+# key-ring (M13a): a key pressed on a part a press focused shows its ring, as :focus-visible comes
+# to match an element the keyboard interacts with, and nothing more: no focus event comes of it,
+# so the box's keys tip, which React shows on a focus that came from the keyboard (NumberBox's
+# onKeyboardFocus), stays away (the run file's M13a carry-over; M9 did it for the plane). k's box
+# (330, 452.5, 107 x 32 at 1440 x 900) dragged 50 px: the press focused it, no ring, k 1.00; →
+# nudges it to 1.01 and its ring shows, no tip. a's flip (296, 412.5, 24 x 24) clicked: Chromium
+# focuses a button on a click, which the port follows (plan call 3 f), no ring; x, a key the flip
+# takes no action on, shows its ring. Reset all (358.12, 366.5, 84.88 x 20) clicked hands its focus
+# to a's box, no ring; ↑ nudges a to 1.01 and a's ring shows, no tip. WebKit's click focuses no
+# button, so there x and ↑ reach no part after the flip's click and Reset all's: judge those
+# against Chromium (call 3 f).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 383 468
+wait 16
+down
+move 433 468 over 160
+up
+wait 700
+shot dragged
+key ArrowRight
+wait 700
+shot box-key
+click 308 424
+wait 1000
+shot flip-clicked
+key x
+wait 16
+shot flip-key
+click 400 376
+wait 1000
+shot reset-clicked
+key ArrowUp
+wait 700
+shot reset-key

@@ -1,0 +1,14 @@
+# M1's hover check, on the C3 sidebar since M5a: the pointer onto row a's name, the first row of
+# the Transform card, whose box is (49, 402.5, 394, 44) at 1440 x 900 (the reference's DOM). One
+# frame later that row is lit (its band, its name in --foreground, its box's stroke at 2 px) and
+# nothing outside it has changed; on the reference the same point lights the same row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot rest
+move 200 424
+wait 16
+shot hover

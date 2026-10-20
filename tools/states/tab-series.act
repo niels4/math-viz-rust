@@ -1,0 +1,57 @@
+# tab-series (M8's judgment; plan call 3 f, call 5): plain Tab from no focus through every stop of
+# the page at rest, in FV 07's reading order as Chromium tabs it: the wordmark, the gear, the picked
+# option, a's flip, a's box, k's box, b's flip, b's box, h's box, P's track, the plane, Return to
+# origin, the zoom control; a 14th Tab leaves the stops (Chromium's goes to the page's body, the
+# next comes back at the wordmark). Each stop's focus ring (3 px of --primary at 32 %): the
+# origin's and the zoom capsule's lines turn --primary, the track's ring is its thumb's with the
+# value tip over it, the plane's frame turns --primary and the plane's keys show at the panel's foot
+# (35, 805.5, 422 x 62). WebKit's plain Tab skips the link and the buttons (8 stops), so this is
+# judged against Chromium.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+wait 16
+shot tab-01-wordmark
+tab
+wait 16
+shot tab-02-gear
+tab
+wait 16
+shot tab-03-picker
+tab
+wait 16
+shot tab-04-a-flip
+tab
+wait 16
+shot tab-05-a-box
+tab
+wait 16
+shot tab-06-k-box
+tab
+wait 16
+shot tab-07-b-flip
+tab
+wait 16
+shot tab-08-b-box
+tab
+wait 16
+shot tab-09-h-box
+tab
+wait 16
+shot tab-10-track
+tab
+wait 16
+shot tab-11-plane
+tab
+wait 16
+shot tab-12-origin
+tab
+wait 16
+shot tab-13-zoom
+tab
+wait 16
+shot tab-14-left

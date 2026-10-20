@@ -1,0 +1,31 @@
+# ghost-toggle (M8): the Original toggle as a button (GhostToggle.tsx). A transform set (2 typed into
+# a's box), the toggle (1189.13, 826, 160.88 x 36 in the reference's DOM: its centre (1269.5, 844))
+# is on, its 2 px --primary line; a click turns it off: the dashed original goes, the toggle's line
+# --border and its content at 45 %, --secondary under the pointer; away from it, --card; a click puts
+# the ghost back. The clicks' shots catch the original's fade a frame in (FV 05: 160 ms, linearly;
+# M10 made the port's); the others are at rest.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 300
+click 383 424
+wait 16
+type "2"
+key Enter
+click 760 48
+wait 1500
+click 1269 844
+wait 16
+shot off
+wait 484
+move 760 48
+wait 500
+shot off-rest
+click 1269 844
+wait 16
+shot on
+move 760 48
+wait 500
+shot on-rest

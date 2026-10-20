@@ -1,0 +1,24 @@
+# pan-50 (M9): the plane pressed on its empty part and dragged 50 px right (CartesianPlane.test.tsx:
+# "pans from the empty plane and says so while it does (a probe hides)"). At 1440 x 900 the plane
+# is (488, 92, 936 x 792), its origin at (468, 396) in it at 50 px a unit (the reference's DOM and
+# its canvas's data-origin-x/y); (700, 600) is x −5.12, y −2.24, under no mark's box, so Q follows
+# the pointer there. Pressed and moved, the view follows the pointer, panX 1, the origin at (518,
+# 396), Q hidden and the cursor the closed hand while it pans; held still 200 ms before the release,
+# the last 120 ms hold no motion, so it doesn't fling, and Q comes back under the pointer.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 700 600
+wait 500
+shot probe
+down
+move 750 600 over 160
+wait 16
+shot panning
+wait 200
+up
+wait 500
+shot released

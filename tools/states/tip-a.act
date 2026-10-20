@@ -1,0 +1,12 @@
+# tip-a (plan section 6, M7): the pointer resting on a's number box (its centre (383, 424) at
+# 1440 x 900): row a lit at once, and 400 ms later (NumberBox.tsx REST_MS) the tip under the row,
+# its right edge at the box's: the box's gestures in words.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 383 424
+wait 500
+shot tip-a

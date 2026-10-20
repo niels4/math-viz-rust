@@ -1,0 +1,13 @@
+# Row k lit in Clean Teal, whose k (--param-k) lies outside sRGB and Display P3 both: the pointer
+# onto k's name, row k at (49, 446.5, 394, 44) at 1440 x 900 (the reference's DOM). One frame
+# later the row has its band (k at 18 %), its name in --foreground and its box's stroke at 2 px,
+# on the reference as on the port. `tools/run gamut M5a` checks the band's P3 bytes.
+size 1440 900
+density 2
+scheme light
+mode light
+theme clean-teal
+wait 2000
+move 200 468
+wait 16
+shot hover

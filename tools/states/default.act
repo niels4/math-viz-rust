@@ -1,0 +1,10 @@
+# default (plan section 6): the page at rest at 1440 x 900, density 2, on a dark system in
+# Arctic Ice. Time 0 is the first frame; React's first paint (the grid fading in, the curve
+# drawn on, P rising) settles within 1.5 s, so the shot waits 2 s.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot default

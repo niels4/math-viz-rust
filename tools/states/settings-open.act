@@ -1,0 +1,18 @@
+# settings-open (plan section 6, M12; SM · Main's first state): the settings panel opened by a click
+# on the gear, System on a dark system, Arctic Ice: Appearance with System picked and "Your system
+# is dark right now.", the dark themes with Arctic Ice checked; the gear keeps its open border.
+# Positions at 1440 x 900 from the reference's DOM with the panel open (tools/run dom): the gear
+# (1363, 28, 40 x 40), the panel (1099, 76, 304 x 256); the Appearance toggle's options 91.33 x 34
+# from (1113, 112) (System, Light, Dark: centres 1159, 1251, 1343 at y 129); the theme rows 278 x 36
+# from (1112, 211), 36 apart (centres at y 229, 265, 301); the help line (1112, 155, 278 x 18); the
+# gap between the two settings y 173 to 189. The panel's opening runs 643 ms, so a shot of it at
+# rest waits 700.
+size 1440 900
+density 2
+scheme dark
+mode system
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 700
+shot open

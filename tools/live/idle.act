@@ -1,0 +1,18 @@
+# The native app idle and alive (tools/run loop): run with --live through SDL's own loop. Once the
+# view's first paint (2.6 s) is over, the pointer onto a's number box wakes it (a frame with the
+# row lit), the tip's 400 ms rest wakes it again (a frame with the tip), then nothing happens for
+# 5.4 s, while tools/run loop samples the process (ps over 3 s, a stack with `sample`) from 1 s
+# after the shot; leaving the box for the plane wakes it once more. Positions at 1440 x 900: a's
+# box is (330, 408.5, 107, 32), the plane right of x 488, its empty background at (700, 700)
+# (tools/src/loop.py's PLANE: no mark there to take hold of).
+size 1440 900
+density 2
+wait 3000
+move 383 424
+wait 1000
+shot awake
+wait 5400
+move 700 700
+wait 600
+shot awake-again
+wait 200

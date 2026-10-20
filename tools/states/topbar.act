@@ -1,0 +1,30 @@
+# M5b's top bar at the widths where it changes (TopBar.module.css, ThemeChip.module.css), each
+# shot at rest after a resize. The bar's parts keep their own widths and the title block gives
+# way: at 700 px it has 261.58 of the subtitle's 275, so the subtitle ends in an ellipsis with the
+# chip still there; at 641 the chip still shows (202.58 px left); at 640 (max-width: 640px) the
+# chip is gone and the block has room again (329.08); at 521 the wordmark keeps its name and the
+# subtitle is cut again (210.08); at 520 (max-width: 520px) only the mark is left (317); at 420,
+# the native window's narrowest (plan call 6), it is cut again (217). All of them stack (under
+# 900) and at 420 the rows drop their names (under 470).
+size 700 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot topbar-700
+size 641 900
+wait 32
+shot topbar-641
+size 640 900
+wait 32
+shot topbar-640
+size 521 900
+wait 32
+shot topbar-521
+size 520 900
+wait 32
+shot topbar-520
+size 420 900
+wait 32
+shot topbar-420

@@ -1,0 +1,48 @@
+[project]
+version = "1.0.0"
+name = "mathviz-rust-tools"
+requires-python = ">=3.14"
+# Pinned: playwright 1.63.0 drives the browser builds cached in ~/Library/Caches/ms-playwright
+# (chromium 1243, firefox 1543, webkit 2359); fonttools makes the static TTFs committed under assets/;
+# av (PyAV, FFmpeg in its wheel) cuts the harness's videos to their section; numpy converts whole
+# frames between sRGB and Display P3 (tools/run gamut).
+dependencies = [
+  "playwright==1.63.0",
+  "pillow==12.3.0",
+  "fonttools[woff]==4.66.1",
+  "av==19.0.1",
+  "numpy==2.5.4",
+]
+
+[project.optional-dependencies]
+dev = ["black", "isort", "ruff", "pyright"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+src_paths = ["src"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+include = ["src"]
+typeCheckingMode = "strict"
+
+[tool.ruff]
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+  "F",   # Pyflakes (real bugs)
+  "E",   # Pycodestyle errors
+  "W",   # Pycodestyle warnings
+  "B",   # Bugbear (actual logic issues)
+  "ARG", # unused arguments
+  "N",   # naming convention checks
+]
+
+# Let the formatter handle formatting
+ignore = [
+  "E501", # line length
+]

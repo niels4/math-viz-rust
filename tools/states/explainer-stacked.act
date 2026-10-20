@@ -1,0 +1,21 @@
+# explainer-stacked (plan section 6, M11): the stacked layout at 800 x 900 has no room right of the
+# panel, so the explainer hangs under the chip, its caret up (a's chip, centre (70, 424.5): the card
+# at (50, 450.5)), or stands above a chip low in the window, its caret down, reaching away from the
+# window's middle (h's chip, centre (70, 573.5): under it the card would run past the window's
+# foot). The pointer goes by the top bar between the two, until a's explainer has gone: a's card
+# hangs over h's chip, and the engines take a still pointer to what an inert card uncovers at
+# different times (the port and Chromium at once, WebKit once the card is gone).
+size 800 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 70 424
+wait 1104
+shot explainer-stacked
+move 760 48
+wait 304
+move 70 573
+wait 1104
+shot explainer-stacked-h

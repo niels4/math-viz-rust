@@ -1,0 +1,33 @@
+# settings-pointer (SM · States): the panel under the pointer: a theme's row hovered (--secondary),
+# the toggle's Light hovered (--secondary) and held down (--primary at 26 %); released, Light
+# applies: the page and the panel turn Clean Teal and the list's new content fades in over 160 ms
+# (D7), shot at rest; the pointer back in the gap.
+# Positions at 1440 x 900 from the reference's DOM with the panel open (tools/run dom): the gear
+# (1363, 28, 40 x 40), the panel (1099, 76, 304 x 256); the Appearance toggle's options 91.33 x 34
+# from (1113, 112) (System, Light, Dark: centres 1159, 1251, 1343 at y 129); the theme rows 278 x 36
+# from (1112, 211), 36 apart (centres at y 229, 265, 301); the help line (1112, 155, 278 x 18); the
+# gap between the two settings y 173 to 189. The panel's opening runs 643 ms, so a shot of it at
+# rest waits 700.
+size 1440 900
+density 2
+scheme dark
+mode system
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 700
+move 1251 265
+wait 16
+shot row-hover
+move 1251 129
+wait 16
+shot option-hover
+down
+wait 16
+shot option-pressed
+up
+wait 200
+shot light
+move 1250 181
+wait 16
+shot rest

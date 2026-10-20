@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Create the project venv if needed and install the project with its dev tools.
+# Run after a fresh clone or whenever pyproject.toml changes. Output streams in real time.
+
+cd "$(dirname "$0")"
+
+if [ ! -x .venv/bin/python ]; then
+  echo "Creating venv..."
+  python3 -m venv .venv
+fi
+
+echo "Installing dependencies..."
+.venv/bin/pip install -e ".[dev]"
+
+# Marker so .envrc doesn't reinstall on the next directory entry.
+touch .venv/.setup-done
+echo "Done."

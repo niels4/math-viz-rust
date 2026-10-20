@@ -1,0 +1,23 @@
+# origin-keeps-zoom (M9): Return to origin (CartesianPlane.test.tsx: "returns to the origin from its
+# button, keeping the zoom"; the user's ruling, 2026-10-07). A click on the empty plane (700, 600 at
+# 1440 x 900) focuses it and the pointer leaves for the gap beside the panel (482, 500); → and ↓ pan it a
+# square each and + steps the zoom to 62.5; then Return to origin (its box (1360, 745, 36 x 36), the
+# reference's DOM) clicked: the origin back at the plane's centre (468, 396), the zoom kept at 62.5.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 700 600
+move 482 500
+key ArrowRight
+key ArrowDown
+key +
+wait 500
+shot moved
+move 1378 763
+wait 16
+click 1378 763
+wait 500
+shot origin

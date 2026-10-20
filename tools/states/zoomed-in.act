@@ -1,0 +1,15 @@
+# zoomed-in (plan section 6, M9's judgment): the zoom's + clicked (the reference's DOM at 1440 x 900:
+# Return to origin (1360, 745, 36 x 36) over the capsule (1360, 791, 36 x 71), + (1361, 792, 34 x 34)
+# over − (1361, 826, 34 x 35)): the zoom steps about the plane's centre to the next stop, 62.5 px a
+# unit (125 %), the origin kept at (468, 396); the pointer stays on +, which shows --secondary.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 1378 809
+wait 16
+click 1378 809
+wait 500
+shot zoomed-in

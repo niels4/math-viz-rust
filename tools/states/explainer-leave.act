@@ -1,0 +1,26 @@
+# explainer-leave (M11): the pointer leaving the chip closes what its rest opened (a close by the
+# pointer ends only what the pointer opened): open on a's chip and at rest, the pointer onto the top
+# bar (760, 48), the explainer going back into its caret linearly over 200 ms (Callout.module.css
+# [data-closing], dur-overlay-leave), taking no input meanwhile, then gone. Inputs and closing shots
+# fall on the 16 ms grid: a closing explainer is gone at its exit's end, React's at that instant,
+# the port's from its next frame.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 70 424
+wait 1104
+move 760 48
+shot leave-0000
+wait 48
+shot leave-0048
+wait 48
+shot leave-0096
+wait 48
+shot leave-0144
+wait 48
+shot leave-0192
+wait 16
+shot leave-gone

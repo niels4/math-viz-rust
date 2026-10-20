@@ -1,0 +1,19 @@
+[package]
+name = "mv-text"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+enum-map.workspace = true
+enumset.workspace = true
+mv-nvg.path = "../mv-nvg"
+mv-sys.path = "../mv-sys"
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,30 @@
+# M2's keyboard focus ring on the page. Tab from no focus goes to the first stop, the wordmark
+# (its ring at radius 6), then the gear (its line --primary under the ring), then the function
+# picker's picked option (x², 148.25 to 245.5 at 1440 x 900), then a's flip toggle and a's number
+# box (330, 408.5, 107, 32), with the keys' tip under a's row: a 3 px ring outside each in primary
+# at 32 %, its corners the part's own spread. A press on row k's name clears the ring, as
+# :focus-visible does. These are Chromium's stops (plan call 3 f): WebKit's Tab skips the link and
+# the buttons (AGENTS.md), its fifth landing on h's box, so the shots are judged against Chromium.
+# The page waits 2 s first, as M6's states do, so React's plane has finished its first paint.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+wait 16
+shot wordmark
+tab
+wait 16
+shot gear
+tab
+wait 16
+shot picker
+tab
+tab
+wait 16
+shot box
+click 200 468
+wait 16
+shot pressed

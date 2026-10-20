@@ -1,0 +1,22 @@
+# box-dblclick (M7): k's box (centre (383, 468) at 1440 x 900) dragged +50 px to 1.00 and let go:
+# the ruler goes, ↺ comes into the row (where a flip toggle would be: (296, 456.5, 24 x 24)), the
+# box keeps the focus without the ring, P's ghost lingers 600 ms on the plane. Then a double-click
+# on the box resets k to 0.00 (a jump), whatever the first click opened.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 383 468
+wait 16
+down
+move 433 468 over 160
+up
+wait 16
+shot released
+wait 1000
+shot settled
+dblclick 433 468
+wait 1000
+shot reset

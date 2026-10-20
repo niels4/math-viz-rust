@@ -1,0 +1,30 @@
+# box-keys (M7): a's box (330, 408.5, 107 x 32 at 1440 x 900) from the keyboard. A click opens its
+# field and Esc closes it, handing the focus back to the box with the ring, in every engine (plain
+# Tab reaches it at different stops in WebKit and Chromium). Then → nudges 0.01 (1.01), Shift+↑ 0.1
+# (1.11), ← 0.01 (1.10), each a direct change; Backspace resets (1.00); Enter opens the field with
+# its text selected; Esc closes it.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 383 424
+wait 16
+key Escape
+wait 16
+shot focused
+key ArrowRight
+key ArrowUp shift
+key ArrowLeft
+wait 16
+shot nudged
+key Backspace
+wait 1000
+shot reset
+key Enter
+wait 16
+shot open
+key Escape
+wait 16
+shot closed

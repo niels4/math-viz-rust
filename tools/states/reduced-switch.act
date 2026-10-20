@@ -1,0 +1,24 @@
+# reduced-switch (plan section 6, M10): motion-switch under reduced motion (prefers-reduced-motion:
+# reduce; macOS's Reduce motion natively): no first paint, and no switch: sin x is drawn whole at
+# once, its marks with it. The same frames as motion-switch.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 392 181
+shot switch-0000
+wait 160
+shot switch-0160
+wait 140
+shot switch-0300
+wait 150
+shot switch-0450
+wait 150
+shot switch-0600
+wait 300
+shot switch-0900
+wait 300
+shot switch-rest

@@ -1,0 +1,22 @@
+# fling (M9): a flick on the empty plane (700, 600 at 1440 x 900, under no mark's box): pressed,
+# moved 100 px right in six moves 16 ms apart and let go at once, still moving: the release's
+# velocity over its last 120 ms (100 px in 96 ms, 1041.7 px/s) launches a glide that decays by
+# exp(−4.5 dt) a frame and stops below 24 px/s, 52 frames later, the origin from (568, 396) to
+# (786, 396) in the plane (usePan.ts, util.ts; the reference's data-origin-x frame by frame). The
+# pointer then leaves the plane for the gap beside the panel, so Q, which the reference fades in
+# and out (M10's motion), shows on neither. The frames start a frame after the release, when the port
+# has taken it (and its cursor with it, where the reference's CSS cursor changes at the event).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 700 600
+wait 16
+down
+move 800 600 over 96
+up
+move 482 500
+wait 16
+frames fling every 16 for 1200

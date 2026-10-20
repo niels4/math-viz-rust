@@ -1,0 +1,32 @@
+# term-drag-k (M8): the equation's terms drag as their rulers do (D13, useTermDrags.ts). The pointer
+# on k's term in the form line (202, 289, 33 x 24 in the reference's DOM: its centre (218, 301)): its
+# tip "k = 0.00 · vertical shift", k's terms lit in both lines; a press drags at once (no threshold):
+# k's ruler under its row, its band; 50 px right is 1.00 (0.02 a px), the live line holding the
+# term; the release lets go; a double-click resets k to 0 as its second click lets go: a frame into
+# the spring to the reset value (FV 05's jump; M10 made the port's), and at rest.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 218 301
+wait 500
+shot hover
+down
+wait 16
+move 268 301 over 160
+wait 16
+shot held
+up
+wait 16
+shot released
+# Past the double-click time since the drag's press (500 ms, SDL's and a browser's), so the double
+# click's first press counts as a first click on every surface: Playwright's synthetic clicks count
+# from 1, SDL counts on from the drag's press.
+wait 600
+dblclick 218 301
+wait 16
+shot reset
+wait 1484
+shot reset-rest

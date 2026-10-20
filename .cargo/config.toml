@@ -1,0 +1,15 @@
+# Emscripten / wasm browser build (single-threaded). The link flags used to
+# live here: the wasm spike's proven `-s` set byte for byte
+# (/opt/dev/tmp/rust-port/spikes/wasm-sdl3-glow/.cargo/config.toml), with
+# t0a's delta 1 (`--js-library web/library.js`) and app-platform's delta 2
+# (`-sEXPORTED_FUNCTIONS=_main,...`) appended, then i3-release's delta 3
+# scoping those two to the app binary. Delta 4 moved the whole set to
+# `crates/function-viewer/build.rs`, emitted per binary target through
+# `cargo:rustc-link-arg-bins=`, because an `RUSTFLAGS` in the environment
+# (which `./build.sh release` sets for the path remaps) replaces this
+# table's `rustflags` instead of adding to them: the release web link
+# silently lost the `-s` set and created a WebGL1 context (measured,
+# progress/i3-release.md R4b). The strings are unchanged; the three-engine
+# proof is in that progress file. This table stays so the target has one
+# documented place pointing at the mechanism.
+[target.wasm32-unknown-emscripten]

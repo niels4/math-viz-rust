@@ -1,0 +1,55 @@
+# tab-series-stacked (M8; the M5b review's carry-over): the stacked page (800 x 900), the plane under
+# the panel (824.5..1304.5), in Chromium's Tab order (call 3 f). Tab to the plane shows the plane's
+# keys at the panel's foot, pushing the plane down 49 px, and the page scrolls until the plane's
+# foot is the window's, measured after that as WebKit measures it (plan call 3 o): 454, where
+# Chromium measures before the tip and stops at 405, the plane's foot 48.5 px below the window
+# (tab-plane-stacked judges the scroll against WebKit). Return to origin and the zoom capsule show
+# as they are, the page back at 421 as the tip goes; past the last stop the focus leaves; Shift+Tab
+# back to the plane rises to 454 again. The rings are judged against Chromium.
+size 800 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+tab
+wait 16
+shot tab-09-h-box
+tab
+wait 16
+shot tab-10-track
+tab
+wait 16
+shot tab-11-plane
+tab
+wait 16
+shot tab-12-origin
+tab
+wait 16
+shot tab-13-zoom
+tab
+wait 16
+shot tab-14-left
+tab shift
+wait 16
+tab shift
+wait 16
+tab shift
+wait 16
+shot back-03-plane

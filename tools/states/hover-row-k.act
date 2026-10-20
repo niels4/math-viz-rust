@@ -1,0 +1,12 @@
+# hover-row-k (plan section 6, M7): the pointer on k's row, on its name (200, 468): the row's band
+# (k's 18 % tint), its name in --foreground, the box's 2 px stroke, k's term lit in the equation
+# and k's dimension line on the plane. Row k is (49, 446.5, 394 x 44) at 1440 x 900.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 200 468
+wait 500
+shot hover-row-k
