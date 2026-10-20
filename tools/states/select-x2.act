@@ -1,0 +1,12 @@
+# select-x2 (H3): picking x2 at rest after the click. The x2 label's centre
+# is (174.5, 187): cell [133,170,83,34]. The click flushes func=x2 to the URL
+# at once; the switch draws on over 900 ms, so the shot waits 2 s.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 174.5 187
+wait 2000
+shot select-x2

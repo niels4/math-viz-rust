@@ -704,6 +704,51 @@ mod tests {
         assert!(app.plot_frame_at.is_none());
     }
 
+    /// The port's boxes against `testdata/page.json` (the reference at this
+    /// hash, `tools/run dom --fixture`): the sidebar, the card and the four
+    /// option cells within the plan's 0.5 CSS px, through the page's layout.
+    #[test]
+    fn boxes_match_fixture() {
+        const SLACK: f32 = 0.5;
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot =
+            crate::fixture::fixture_shot(&fixture, "default").expect("default shot in fixture");
+        let mut names: Vec<(&str, u32, &str)> = vec![(crate::page::SIDEBAR_ID, 0, "sidebar")];
+        names.push((CARD_ID, 0, "card_function"));
+        for i in 0..4 {
+            names.push(("FunctionCell", i, "radio"));
+        }
+        for (id, n, name) in names {
+            let data = clay.get_element_data(mv_clay::id(id, n));
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let key = if name == "radio" {
+                format!("radio_{n}")
+            } else {
+                name.to_string()
+            };
+            let want = crate::fixture::fixture_box(&shot.webkit, &key).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{key}[{i}]: laid out {got}, reference {want}"
+                );
+            }
+        }
+    }
+
     /// An outside edit naming another function is adopted as a switch.
     #[test]
     fn external_hash_edit_adopts_the_named_function() {

@@ -1,0 +1,14 @@
+# switch-mid-switch (H3): x3 picked while x2 draws on. 200 ms after picking
+# x2 (cell centre 174.5,187), x3 (cell centre 257.5,187) is picked; 83 ms
+# later the half-faded whole x2 shows under the x3 stub.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 174.5 187
+wait 200
+click 257.5 187
+wait 83
+shot switch-mid-switch
