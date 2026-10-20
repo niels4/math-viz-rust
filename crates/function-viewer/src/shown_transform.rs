@@ -29,16 +29,17 @@ pub const STIFFNESS: f64 = 170.0;
 /// The flip spring's damping (`damping`).
 pub const DAMPING: f64 = 26.0;
 
-/// A pending flip: the parameter, and the value it flips from and to
-/// (`flipAtom`). Compared by value for the hook's `flip !== seenFlip`
-/// check; two flips always differ in `from`/`to` (each click negates the
-/// value), except a flip of `0` against `-0`, which shows nothing either
-/// way.
+/// A pending flip: the parameter, the value it flips from and to
+/// (`flipAtom`), and the press identity. `seq` is the hook's object
+/// identity: the creator sets it from a counter that advances on every
+/// press, so a second press with the same values still counts as a new flip
+/// (the hook's `flip !== seenFlip` compares atoms, not values).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Flip {
     pub param: TransformParam,
     pub from: f64,
     pub to: f64,
+    pub seq: u64,
 }
 
 /// The damped spring's share of the way from `from` to `to` at `ms` after
@@ -134,7 +135,7 @@ impl ShownTransform {
             if let Some(pending) = flip
                 && can_animate
             {
-                let from = self.shown(transform).with(pending.param, pending.from);
+                let from = self.shown(transform.with(pending.param, pending.from));
                 self.jump = Some(Jump {
                     from,
                     to: transform.with(pending.param, pending.to),
@@ -184,6 +185,7 @@ mod tests {
         shown: ShownTransform,
         plane: Transform,
         can_animate: bool,
+        presses: u64,
     }
 
     impl Rig {
@@ -198,18 +200,23 @@ mod tests {
                 shown: ShownTransform::new(),
                 plane: live,
                 can_animate: true,
+                presses: 0,
             }
         }
 
         /// The flip button: the flip pends and the value writes through at
         /// once (the box shows the new value while the plane still turns).
+        /// Every press advances the identity, as each click mints a fresh
+        /// flip object.
         fn click_flip(&mut self) {
             let value = self.live.a;
             self.flip = Some(Flip {
                 param: TransformParam::A,
                 from: value,
                 to: -value,
+                seq: self.presses,
             });
+            self.presses += 1;
             self.live.a = -value;
         }
 
@@ -270,5 +277,42 @@ mod tests {
         rig.frames(1);
         assert_close_to(rig.plane.a, -2.0);
         assert!(!rig.shown.is_animating());
+    }
+
+    #[test]
+    fn a_re_flip_mid_spring_restarts_from_the_displayed_position() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.07);
+
+        // Pressing flip again turns back from the displayed 1.07, not from
+        // the box's -2: the hook blends the in-flight jump from the shown
+        // value (`shownDuring(jump, {...transform, [param]: flip.from})`).
+        rig.click_flip();
+        assert_eq!(rig.live.a, 2.0);
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.28);
+        assert!(rig.shown.is_animating());
+    }
+
+    #[test]
+    fn a_second_press_with_the_same_values_restarts_the_animation() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        rig.frames(61);
+        assert_close_to(rig.plane.a, -2.0);
+        assert!(!rig.shown.is_animating());
+
+        // Typing the value back and pressing flip again pends the same
+        // {param, from, to} with a fresh identity: the hook compares atoms,
+        // not values, so the animation restarts instead of being swallowed.
+        rig.live.a = 2.0;
+        rig.click_flip();
+        rig.frames(1);
+        assert!(rig.shown.is_animating());
+        assert_close_to(rig.plane.a, 1.96);
     }
 }
