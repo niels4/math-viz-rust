@@ -79,6 +79,16 @@ at `#function-viewer?<query>` (a `?query` search was silently dropped: nothing r
 `LiveWhat::Hash` (the loop milestone's); dev tools pinned `==` in `tools/pyproject.toml`
 (black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414: newest with a minimal canonical
 reflow — black 25.12 drifts 7 files, 25.1.0 23; bisect in scratch, never in the worktree).
+h10-t-route's entries: `route welcome|function-viewer` opens the page on its route (script
+default `function-viewer`, so every existing script is unchanged; the native binary's own
+default `welcome`, as the browser's `/`); `hash_route` in each reader gives the hash route
+(`welcome` → `""`, `function-viewer` → `"function-viewer"`); `act.py`'s `url_for` always
+carries the hash (`/#`, `/#function-viewer`), the `Hash` verb keeps the script's route, and
+`run_native` passes `--route` on every invocation (recorded in `report.json`'s `detail.command`);
+`loop.py`'s `--live` runs pass it from the live script (the idle/signals launches take the
+binary's default). The `route` views reader (`port_route`/`reference_route`) reads the last
+`route` line against `location.hash`'s route; until h10-page writes the line, "no route line"
+is a check that can't run, not a failure.
 
 ## The references and the bar
 

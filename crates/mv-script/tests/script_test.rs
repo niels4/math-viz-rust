@@ -68,6 +68,7 @@ reduced-motion off
             reduced_motion: true,
             space: Space::DisplayP3,
             query: String::new(),
+            route: Route::FunctionViewer,
         }
     );
     let expected = vec![
@@ -306,6 +307,28 @@ fn query_opens_the_page_with_the_hash_query() {
 }
 
 #[test]
+fn route_opens_the_page_on_its_route() {
+    let (script, err) = parse("route welcome\nwait 16\nshot rest\n");
+    assert!(err.is_none(), "unexpected error: {err:?}");
+    assert_eq!(script.start.route, Route::Welcome);
+    assert_eq!(script.actions.len(), 2);
+    assert_eq!(hash_route("welcome"), Some(""));
+    assert_eq!(hash_route("function-viewer"), Some("function-viewer"));
+    assert_eq!(hash_route("nowhere"), None);
+
+    for text in [
+        "route\nwait 1\n",
+        "route welcome function-viewer\nwait 1\n",
+        "route nowhere\nwait 1\n",
+        "wait 1\nroute welcome\n",
+        "ref route welcome\nwait 1\n",
+    ] {
+        let (_, err) = parse(text);
+        assert!(err.is_some(), "no error for {text:?}");
+    }
+}
+
+#[test]
 fn hash_edits_the_hash_mid_run() {
     let (script, err) =
         parse("query center=0,0&scale=1\nwait 500\nhash center=3,1&scale=2\nwait 500\nshot rest\n");
@@ -386,6 +409,16 @@ fn errors_name_their_line() {
             text: "space display-p3",
             line: 1,
             says: "space takes one of srgb, p3",
+        },
+        Case {
+            text: "route nowhere",
+            line: 1,
+            says: "route takes one of welcome, function-viewer",
+        },
+        Case {
+            text: "move 1 2\nroute welcome",
+            line: 2,
+            says: "before the first action",
         },
         Case {
             text: "theme nope",
