@@ -698,6 +698,10 @@ def run_native(
         result.problems.append(f"no {shown(binary)}: run ./build.sh native (or release)")
         return result
     command = [str(binary), "--script", str(script.path), "--out", str(out)]
+    if script.start.query:
+        # The script's `query` line opens on every surface: --query natively
+        # (main.rs seeds App.url from it), appended to the URL on ref and web.
+        command += ["--query", script.start.query]
     if window:
         command.append("--window")
     began = time.monotonic()

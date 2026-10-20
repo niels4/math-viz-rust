@@ -77,6 +77,29 @@ The one check: `./build.sh check`.
 
 One block per milestone, appended in merge order; empty until the first milestone lands.
 
+### h2-input: the plane's input wiring (unmerged)
+
+`plane_input.rs` routes the plane's SDL facts into `camera.rs` and the URL
+params into the page URL: `plane_down` adopts outside values BEFORE the
+pointer handlers in the same frame (the hook's `adoptIfIdle` tops, moved out
+of `Camera`); `plane_move` dirties only on center change (the hook's publish);
+`plane_wheel` takes DOM px with `dx` ignored (no `deltaMode` read at this
+hash — the skill's ×16 rule belongs to h5's scrub); `frame_step` runs in
+`iterate` before the draw (camera step → publish-vs-live → settle flush →
+param step/sync → adopt → web hash write); the Hash arm shares
+`external_url_synced`; `App.reset_view` flushes both params to defaults (a
+mid-glide reset is rewritten by the ongoing glide, as the reference is).
+`HitKind::Plane` captures; a wheel asserts pointer presence; the canvas keeps
+the default cursor (no CSS rule). Wheel px: web ×100 restores DOM px, native
+macOS notch 40 / precise 10 (scripted states queue page px on both targets).
+A fact at script t=0 takes the wall clock (states open with `wait 500`).
+views.json: shot lines carry `zoom=scale, pan=center`; native `camera` lines
+(center/scale/animating) on change (`check_views` allows them); `run_native`
+passes the script's `query` as `--query`. Plane region box convention for
+h2-plane: the canvas CONTENT box. `default_equals` is `Object.is` (`-0` ≠
+`0`); `write_pair` set collapses duplicate keys. Don't run repo-wide
+`tools/format` (version drift reflows unowned files).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
