@@ -695,7 +695,9 @@ def check_views(out: Path) -> list[str]:
     """Each line of <out>/views.json against the native harness's shape (research odin-harness.md
     section 5): shot (str), time (int ms on the harness's 16 ms grid), zoom (px per unit, above
     0), pan_x/pan_y (view units), origin_x/origin_y (plane px on the device grid), cursor (a CSS
-    string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px)."""
+    string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
+    `url` (str) is the page's hash query, written whenever it changes (--query writes one at
+    frame 0)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -711,6 +713,10 @@ def check_views(out: Path) -> list[str]:
             problems.append(f"views.json line {number}: not an object")
             continue
         view = cast(dict[str, object], parsed)
+        if set(view) == {"url"}:
+            if not isinstance(view.get("url"), str):
+                problems.append(f"views.json line {number}: 'url' is not a string")
+            continue
         for key in VIEW_KEYS:
             if key not in view:
                 problems.append(f"views.json line {number}: no {key!r}")
