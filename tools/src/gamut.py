@@ -196,6 +196,12 @@ ALLOWANCES: tuple[Allowance, ...] = (
     # at max 11 on every H2 state, all on non-flat native pixels). Bounded to
     # the native frame's edges: a flat pixel apart is still a defect.
     Allowance("Chromium's SwiftShader edges", ("chromium",), False, EDGES, 11),
+    # H3 at 3560eb2: the plotted 3 px curve's steep flanks spread to 33/255 in
+    # SwiftShader (2 edge px on select-x2, 1 on switch-f450-0367, all on
+    # non-flat native pixels; the sRGB states comparison measures the same
+    # pixels at max 33-44). Takes only what H2's row leaves; a flat pixel
+    # apart is still a defect.
+    Allowance("Chromium's SwiftShader curve edges", ("chromium",), False, EDGES, 33),
 )
 
 

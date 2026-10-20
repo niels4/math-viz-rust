@@ -160,6 +160,36 @@ reads `app.clay` in place). The return-to-centre release routes to
 `write_pair` set collapses duplicate keys. Don't run repo-wide
 `tools/format` (pinned versions only).
 
+### h3: the sidebar's function picker and the plotted switch
+
+`selector.rs` lays out the Function card (`function_card(app, current)`:
+state as a param, the settings segmented-cell precedent): legend
+(`Type::Heading`, WS700 17/28), the 36 px bordered grid of four 83 px cells
+(`Type::Maths`/`MathsItalic`, STIX 20/25, x italic, literal ²/³ as
+`\u{00B2}`/`\u{00B3}` escapes, `sin x` as three runs with the font's own
+space advance — no cross-run kerning, so separate runs are exact). Cells 2-4
+carry their divider as a nested 1 px `--border` child (the shared Border arm
+strokes uniform top-width borders only; a one-sided border paints nothing —
+NanoVG drops moveto-less paths and zero-width strokes alike). Checked beats
+hover and active on background (probed specificity); active mixes primary at
+26% over the base; cursor stays Default (no CSS rule); stop is the checked
+cell only (the DOM's one tab stop per group). `sidebar.rs` opens the column
+(`CARD_GAP` 12, h4-rows' `--space-inset` measurement; unobservable with one
+card). `pick_function` flushes `func` at once (`set_flushed`, default stays
+out), switches unless reduced motion shows it whole; arrows wrap and check;
+`plot_step` holds the switch's own turn (render-phase curves) and a
+mid-switch re-pick's turn keeping the running clock (the hook's loop is keyed
+on `switching`: the next frame diffs from the last callback, not the click —
+a re-anchor loses the 8 ms the click turn consumed, measured at 2922 flat px
+before the fix); `external_func_synced` adopts hash edits the same way.
+`App` appends `shown`, `func_param`, `plot_frame_at`, `plot_hold`; the loop
+stays awake while switching; `paint_curves` (width 3, round joins, chartLine
+at the curve's alpha, move-to first) runs between labels and legend in
+`paint_plane` (the TS draw order). The sidebar has the bar's `--shadow-card`
+shape and radius 4 (`--radius-card` is defined at this hash, unlike h1's
+`--radius-lg`). No new views.json line (the function rides the URL line) and
+no new tokens (all eight tabled).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
