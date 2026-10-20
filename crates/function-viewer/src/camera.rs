@@ -1071,12 +1071,11 @@ mod tests {
         use super::*;
 
         // The camera wired to the url params the way CartesianPlane wires it.
-        // The params' debounce and history live in url.rs (h2-p-url); until it
-        // lands, these tests assert every camera-side value: the formatted
+        // The params' debounce and history live in url.rs; these tests assert
+        // every camera-side value: the formatted
         // strings the url ends up holding, the drawn scales' monotonicity,
         // and the write order the debounce interleaving rests on.
 
-        #[ignore = "needs h2-p-url"]
         #[test]
         fn keeps_zooming_smoothly_when_a_drag_lets_go_mid_zoom() {
             let mut r = Rig::new([1.0, 2.0], 1.0);
@@ -1125,7 +1124,6 @@ mod tests {
             assert_eq!(r.count(Ev::Settle), 1);
         }
 
-        #[ignore = "needs h2-p-url"]
         #[test]
         fn keeps_the_zoom_when_a_drag_lets_go_just_after_the_zoom_stops() {
             let mut r = Rig::new([1.0, 2.0], 1.0);
