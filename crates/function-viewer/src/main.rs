@@ -31,6 +31,7 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod number_field;
 pub mod overlay;
 pub mod page;
 pub mod plane;
@@ -52,6 +53,8 @@ pub mod settings;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;
+pub mod transform_row;
+pub mod transform_section;
 pub mod transition;
 pub mod typography;
 pub mod ui;
