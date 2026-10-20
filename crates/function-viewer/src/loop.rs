@@ -167,6 +167,11 @@ pub fn iterate(app: &mut App) -> bool {
         }
     }
     let mut drawn = false;
+    // The theme fade redraws until done: no timer arms its frames, so the
+    // turn does while one is in flight (its last frame clears the active).
+    if app.transition.active.is_some() {
+        app.dirty = true;
+    }
     if app.dirty {
         app.dirty = false;
         crate::draw::draw_frame(app, now);
@@ -185,7 +190,9 @@ pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
 pub fn schedule(app: &mut App, _now: Time) {
-    app.r#loop.awake = app.dirty;
+    // A fade in flight keeps the turns coming, as its frames do: the last
+    // one clears the active and lets the app sleep again.
+    app.r#loop.awake = app.dirty || app.transition.active.is_some();
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

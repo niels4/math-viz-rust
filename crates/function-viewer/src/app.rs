@@ -71,6 +71,9 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub transition: crate::transition::Transition,
+    /// The settings menu's own state (open flag and keyboard focus); h1-settings
+    /// appends it here, h1-frame's `ThemeState` holds the theme picks.
+    pub settings: crate::settings::SettingsMenuState,
 }
 
 impl App {
@@ -196,6 +199,7 @@ impl App {
             url: Url::from_query(""),
             theme: crate::theme_state::ThemeState::default(),
             transition: crate::transition::Transition::default(),
+            settings: crate::settings::SettingsMenuState::closed(),
         }
     }
 }

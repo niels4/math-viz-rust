@@ -23,6 +23,7 @@ pub mod camera;
 pub mod draw;
 pub mod fixture;
 pub mod flex;
+pub mod functions;
 pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
 pub mod harness;
@@ -43,9 +44,11 @@ pub mod platform_unix;
 pub mod platform_web;
 #[cfg(windows)]
 pub mod platform_windows;
+pub mod plot;
 pub mod prefs;
 pub mod scale_legend;
 pub mod scroll;
+pub mod settings;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;

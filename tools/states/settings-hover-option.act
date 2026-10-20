@@ -1,0 +1,13 @@
+# settings-hover-option (H1): the pointer on the Tron Cyan row (1251, 262).
+# Hover bg is the row's own theme secondary (tron-cyan's), per the probe.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+move 1251 262
+wait 300
+shot settings-hover-option

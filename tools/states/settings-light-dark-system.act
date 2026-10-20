@@ -1,0 +1,11 @@
+# settings-light-dark-system (H1): system selected with the system scheme light.
+# No stored picks (defaults: system, arctic-ice, clean-teal), so the resolved
+# scheme is the system's light: message "Your system is light right now.",
+# legend "LIGHT THEME", Clean Teal row checked (bold + check, no bg change).
+size 1440 900
+density 2
+scheme light
+wait 2000
+click 1383 48
+wait 500
+shot settings-light-dark-system

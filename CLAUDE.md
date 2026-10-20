@@ -29,6 +29,7 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - function-viewer (input-pinch): payloads the safe event enum drops are recovered by an `SDL_AddEventWatch` that records them keyed by the event timestamp (the safe `Unknown` keeps the timestamp: the join key), following the `darwin_watch_wheel` precedent; the store is a `static Mutex` (SDL may call the watch on another thread than the router: a `thread_local!` would hide it); the safe `EventType` lacks pinch and display-scale variants, which is why both arrive as `Unknown`; `SDL_PeepEvents` with a single-type range takes one event type back without disturbing other queued events.
 - **function-viewer** (test-app): unit tests build `App` with `fixture::headless_app()` (the zeroed `App`: `window`/`gl_context`/`gl` are `None`, `vg` is `Context::null()`) and never open a window — a `cargo test` thread cannot start SDL video (measured 2026-10-18: `sdl3::init()` refuses off the main thread, and with one thread SDL answers "No available video device"). Window readers go through `App::window()`/`window_mut()`, which panic on `None`; `platform_refresh_rate` returns 0.0 headless.
 - function-viewer (h2-p-url): the URL query codec is hand-rolled (no new dependency): `application/x-www-form-urlencoded` encode/decode as `URLSearchParams` does (space `+`, stray `%` literal, lossy UTF-8), pairs in a `Vec` so key order matches, then the literal-comma restore (`%2C`/`%2c` back to `,`) applied after the whole search string is built, exactly where the TS `replaceAll` sits; `trim_slashes` is split/filter/join (the regex's three alternatives remove exactly the empty segments — the 13 cases pin it); the debounce is one pending write per param armed in whole ms on the app's frame clock (callers pass `(now / MS) as u64`), fired by an explicit `step`, absorbed by an explicit `sync` with the `lastRaw` skip; test serialises print `format!("{:.N}", round_to(v, N))` for ASCII `-` (never bare `{:.N}` per the numfmt bullet, never `format_number`'s U+2212); the `hashchange` listener calls the `mv_hash_changed` export (on `EXPORTED_FUNCTIONS`; `replaceState` fires no `hashchange`, so our own writes never loop back), which pushes `UserCode::Hash` for the main thread to re-read.
+- function-viewer (h3-p-plot): the plot switch keeps the hook's shape as data (`Shown { func, old: Option, elapsed }`, `PlotCurve { func, alpha, draw_to }` — the TS field `fn` is renamed `func`, a keyword); graphed functions are plain `fn(f64) -> f64` pointers and identity is address comparison through `std::ptr::fn_addr_eq` (plain `==` on fn pointers is compiler-linted, including inside a derived `PartialEq`, so `PlotCurve` implements it by hand); the rAF loop is `switch_to` (the render-phase transition, `canAnimate()` in as a `bool` the coder wires) plus `step` (first frame carries `FIRST_FRAME_MS`, as `camera.rs`'s `first_frame`, but only on a rest-to-switch transition — a mid-switch change keeps the running clock, as the hook's loop is keyed on `switching`); `sample_curve` is `drawCurve`'s sampling without the paint (per-column points, `insideShare`, cumulative inside-length, interpolated stop), taking the canvas dims beside the grid, which stores none; vitest `toBeCloseTo(x, 2)` is `|diff| < 0.005`, and frame-driven tests accumulate time and diff it exactly like the hook's `now - last` so `elapsed` sums bit-identically.
 
 ## Harness notes
 
@@ -86,6 +87,23 @@ The one check: `./build.sh check`.
 ## What the port settled
 
 One block per milestone, appended in merge order; empty until the first milestone lands.
+
+### h1-frame (from its progress file; its branch merged first)
+
+- The theme change is a 250 ms LINEAR cross-fade, measured on the reference (getAnimations during a click; the plan's §1.4 guessed ease).
+- Clay borders take no layout space (the browser's `border-box` does), so each bordered element's Clay padding is its CSS padding plus its border.
+- `ThemeState`'s setters are pure; the side-effecting `App::set_*` wrappers save through prefs and start the transition.
+- The bar shadow paints from `ShadowColor` at 0/6/18, skipped where transparent (the dark themes).
+
+### h1-settings
+
+- The settings menu is a floating Clay sibling anchored to the gear (RightTop to RightBottom, 8 px below), laid out only while open; the hidden popover takes no part in the layout. The closed menu still matches `display:flex` selectors in the DOM, so the layout test reads the open shots.
+- Hover is positional but sticky-dropped: a pick that changes the theme drops hover until the next pointer move (measured: Chromium does not re-hover without a mouse move after the re-render); a same-value pick keeps it. Enforced by `hover_held` in `retarget`, cleared on pointer (or button-pos) move. Keyboard focus lives separately in `input.focus`.
+- One `HitKind::Gear` region (h1-frame's) serves the click; the menu never declares its own gear region. Theme rows resolve hover/secondary/swatch tokens under the ROW's theme class, not the page theme.
+- Icons take 0-to-1 colours: a settings icon converts its 0-to-255 Clay ink with `nvg_color` at the layout boundary (unconverted inks clamp to white).
+- The transition snapshot must be captured after `end_frame` (mid-frame `read_pixels` reads the unflushed backbuffer), and the loop must keep turns coming + stay awake while a transition is active, or the fade never animates past its first frame.
+- Menu rows/labels hover with their own secondary; the checked row has no background (weight + check only); `:hover` beats `.selected` on rows while `:has(:checked)` beats `:hover` on cells (both measured).
+- Chromium/Firefox don't capture the timed fade under the harness like WebKit: chromium runs ~180 ms ahead of script time, firefox shows all-final frames (engine quirk, measured per-frame). The port's fade is exactly linear-250 on the script clock.
 
 ### h2-plane (the Cartesian plane's painters)
 

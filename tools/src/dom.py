@@ -81,7 +81,7 @@ const run = (node) => {
 """
 
 DOM_JS = "(props) => {" + RUN_JS + r"""
-  const root = document.querySelector('header').parentElement;
+  const root = (document.querySelector('header') ?? document.querySelector('#root')).parentElement;
   const out = [];
   const skipped = [];
   const visuallyHidden = (cs, r) => cs.clipPath === 'inset(50%)' && r.width <= 1 && r.height <= 1;
@@ -146,7 +146,10 @@ Dom = dict[str, Any]
 
 # The layouts the port's tests lay out, each a state in tools/states and the shot that shows
 # it. H0's page has one state; each milestone appends the layouts it lays out.
-FIXTURE_STATES = ("default",)
+# h1-settings: the menu's boxes only exist with the menu open, so the fixture runs the
+# open menu in both schemes (dark options at settings-open, light options at
+# settings-light-dark-system).
+FIXTURE_STATES = ("default", "settings-open", "settings-light-dark-system")
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"
 

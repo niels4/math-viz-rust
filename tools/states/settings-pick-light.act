@@ -1,0 +1,12 @@
+# settings-pick-light (H1): Clean Teal picked with the system light. No stored
+# picks (defaults), so the resolved scheme is the system's light; the click on
+# the Clean Teal row keeps it checked and the menu open.
+size 1440 900
+density 2
+scheme light
+wait 2000
+click 1383 48
+wait 500
+click 1251 226
+wait 500
+shot settings-pick-light

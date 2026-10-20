@@ -15,15 +15,21 @@ pub const SNOWFLAKE_PATHS: [&str; 2] = [
     "M12 2l-2 2.5M12 2l2 2.5M12 22l-2-2.5M12 22l2-2.5",
 ];
 
-/// The page's own icons: the wordmark flake and the settings gear.
+/// The page's own icons: the wordmark flake, the settings gear, and the
+/// settings menu's option and check marks.
 ///
 /// Ported from math-viz2's `src/components/icons/icons.tsx` (`Logo`,
-/// `GearIcon`) and `TopBar/icons.tsx`: the flake's two stroke groups are the
+/// `GearIcon`) and `TopBar/icons.tsx` (`SystemIcon`, `LightIcon`,
+/// `DarkIcon`, `CheckIcon`): the flake's two stroke groups are the
 /// favicon's mark above; the gear is a 3.2 hub with its toothed ring path.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IconKind {
     Logo,
     Gear,
+    System,
+    Sun,
+    Moon,
+    Check,
 }
 
 /// An icon to paint: its kind and its ink, already resolved to a colour.
@@ -39,21 +45,50 @@ pub const GEAR_PATH: &str = "M19.4 13.5a7.5 7.5 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 
 /// The gear hub's radius, as `GearIcon` writes it.
 pub const GEAR_HUB_RADIUS: f32 = 3.2;
 
-/// The icons' viewBox, as both components write it.
+/// The icons' viewBox, as the wordmark and gear components write it.
 pub const ICON_VIEWBOX: f32 = 24.0;
 
-/// The icons' stroke width, as both components write it.
+/// The icons' stroke widths by viewBox, as their components write them: the
+/// 24 px icons at 1.8, the 16 px option icons at 1.6, the 14 px check at 2.
 pub const ICON_STROKE: f32 = 1.8;
+pub const OPTION_STROKE: f32 = 1.6;
+pub const CHECK_STROKE: f32 = 2.0;
 
-/// Paints an icon in a `size` box at `at`: the viewBox scaled to the box,
-/// stroked round in its ink.
+/// The option icons' viewBox, as `TopBar/icons.tsx` writes it.
+pub const OPTION_VIEWBOX: f32 = 16.0;
+
+/// The check icon's viewBox, as `TopBar/icons.tsx` writes it.
+pub const CHECK_VIEWBOX: f32 = 14.0;
+
+/// The system icon's monitor: rect, then stand, from `SystemIcon`.
+pub const SYSTEM_RECT: [f32; 5] = [1.8, 2.5, 12.4, 8.5, 1.6];
+pub const SYSTEM_PATH: &str = "M8 11v2.75M5.25 13.75h5.5";
+
+/// The sun icon's face and rays, from `LightIcon`.
+pub const SUN_CENTER: (f32, f32) = (8.0, 8.0);
+pub const SUN_RADIUS: f32 = 3.0;
+pub const SUN_PATH: &str = "M13.2 8h1.6M11.68 11.68l1.13 1.13M8 13.2v1.6M4.32 11.68l-1.13 1.13M2.8 8H1.2M4.32 4.32 3.19 3.19M8 2.8V1.2M11.68 4.32l1.13-1.13";
+
+/// The moon icon's crescent, from `DarkIcon`.
+pub const MOON_PATH: &str = "M13.6 8.54A6 6 0 1 1 7.46 2.4 4.6 4.6 0 0 0 13.6 8.54Z";
+
+/// The check icon's tick, from `CheckIcon`.
+pub const CHECK_PATH: &str = "M2.5 7.5L5.5 10.5L11.5 3.5";
+
+/// Paints an icon in a `size` box at `at`: the kind's viewBox scaled to the
+/// box, stroked round in its ink.
 pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon) {
+    let (view, stroke) = match icon.kind {
+        IconKind::Logo | IconKind::Gear => (ICON_VIEWBOX, ICON_STROKE),
+        IconKind::System | IconKind::Sun | IconKind::Moon => (OPTION_VIEWBOX, OPTION_STROKE),
+        IconKind::Check => (CHECK_VIEWBOX, CHECK_STROKE),
+    };
     vg.save();
     vg.translate(at[0], at[1]);
-    let scale = size / ICON_VIEWBOX;
+    let scale = size / view;
     vg.scale(scale, scale);
     vg.stroke_color(icon.ink);
-    vg.stroke_width(ICON_STROKE);
+    vg.stroke_width(stroke);
     vg.line_cap(mv_nvg::LineCapType::ROUND);
     match icon.kind {
         IconKind::Logo => {
@@ -73,6 +108,48 @@ pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon)
             vg.begin_path();
             if !crate::svgpath::draw_path(vg, GEAR_PATH) {
                 eprintln!("math-viz2-rust: icon path NanoVG can't draw: {GEAR_PATH:?}");
+            }
+            vg.stroke();
+        }
+        IconKind::System => {
+            vg.line_join(mv_nvg::LineCapType::ROUND);
+            vg.begin_path();
+            vg.rounded_rect(
+                SYSTEM_RECT[0],
+                SYSTEM_RECT[1],
+                SYSTEM_RECT[2],
+                SYSTEM_RECT[3],
+                SYSTEM_RECT[4],
+            );
+            vg.stroke();
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, SYSTEM_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {SYSTEM_PATH:?}");
+            }
+            vg.stroke();
+        }
+        IconKind::Sun => {
+            vg.begin_path();
+            vg.circle(SUN_CENTER.0, SUN_CENTER.1, SUN_RADIUS);
+            vg.stroke();
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, SUN_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {SUN_PATH:?}");
+            }
+            vg.stroke();
+        }
+        IconKind::Moon => {
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, MOON_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {MOON_PATH:?}");
+            }
+            vg.stroke();
+        }
+        IconKind::Check => {
+            vg.line_join(mv_nvg::LineCapType::ROUND);
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, CHECK_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {CHECK_PATH:?}");
             }
             vg.stroke();
         }
