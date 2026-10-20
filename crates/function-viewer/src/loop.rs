@@ -191,14 +191,21 @@ pub fn iterate(app: &mut App) -> bool {
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
     }
-    // The flip's step (h6-curve): the toggle's spring turns the curve
-    // through flat over a second, stepped after the params sync so it reads
-    // the fresh live values, before the draw so the frame draws what the
-    // flip turned to. The press's own turn draws the adopted jump unstepped;
-    // a running flip repaints, as a switch does.
+    // The flip's step (h6-curve, through h7-p-state's jump list): the
+    // toggle's spring turns the curve through flat over a second, stepped
+    // after the params sync so it reads the fresh live values, before the
+    // draw so the frame draws what the flip turned to. The press's own turn
+    // draws the adopted jump unstepped; a running flip repaints, as a switch
+    // does.
     {
         let live = crate::flip::live_transform(app);
-        crate::flip::flip_step(&mut app.flip, live, now, !app.reduced_motion);
+        crate::flip::flip_step(
+            &mut app.flip,
+            &app.state.jumps,
+            live,
+            now,
+            !app.reduced_motion,
+        );
         if app.flip.is_animating() {
             app.dirty = true;
         }

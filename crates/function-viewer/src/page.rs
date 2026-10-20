@@ -173,16 +173,33 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     // switch's curves (`plot.rs`) through `transform_curves`, the dashed
     // original behind each transformed one; the flip's spring blends the
     // shown values. At rest with no values the curves pass through whole.
+    // The handles and lines (h6-handles) ride the same shown transform
+    // (`transformHandles(..., shown)` and `transformLines(lit, ..., shown)`
+    // at `5cef052`). At h7-p-state `transformHandles` is gone (the plane
+    // builds its own handles at `251c080`, h7-plane's work), so the draw
+    // builds the two handles from the same points here; `transform_lines`
+    // takes the lit list with the base function.
     let live = crate::flip::live_transform(app);
     let shown = crate::flip::shown_transform(&app.flip, live);
     let switch = crate::plot::curves(&app.shown);
     let curves = crate::transform_curves::transform_curves(&switch, shown);
-    // The shift and scale handles and the lit parameter's lines, from the
-    // same shown transform (h6-handles' two call lines).
     let slug = *app.func_param.get();
     let unit = crate::functions::unit_x(slug);
-    let handles = crate::transform_curves::transform_handles(slug, unit, shown);
-    let lines = crate::transform_curves::transform_lines(app.state.lit(), slug, unit, shown);
+    let base = crate::functions::base(slug);
+    let handles = vec![
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Diamond,
+            at: crate::plot::PlotPoint {
+                x: shown.h,
+                y: shown.k,
+            },
+        },
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Square,
+            at: crate::transform_curves::unit_point(base, unit, shown),
+        },
+    ];
+    let lines = crate::transform_curves::transform_lines(&app.state.lit(), base, unit, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(

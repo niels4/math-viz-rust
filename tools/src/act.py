@@ -788,9 +788,10 @@ def check_views(out: Path) -> list[str]:
     string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
     frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
-    camera, written whenever it changes (h2-input). A line holding only `lit` ("a", "b", "h",
-    "k" or null) is the highlighted parameter, written whenever the highlight moves
-    (h4-readout; h4-rows reuses it for its rows). A line holding only `shown` ({a, b, h, k,
+    camera, written whenever it changes (h2-input). A line holding only `lit` (a list of
+    "a"/"b"/"h"/"k", or null at rest) is the highlighted parameters in order, written whenever
+    the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
+    one parameter to the list, still accepting the old single-parameter shape). A line holding only `shown` ({a, b, h, k,
     animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
     problems: list[str] = []
     try:
@@ -831,8 +832,14 @@ def check_views(out: Path) -> list[str]:
             continue
         if set(view) == {"lit"}:
             lit: object = view.get("lit")
-            if lit is not None and lit not in ("a", "b", "h", "k"):
-                problems.append(f"views.json line {number}: 'lit' is not a parameter or null")
+            params: list[object] | None = (
+                [lit] if isinstance(lit, str) else (cast(list[object], lit) if isinstance(lit, list) else None)
+            )
+            if lit is not None and (
+                params is None
+                or not all(isinstance(param, str) and param in ("a", "b", "h", "k") for param in params)
+            ):
+                problems.append(f"views.json line {number}: 'lit' is not a parameter list or null")
             continue
         if set(view) == {"shown"}:
             shown_raw: object = view.get("shown")
