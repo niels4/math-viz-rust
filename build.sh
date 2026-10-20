@@ -173,15 +173,6 @@ check() {
 	echo "build.sh check: cargo clippy --workspace --all-targets -- -D warnings"
 	cargo clippy --workspace --all-targets -- -D warnings
 	echo "clippy (native): clean"
-	# The mv-nvg twin test judges its render against the twin PNG, which is
-	# gitignored (built by the Odin toolchain, not a dependency of the port):
-	# a fresh clone has no copy, so the test would fail with "run
-	# tools/twin/run first". Generate it when missing (web-blend; ~4 s warm),
-	# so the check passes with no manual step.
-	if [[ ! -f .local/shots/t0c-b/twin.png ]]; then
-		echo "build.sh check: tools/twin/run (twin.png missing)"
-		tools/twin/run
-	fi
 	tests
 	native
 	(

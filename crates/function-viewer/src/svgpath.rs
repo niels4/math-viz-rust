@@ -424,7 +424,14 @@ fn number(rest: &mut &str) -> (f32, bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::icons::{CHECK_PATH, GEAR_PATH, MOON_PATH, SNOWFLAKE_PATHS, SUN_RAYS, SYSTEM_STAND};
+    use crate::icons::SNOWFLAKE_PATHS;
+
+    // Parser test data: path strings with arcs, implicit commands and decimals.
+    const GEAR_PATH: &str = "M19.4 13.5a7.5 7.5 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 2h-4l-.5 2.6a7.6 7.6 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5L10 22h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4-2-1.5z";
+    const SYSTEM_STAND: &str = "M8 11v2.75M5.25 13.75h5.5";
+    const SUN_RAYS: &str = "M13.2 8h1.6M11.68 11.68l1.13 1.13M8 13.2v1.6M4.32 11.68l-1.13 1.13M2.8 8H1.2M4.32 4.32 3.19 3.19M8 2.8V1.2M11.68 4.32l1.13-1.13";
+    const MOON_PATH: &str = "M13.6 8.54A6 6 0 1 1 7.46 2.4 4.6 4.6 0 0 0 13.6 8.54Z";
+    const CHECK_PATH: &str = "M2.5 7.5L5.5 10.5L11.5 3.5";
 
     // A step as the tests write it: what it does and where it ends.
     struct Step {

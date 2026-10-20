@@ -182,11 +182,15 @@ pub const DEFAULT_PREFS: Prefs = Prefs {
     light: Slug::CleanTeal,
 };
 
-/// Where the Rust app keeps the prefs in storage, as JSON. The web build keeps
-/// them under this key; the native build keeps the same JSON in a file.
-///
-/// Ported from `prefs.odin:142` (`PREFS_KEY :: "mathviz-appearance"`).
-pub const PREFS_KEY: &str = "mathviz-function-viewer-rust";
+/// Where the Rust app keeps the prefs in storage. The web build keeps one
+/// value per key, as math-viz2 does (`useAppTheme.ts`): the mode under the
+/// light-dark key, the dark pick under the dark-theme key, the light pick
+/// under the light-theme key, each a JSON string (`"system"`, a slug).
+/// The native build keeps the same three values as one JSON object in a file
+/// (`prefs_json` below).
+pub const PREFS_KEY_LIGHT_DARK: &str = "math-viz2-rust-light-dark";
+pub const PREFS_KEY_DARK_THEME: &str = "math-viz2-rust-dark-theme";
+pub const PREFS_KEY_LIGHT_THEME: &str = "math-viz2-rust-light-theme";
 
 /// Stored prefs as read: each field checked, a missing or unknown one taking
 /// its default. Text that isn't JSON gives the defaults, as a storage read
@@ -195,13 +199,11 @@ pub const PREFS_KEY: &str = "mathviz-function-viewer-rust";
 /// Ported from `prefs.odin:146` (`parse_prefs`).
 pub fn parse_prefs(text: &str) -> Prefs {
     let mut prefs = DEFAULT_PREFS;
-    let value: serde_json::Value = match serde_json::from_str(text) {
-        Ok(value) => value,
-        Err(_) => return prefs,
+    let Ok(value): Result<serde_json::Value, _> = serde_json::from_str(text) else {
+        return prefs;
     };
-    let fields = match value.as_object() {
-        Some(fields) => fields,
-        None => return prefs,
+    let Some(fields) = value.as_object() else {
+        return prefs;
     };
     if let Some(mode) = fields.get("mode").and_then(|v| word_in(v, &MODE_WORDS).0) {
         prefs.mode = mode;
@@ -238,11 +240,10 @@ fn word_in<E>(value: &serde_json::Value, words: &EnumMap<E, &str>) -> (Option<E>
 where
     E: for<'a> EnumArray<&'a str>,
 {
-    let text = match value.as_str() {
-        Some(text) => text,
-        None => return (None, false),
+    let Some(text) = value.as_str() else {
+        return (None, false);
     };
-    for (e, word) in words.iter() {
+    for (e, word) in words {
         if *word == text {
             return (Some(e), true);
         }

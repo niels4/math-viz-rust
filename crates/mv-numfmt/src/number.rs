@@ -378,7 +378,9 @@ mod tests {
                 f.text == text && f.exact == exact,
                 "number_parts({v}) = Fixed({f:?}), want fixed {text:?} exact {exact}"
             ),
-            other => panic!("number_parts({v}) = {other:?}, want fixed {text:?} exact {exact}"),
+            Parts::Sci(s) => {
+                panic!("number_parts({v}) = Sci({s:?}), want fixed {text:?} exact {exact}")
+            }
         }
     }
 
@@ -388,7 +390,9 @@ mod tests {
                 s.mantissa == mantissa && s.exponent == exponent,
                 "number_parts({v}) = Sci({s:?}), want {mantissa} × 10^{exponent}"
             ),
-            other => panic!("number_parts({v}) = {other:?}, want {mantissa} × 10^{exponent}"),
+            Parts::Fixed(f) => {
+                panic!("number_parts({v}) = Fixed({f:?}), want {mantissa} × 10^{exponent}")
+            }
         }
     }
 
