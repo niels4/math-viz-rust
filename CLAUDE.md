@@ -796,11 +796,14 @@ no new tokens (all eight tabled).
   closure keeps its address, so a `laid_out_page` returning the app by
   value dangles it and the next measure aborts ("shape needs init").
   Take `&mut` and build the app in the test.
-- Engine notes: WebKit dark selection (85,125,167) vs Chromium
-  (83,123,165) the port paints (2 levels, accepted); saturated canvas
-  inks shift vs CSS (primary ring (112,192,160) vs (122,190,216)) — the
-  shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
-  for the union `gamut all`, not a defect.
+- Engine notes: both ref engines paint the dark selection
+  (85,125,167) in the text band (measured webkit + chromium; firefox
+  paints opaque #3399FF over the whole plate); the port reuses scrub
+  SELECTION_DARK (83,123,165), 2 levels, still engine-quirk (e). The
+  (122,190,216) rows are webkit/chromium default-selection compositing
+  over the ring's top/bottom edge in field-open only (count 0 in every
+  selection-free shot) — not a canvas-ink shift; `ui::ink` resolves
+  --primary exactly to (112,192,160). No gamut story, no code change.
 
 ### h9 (Arctic Ice Secondary recolor)
 
@@ -835,7 +838,33 @@ no new tokens (all eight tabled).
   sets it. Pre-existing at union-h8 (same shape), exposed by the
   recolor. Owner: h8-points-field's tip/input code (wrap/field settles
   the mechanism — suspect a second bar path beside `layout_tip`, since
-  `scrub_value::tip` early-returns unless typing/resting).
+  `scrub_value::tip` early-returns unless typing/resting). Settled by
+  h8-fix-readout below: no second path exists (3 `layout_tip` callers, all
+  Key/Arrow cells through `key_cap` → Secondary); the bar's absence is the
+  tab-walk engine split, walk kept, webkit clusters under (e).
+
+### h8-fix-readout (readout review fixes checked; key-cap finding settled)
+
+- 5612e1d verified by measurement, no further code: the "f(" zone
+  (device x440-504 y1420-1500) is 0 apart flat>2 in all 7 field states +
+  points-default; every text run's left/right ink edge within 1 device px
+  (result right edge 779 both sides); italic STIX f matches at 6x.
+  Spillover shrinks union clusters on rest states (points-default 197->48).
+- Finding 4 settles as walk, not paint: Tip CSS `.key` is
+  `background: var(--secondary)` and `key_cap` sets `Token::Secondary` —
+  proven resolving (P-tip zone nat 7017 vs ref 6499; typing bar arctic 2396
+  vs 1886, tron-cyan 2396 vs 1894). flip-focus/focus-radio paint 0 px
+  Secondary (bar never lays out: focus never enters a field on the port's
+  Tab walk). Same scripts per engine: WebKit skips buttons/radios in
+  sequential navigation (measured both directions + fresh-page order) and
+  lands on the next field with select-all + tip; Chromium/Firefox stop on
+  the toggle (port matches them: 1055/235 and 1017 apart). Walk kept
+  (h5's tested order; one walk can't match an engine-split reference) —
+  overturnable, question for the user. WebKit bar clusters are (e).
+- H5+H8 matrix (82 states x 7 surfaces, 574 runs, 0 problems): native ==
+  web-webkit == web-firefox at 0 whole-frame everywhere; chromium 0 flat
+  except box-wheel (5353, recorded quirk); shift +-1 row multiplies counts
+  (no row offset). `./build.sh check` green.
 ### h10-seam (the legend out of the plane painter; param colours' new source)
 
 - `plane.rs`'s `paint_plane` is the bare plane (grid, axes, labels, curves,
