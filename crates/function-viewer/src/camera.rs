@@ -15,7 +15,7 @@
 
 use std::collections::VecDeque;
 
-use mv_numfmt::{precision, round_to};
+use mv_numfmt::{js_to_string, to_fixed, to_precision};
 
 /// A plane unit is this many px wide at scale 1 (`constants.ts`).
 pub const UNSCALED_UNIT_SIZE: f64 = 25.0;
@@ -349,22 +349,17 @@ fn release_velocity(samples: &mut VecDeque<Sample>, now: f64) -> [f64; 2] {
 /// `centerParam`'s serialiser: `toFixed(4)`, through `mv-numfmt`.
 #[must_use]
 pub fn format_center(center: [f64; 2]) -> String {
-    format!("{},{}", fixed4(center[0]), fixed4(center[1]))
-}
-
-fn fixed4(v: f64) -> String {
-    let rounded = round_to(v, 4);
-    // `toFixed` prints no sign for a true zero ("0.0000"), but keeps the
-    // minus of a nonzero value that rounds to zero ("-0.0000").
-    let rounded = if v == 0.0 { 0.0 } else { rounded };
-    format!("{rounded:.4}")
+    format!("{},{}", to_fixed(center[0], 4), to_fixed(center[1], 4))
 }
 
 /// `scaleParam`'s serialiser: `String(Number(v.toPrecision(3)))`, three
 /// significant digits at every scale, through `mv-numfmt`.
 #[must_use]
 pub fn format_scale(scale: f64) -> String {
-    precision(scale, 3).to_string()
+    // The precision string always parses (digits with at most one `.` and
+    // exponent), so this nests the two conversions as the TS does.
+    let n: f64 = to_precision(scale, 3).parse().unwrap_or(f64::NAN);
+    js_to_string(n)
 }
 
 /// JavaScript's `Number(text)`: surrounding whitespace ignored, empty text
@@ -1180,6 +1175,9 @@ mod tests {
             // A nonzero value that rounds to zero keeps its sign, as
             // `toFixed(4)` does (`(-0.00001).toFixed(4) === "-0.0000"`).
             assert_eq!(format_center([-0.00001, 0.00004]), "-0.0000,0.0000");
+            // The binary value decides, not the decimal digits.
+            assert_eq!(format_center([2.675, 1.0005]), "2.6750,1.0005");
+            assert_eq!(format_center([2.6755, -2.6755]), "2.6755,-2.6755");
         }
 
         #[test]
@@ -1189,6 +1187,8 @@ mod tests {
             assert_eq!(format_scale(2.0 * 0.1f64.exp()), "2.21");
             assert_eq!(format_scale(100.0), "100");
             assert_eq!(format_scale(0.01), "0.01");
+            // The binary value decides: 2.675 is 2.6749999... underneath.
+            assert_eq!(format_scale(2.675), "2.67");
         }
 
         #[test]
