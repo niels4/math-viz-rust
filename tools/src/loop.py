@@ -902,13 +902,24 @@ def web_checks(engine: str, out: Path) -> list[Check]:
                 # page never passes one.
                 have = {c.name for c in checks}
                 for name in (
-                    "idle", "tween", "timer", "text", "keys", "pinch",
-                    "scheme", "motion", "cursor", "prefs", "page",
+                    "idle",
+                    "tween",
+                    "timer",
+                    "text",
+                    "keys",
+                    "pinch",
+                    "scheme",
+                    "motion",
+                    "cursor",
+                    "prefs",
+                    "page",
                 ):
                     if name not in have:
                         checks.append(
                             Check(
-                                surface, name, False,
+                                surface,
+                                name,
+                                False,
                                 f"the page died before it ran: {err!s}"[:300],
                                 {},
                             )

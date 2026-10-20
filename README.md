@@ -10,6 +10,7 @@ A port of math-viz2, the user's React Function Viewer, to Rust in math-viz-rust'
 | SDL3 | 3.4.18 (Homebrew `sdl3` natively for dev/check builds; compiled from source for the release and always on the web) | window, input, GL context, main callbacks |
 | Emscripten | 6.0.12 through emsdk in `~/emsdk` | linking the web build |
 | Python | 3.14 (Homebrew), the `tools/` venv (t0b) | the harness |
+| Python dev tools | black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414, pinned `==` in `tools/pyproject.toml` (t1-hash) | `tools/format` and `tools/check` on the harness |
 | Playwright browsers | chromium 1243, firefox 1543, webkit 2359 in `~/Library/Caches/ms-playwright` | screenshots of the web build and the reference |
 
 Clay (`e6cc369`), NanoVG, Fontstash, stb_truetype, kb_text_shape (2.21) are vendored in `vendor/` (t0c), which says where each came from and what changed; emsdk is the one toolchain fetched outside it.
@@ -72,7 +73,9 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   forward, animation frames fall every 16 ms). `query center=1,2&scale=2` is the page's hash
   query: appended to the reference and web URLs, passed as `--query` natively (mv-script's
   twin parses it too: change `tools/src/script.py` and `crates/mv-script/src/script.rs`
-  together).
+  together). `hash center=3,1&scale=2` edits that query mid-run on every surface, through
+  the page's own hashchange path, as an address-bar edit while it runs (t1-hash; h2-input's
+  `url-edit` state drives it).
 - **Storage keys:** the reference is seeded with math-viz2's keys (`mathviz-light-dark`,
   `mathviz-dark-theme`, `mathviz-light-theme`, one JSON string each, and `mathviz-theme`, the
   single key the reference reads before h1's three-key model: each reference reads its own);
@@ -87,8 +90,8 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   `motion.json`, `time.json` and `live.json` are checked against their shapes, a mismatch
   counting as a problem). `views.json` holds one object per shot with the exact 10 keys
   (`shot,time,zoom,pan_x,pan_y,origin_x,origin_y,cursor,theme,scaled`); a line holding only
-  `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0;
-  runs without one write none, which reads as the empty query). Behaviour checks compare the
+  `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0,
+  `hash` whenever it changes it; runs without one write none, which reads as the empty query). Behaviour checks compare the
   last `url` line with the reference's `location.hash` query after every scripted input.
   `tools/run states` lays the surfaces' shots on a contact sheet and compares every pair at
   threshold 0; `tools/run judge` counts the native shot's pixels apart from the reference per

@@ -81,7 +81,7 @@ const run = (node) => {
 """
 
 DOM_JS = "(props) => {" + RUN_JS + r"""
-  const root = document.querySelector('header').parentElement;
+  const root = (document.querySelector('header') ?? document.querySelector('#root')).parentElement;
   const out = [];
   const skipped = [];
   const visuallyHidden = (cs, r) => cs.clipPath === 'inset(50%)' && r.width <= 1 && r.height <= 1;

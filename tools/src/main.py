@@ -387,9 +387,7 @@ def main() -> int:
         default=",".join(TARGETS),
         help="comma-separated: ref, web, native",
     )
-    s.add_argument(
-        "--engines", type=engines_list, default=list(ENGINES), help="for web"
-    )
+    s.add_argument("--engines", type=engines_list, default=list(ENGINES), help="for web")
     s.add_argument("--ref-engines", type=engines_list, default=["webkit"], help="for the reference")
     s.add_argument(
         "--jobs",

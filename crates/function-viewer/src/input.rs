@@ -128,6 +128,8 @@ pub struct Hit {
 pub enum HitKind {
     #[default]
     None,
+    /// The top bar's settings gear.
+    Gear,
     /// A light/dark/system cell; `Hit.index` names the cell (0 system, 1 dark, 2 light).
     SettingsLightDark,
     /// A theme row; `Hit.index` names the row in the shown list (0..3).
@@ -394,8 +396,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             if event.down {
                 press(app);
+                crate::settings::press_down(app);
             } else {
+                let down = app.input.pressed;
                 release(app);
+                crate::settings::click(app, down);
             }
         }
         Input::Wheel(event) => {
@@ -415,6 +420,8 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 println!("input {event:?}");
             }
             app.input.mods = event.mods;
+            // The page milestones route their keys from here.
+            crate::settings::key(app, &event);
         }
         Input::Text(event) => {
             if crate::trace() {
@@ -447,6 +454,13 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 mv_theme::Scheme::Dark
             } else {
                 mv_theme::Scheme::Light
+            };
+            // The theme state tracks the system, as `systemColorSchemeAtom`
+            // tracks matchMedia; stored picks are untouched.
+            app.theme.system = if event.dark {
+                crate::theme_state::SystemScheme::Dark
+            } else {
+                crate::theme_state::SystemScheme::Light
             };
             if crate::trace() {
                 println!("scheme {:?}", app.system_scheme);
@@ -677,9 +691,7 @@ pub fn input_watch_pinch() {
         unsafe { sdl3::sys::events::SDL_AddEventWatch(Some(pinch_watch), std::ptr::null_mut()) };
     if !added {
         REGISTERED.store(false, Ordering::Relaxed);
-        eprintln!(
-            "function-viewer-rust: input: no event watch: a trackpad pinch never becomes a fact"
-        );
+        eprintln!("math-viz2-rust: input: no event watch: a trackpad pinch never becomes a fact");
     }
 }
 

@@ -1,337 +1,21 @@
 //! The settings menu: the gear's popover under the top bar with the light/dark/system
 //! radios and the two theme lists with swatches (`SettingsMenu.tsx` at `adb0534`).
 //!
-//! The menu's theme selections live in h1-frame's `ThemeState` (the three persisted
-//! picks plus the system scheme); this module owns the menu's own state (open flag
-//! and keyboard focus) and the shell-independent menu logic. The `ThemeState` items
-//! below are a local stub with h1-frame's names (marked); when h1-frame merges the
-//! stub section goes and this module uses `crate::theme_state` instead.
+//! The menu's theme selections live in `crate::theme_state::ThemeState`; this module
+//! owns the menu's own state (the open flag and keyboard focus), the layout, the
+//! swatch painter, and the pointer/keyboard routing. The popover API becomes an
+//! explicit `open` bool: the menu lays out only while open, an outside pointer-down
+//! or Esc closes it, picking keeps it open, and the 160 ms open/close transition is
+//! skipped (the menu appears at rest).
 
 use std::fmt;
 
-// The stub section: h1-frame's `theme_state` items mirrored exactly (commit
-// 1fda916 on claude-port-h1-frame, read-only). When h1-frame merges into
-// `claude-port`, this section is deleted and the `use` below it takes over.
-// Every name, default, word, slug, label and routing rule matches.
+use mv_sys::clay;
 
-// stub until h1-frame: replaced by `crate::theme_state::SystemScheme`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SystemScheme {
-    #[default]
-    Dark,
-    Light,
-}
+use crate::app::App;
+use crate::input::{Cursor, Hit, HitKind};
+use crate::theme_state::{LightDark, SystemScheme, ThemeSlug, ThemeState};
 
-// stub until h1-frame: replaced by `crate::theme_state::LightDark`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum LightDark {
-    #[default]
-    System,
-    Dark,
-    Light,
-}
-
-// stub until h1-frame: replaced by `crate::theme_state::DarkTheme`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum DarkTheme {
-    #[default]
-    ArcticIce,
-    TronCyan,
-    MidnightViolet,
-}
-
-// stub until h1-frame: replaced by `crate::theme_state::LightTheme`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum LightTheme {
-    #[default]
-    CleanTeal,
-    EducationalWarm,
-    SageEditorial,
-}
-
-// stub until h1-frame: replaced by `crate::theme_state::ThemeSlug`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ThemeSlug {
-    #[default]
-    ArcticIce,
-    TronCyan,
-    MidnightViolet,
-    CleanTeal,
-    EducationalWarm,
-    SageEditorial,
-}
-
-// stub until h1-frame: replaced by `crate::theme_state::ALL_SLUGS`.
-pub const ALL_SLUGS: [ThemeSlug; 6] = [
-    ThemeSlug::ArcticIce,
-    ThemeSlug::TronCyan,
-    ThemeSlug::MidnightViolet,
-    ThemeSlug::CleanTeal,
-    ThemeSlug::EducationalWarm,
-    ThemeSlug::SageEditorial,
-];
-
-impl LightDark {
-    // stub until h1-frame.
-    pub fn word(self) -> &'static str {
-        match self {
-            LightDark::System => "system",
-            LightDark::Dark => "dark",
-            LightDark::Light => "light",
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn name(self) -> &'static str {
-        match self {
-            LightDark::System => "System",
-            LightDark::Dark => "Dark",
-            LightDark::Light => "Light",
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn parse(text: &str) -> Option<LightDark> {
-        match text {
-            "system" => Some(LightDark::System),
-            "dark" => Some(LightDark::Dark),
-            "light" => Some(LightDark::Light),
-            _ => None,
-        }
-    }
-}
-
-impl DarkTheme {
-    // stub until h1-frame.
-    pub fn slug(self) -> &'static str {
-        ThemeSlug::from(self).slug()
-    }
-
-    // stub until h1-frame.
-    pub fn name(self) -> &'static str {
-        ThemeSlug::from(self).name()
-    }
-
-    // stub until h1-frame.
-    pub fn parse(text: &str) -> Option<DarkTheme> {
-        match text {
-            "arctic-ice" => Some(DarkTheme::ArcticIce),
-            "tron-cyan" => Some(DarkTheme::TronCyan),
-            "midnight-violet" => Some(DarkTheme::MidnightViolet),
-            _ => None,
-        }
-    }
-}
-
-impl LightTheme {
-    // stub until h1-frame.
-    pub fn slug(self) -> &'static str {
-        ThemeSlug::from(self).slug()
-    }
-
-    // stub until h1-frame.
-    pub fn name(self) -> &'static str {
-        ThemeSlug::from(self).name()
-    }
-
-    // stub until h1-frame.
-    pub fn parse(text: &str) -> Option<LightTheme> {
-        match text {
-            "clean-teal" => Some(LightTheme::CleanTeal),
-            "educational-warm" => Some(LightTheme::EducationalWarm),
-            "sage-editorial" => Some(LightTheme::SageEditorial),
-            _ => None,
-        }
-    }
-}
-
-impl ThemeSlug {
-    // stub until h1-frame.
-    pub fn slug(self) -> &'static str {
-        match self {
-            ThemeSlug::ArcticIce => "arctic-ice",
-            ThemeSlug::TronCyan => "tron-cyan",
-            ThemeSlug::MidnightViolet => "midnight-violet",
-            ThemeSlug::CleanTeal => "clean-teal",
-            ThemeSlug::EducationalWarm => "educational-warm",
-            ThemeSlug::SageEditorial => "sage-editorial",
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn name(self) -> &'static str {
-        match self {
-            ThemeSlug::ArcticIce => "Arctic Ice",
-            ThemeSlug::TronCyan => "Tron Cyan",
-            ThemeSlug::MidnightViolet => "Midnight Violet",
-            ThemeSlug::CleanTeal => "Clean Teal",
-            ThemeSlug::EducationalWarm => "Educational Warm",
-            ThemeSlug::SageEditorial => "Sage Editorial",
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn parse(text: &str) -> Option<ThemeSlug> {
-        match text {
-            "arctic-ice" => Some(ThemeSlug::ArcticIce),
-            "tron-cyan" => Some(ThemeSlug::TronCyan),
-            "midnight-violet" => Some(ThemeSlug::MidnightViolet),
-            "clean-teal" => Some(ThemeSlug::CleanTeal),
-            "educational-warm" => Some(ThemeSlug::EducationalWarm),
-            "sage-editorial" => Some(ThemeSlug::SageEditorial),
-            _ => None,
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn scheme(self) -> SystemScheme {
-        match self {
-            ThemeSlug::ArcticIce | ThemeSlug::TronCyan | ThemeSlug::MidnightViolet => {
-                SystemScheme::Dark
-            }
-            ThemeSlug::CleanTeal | ThemeSlug::EducationalWarm | ThemeSlug::SageEditorial => {
-                SystemScheme::Light
-            }
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn dark(self) -> Option<DarkTheme> {
-        match self {
-            ThemeSlug::ArcticIce => Some(DarkTheme::ArcticIce),
-            ThemeSlug::TronCyan => Some(DarkTheme::TronCyan),
-            ThemeSlug::MidnightViolet => Some(DarkTheme::MidnightViolet),
-            ThemeSlug::CleanTeal | ThemeSlug::EducationalWarm | ThemeSlug::SageEditorial => None,
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn light(self) -> Option<LightTheme> {
-        match self {
-            ThemeSlug::ArcticIce | ThemeSlug::TronCyan | ThemeSlug::MidnightViolet => None,
-            ThemeSlug::CleanTeal => Some(LightTheme::CleanTeal),
-            ThemeSlug::EducationalWarm => Some(LightTheme::EducationalWarm),
-            ThemeSlug::SageEditorial => Some(LightTheme::SageEditorial),
-        }
-    }
-
-    // stub until h1-frame: the dark list is `DARK_THEME_SLUGS`, the light list
-    // `LIGHT_THEME_SLUGS` in `useAppTheme.ts`.
-    pub fn slugs_for(scheme: SystemScheme) -> [ThemeSlug; 3] {
-        match scheme {
-            SystemScheme::Dark => [
-                ThemeSlug::ArcticIce,
-                ThemeSlug::TronCyan,
-                ThemeSlug::MidnightViolet,
-            ],
-            SystemScheme::Light => [
-                ThemeSlug::CleanTeal,
-                ThemeSlug::EducationalWarm,
-                ThemeSlug::SageEditorial,
-            ],
-        }
-    }
-}
-
-impl From<DarkTheme> for ThemeSlug {
-    // stub until h1-frame.
-    fn from(dark: DarkTheme) -> ThemeSlug {
-        match dark {
-            DarkTheme::ArcticIce => ThemeSlug::ArcticIce,
-            DarkTheme::TronCyan => ThemeSlug::TronCyan,
-            DarkTheme::MidnightViolet => ThemeSlug::MidnightViolet,
-        }
-    }
-}
-
-impl From<LightTheme> for ThemeSlug {
-    // stub until h1-frame.
-    fn from(light: LightTheme) -> ThemeSlug {
-        match light {
-            LightTheme::CleanTeal => ThemeSlug::CleanTeal,
-            LightTheme::EducationalWarm => ThemeSlug::EducationalWarm,
-            LightTheme::SageEditorial => ThemeSlug::SageEditorial,
-        }
-    }
-}
-
-// stub until h1-frame: replaced by `crate::theme_state::ThemeState`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ThemeState {
-    pub light_dark: LightDark,
-    pub dark_theme: DarkTheme,
-    pub light_theme: LightTheme,
-    pub system: SystemScheme,
-}
-
-impl Default for ThemeState {
-    // stub until h1-frame.
-    fn default() -> ThemeState {
-        ThemeState {
-            light_dark: LightDark::System,
-            dark_theme: DarkTheme::ArcticIce,
-            light_theme: LightTheme::CleanTeal,
-            system: SystemScheme::Dark,
-        }
-    }
-}
-
-impl ThemeState {
-    // stub until h1-frame.
-    pub fn resolved_scheme(&self) -> SystemScheme {
-        match self.light_dark {
-            LightDark::System => self.system,
-            LightDark::Dark => SystemScheme::Dark,
-            LightDark::Light => SystemScheme::Light,
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn resolved(&self) -> ThemeSlug {
-        if self.resolved_scheme() == SystemScheme::Dark {
-            ThemeSlug::from(self.dark_theme)
-        } else {
-            ThemeSlug::from(self.light_theme)
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn set_theme_slug(&mut self, slug: ThemeSlug) {
-        if self.resolved_scheme() == SystemScheme::Dark {
-            if let Some(dark) = slug.dark() {
-                self.dark_theme = dark;
-            }
-        } else if let Some(light) = slug.light() {
-            self.light_theme = light;
-        }
-    }
-
-    // stub until h1-frame.
-    pub fn set_light_dark(&mut self, value: LightDark) {
-        self.light_dark = value;
-    }
-
-    // stub until h1-frame.
-    pub fn set_dark_theme(&mut self, value: DarkTheme) {
-        self.dark_theme = value;
-    }
-
-    // stub until h1-frame.
-    pub fn set_light_theme(&mut self, value: LightTheme) {
-        self.light_theme = value;
-    }
-}
-
-/// The three colours the menu's swatch shows for a theme: its background,
-/// its curve ink, its point ink.
-// stub until h1-frame: replaced by `crate::theme_state::swatch_colours`.
-pub fn swatch_colours(_slug: ThemeSlug) -> [mv_theme::Token; 3] {
-    use mv_theme::Token::{Background, ChartAccent, ChartLine};
-    [Background, ChartLine, ChartAccent]
-}
-
-/// `slugToLabel` (`format.ts`) lives on h1-frame's `name()` methods
-/// (`LightDark::name`, `ThemeSlug::name`); this module spells labels through them.
 /// `getLightDarkSelectionMessage`: with `system`, `"Your system is {dark|light}
 /// right now."`, otherwise `"Always {dark|light}."`.
 pub fn light_dark_message(light_dark: LightDark, system: SystemScheme) -> String {
@@ -353,12 +37,103 @@ pub fn light_dark_message(light_dark: LightDark, system: SystemScheme) -> String
 pub mod swatch {
     pub const WIDTH: f64 = 30.0;
     pub const HEIGHT: f64 = 20.0;
-    pub const CURVE_START: (f64, f64) = (6.0, 4.63);
-    pub const CURVE_CONTROL: (f64, f64) = (15.0, 25.37);
-    pub const CURVE_END: (f64, f64) = (24.0, 4.63);
-    pub const STROKE_WIDTH: f64 = 1.75;
+    pub const RADIUS: f32 = 5.0;
+    pub const OUTLINE: f32 = 1.0;
+    pub const CURVE: &str = "M6 4.63Q15 25.37 24 4.63";
+    pub const STROKE_WIDTH: f32 = 1.75;
     pub const POINT: (f64, f64) = (21.0, 10.39);
-    pub const POINT_RADIUS: f64 = 2.25;
+    pub const POINT_RADIUS: f32 = 2.25;
+}
+
+/// A swatch to paint: the theme whose palette it shows (each row paints its
+/// own theme's background, curve ink and point ink).
+#[derive(Clone, Copy, Debug)]
+pub struct Swatch {
+    pub theme: ThemeSlug,
+}
+
+// Frame-lived swatch payloads, as `icons.rs` keeps its icons: layout boxes a
+// `Swatch` per custom element, the paint reads it back.
+thread_local! {
+    #[allow(clippy::vec_box)]
+    static SWATCHES: std::cell::RefCell<Vec<Box<Swatch>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Empties the frame's swatch store; the frame's draw calls it with the icons'.
+pub fn clear_swatch_customs() {
+    SWATCHES.with(|store| store.borrow_mut().clear());
+}
+
+/// The Clay custom config painting `swatch`.
+pub fn custom_data(swatch: Swatch) -> clay::CustomElementConfig {
+    let ptr = SWATCHES.with(|store| {
+        let mut store = store.borrow_mut();
+        store.push(Box::new(swatch));
+        std::ptr::from_ref::<Swatch>(store.last().expect("swatch just pushed"))
+            .cast_mut()
+            .cast::<std::ffi::c_void>()
+    });
+    clay::CustomElementConfig { customData: ptr }
+}
+
+/// The swatch a custom command paints, if it is one.
+pub fn swatch_of(command: &clay::RenderCommand) -> Option<(&Swatch, clay::CornerRadius)> {
+    mv_clay::custom_of::<Swatch>(command)
+}
+
+/// Paints a swatch in its box: the theme's background rounded to 5 px with a
+/// 1 px border outline, the curve in chart-line, the point in chart-accent.
+pub fn draw_swatch(app: &mut App, at: [f32; 2], swatch: &Swatch) {
+    let theme = &app.themes[port_slug(swatch.theme)];
+    let bg = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Background));
+    let border = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Border));
+    let line = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::ChartLine));
+    let accent = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::ChartAccent));
+    let vg = &mut app.vg;
+    vg.save();
+    vg.translate(at[0], at[1]);
+    vg.begin_path();
+    vg.rounded_rect(
+        0.0,
+        0.0,
+        swatch::WIDTH as f32,
+        swatch::HEIGHT as f32,
+        swatch::RADIUS,
+    );
+    vg.fill_color(bg);
+    vg.fill();
+    vg.begin_path();
+    vg.rounded_rect(
+        swatch::OUTLINE / 2.0,
+        swatch::OUTLINE / 2.0,
+        swatch::WIDTH as f32 - swatch::OUTLINE,
+        swatch::HEIGHT as f32 - swatch::OUTLINE,
+        swatch::RADIUS - swatch::OUTLINE / 2.0,
+    );
+    vg.stroke_color(border);
+    vg.stroke_width(swatch::OUTLINE);
+    vg.stroke();
+    vg.begin_path();
+    if !crate::svgpath::draw_path(vg, swatch::CURVE) {
+        eprintln!(
+            "math-viz2-rust: swatch path NanoVG can't draw: {:?}",
+            swatch::CURVE
+        );
+    }
+    vg.stroke_color(line);
+    vg.stroke_width(swatch::STROKE_WIDTH);
+    vg.line_cap(mv_nvg::LineCapType::ROUND);
+    vg.stroke();
+    vg.begin_path();
+    vg.circle(
+        swatch::POINT.0 as f32,
+        swatch::POINT.1 as f32,
+        swatch::POINT_RADIUS,
+    );
+    vg.fill_color(accent);
+    vg.fill();
+    vg.restore();
 }
 
 /// Keyboard focus within the open menu. The DOM gives each radio group one tab
@@ -405,6 +180,14 @@ impl SettingsMenuState {
         self.focus = None;
     }
 
+    pub fn toggle(&mut self) {
+        if self.open {
+            self.close();
+        } else {
+            self.open();
+        }
+    }
+
     /// Tab from the current stop: gear, then the checked light-dark cell, then
     /// the checked theme row, then out. The menu stays open throughout.
     pub fn tab(&self, light_dark: LightDark, theme_index: usize) -> Option<FocusSlot> {
@@ -448,9 +231,736 @@ pub fn arrow_index(current: usize, len: usize, arrow: Arrow) -> usize {
     }
 }
 
+/// The menu's layout constants, from `SettingsMenu.module.css` at `adb0534`
+/// (root font 16 px: the rem values below are the computed pixels).
+pub mod layout {
+    /// The menu frame: 19 rem wide, `space-inset` padding, 4 px radius, 1 px border.
+    /// Clay's borders take no layout space (the browser's `border-box` does),
+    /// so each bordered element's Clay padding is its CSS padding plus border.
+    pub const MENU_WIDTH: f32 = 304.0;
+    pub const MENU_PAD: f32 = 12.0;
+    pub const MENU_BORDER: u16 = 1;
+    pub const MENU_RADIUS: f32 = 4.0;
+    /// The margin under the gear the anchor leaves (`space-inline`).
+    pub const MENU_OFFSET_Y: f32 = 8.0;
+    /// The title and legend gap (`space-inline` margin under the legend).
+    pub const TITLE_GAP: f32 = 8.0;
+    /// The segmented control: 36 px tall, 1 px bordered, 4 px radius.
+    pub const SEG_HEIGHT: f32 = 36.0;
+    /// Three 92 px cells fill the 278 px content (276 + 2 px of container border).
+    pub const CELL_WIDTH: f32 = 92.0;
+    pub const CELL_PAD_X: f32 = 8.0;
+    pub const CELL_GAP: f32 = 8.0;
+    /// The selected segment's outer corners stay concentric with the control.
+    pub const CELL_RADIUS: f32 = 3.0;
+    /// The option icon: 16 px.
+    pub const CELL_ICON: f32 = 16.0;
+    /// A theme row: 36 px tall, `space-inset` side padding, 8 px gaps.
+    pub const ROW_HEIGHT: f32 = 36.0;
+    pub const ROW_PAD_X: f32 = 12.0;
+    pub const ROW_GAP: f32 = 8.0;
+    /// The selected row's check: 14 px, `margin-left: auto`, 1 px down from centre.
+    pub const CHECK: f32 = 14.0;
+    pub const CHECK_TOP: f32 = 1.0;
+    /// The menu's Clay ids, for regions and the layout test.
+    pub const MENU_ID: &str = "Menu";
+}
+
+/// The menu's three light/dark cells in order.
+const LIGHT_DARK_ORDER: [LightDark; 3] = [LightDark::System, LightDark::Dark, LightDark::Light];
+
+/// The option icon for a light/dark cell.
+fn cell_icon(option: LightDark) -> crate::icons::IconKind {
+    match option {
+        LightDark::System => crate::icons::IconKind::System,
+        LightDark::Dark => crate::icons::IconKind::Moon,
+        LightDark::Light => crate::icons::IconKind::Sun,
+    }
+}
+
+fn port_slug(slug: ThemeSlug) -> mv_theme::Slug {
+    match slug {
+        ThemeSlug::ArcticIce => mv_theme::Slug::ArcticIce,
+        ThemeSlug::TronCyan => mv_theme::Slug::TronCyan,
+        ThemeSlug::MidnightViolet => mv_theme::Slug::MidnightViolet,
+        ThemeSlug::CleanTeal => mv_theme::Slug::CleanTeal,
+        ThemeSlug::EducationalWarm => mv_theme::Slug::EducationalWarm,
+        ThemeSlug::SageEditorial => mv_theme::Slug::SageEditorial,
+    }
+}
+
+/// The shown theme list: the dark slugs under a dark scheme, the light slugs
+/// under a light one (`DARK_THEME_SLUGS` / `LIGHT_THEME_SLUGS`).
+fn shown_slugs(scheme: SystemScheme) -> [ThemeSlug; 3] {
+    match scheme {
+        SystemScheme::Dark => [
+            ThemeSlug::ArcticIce,
+            ThemeSlug::TronCyan,
+            ThemeSlug::MidnightViolet,
+        ],
+        SystemScheme::Light => [
+            ThemeSlug::CleanTeal,
+            ThemeSlug::EducationalWarm,
+            ThemeSlug::SageEditorial,
+        ],
+    }
+}
+
+/// The checked light-dark cell's index.
+fn checked_cell(theme: &ThemeState) -> usize {
+    LIGHT_DARK_ORDER
+        .iter()
+        .position(|option| *option == theme.light_dark)
+        .expect("light/dark order covers the picks")
+}
+
+/// The checked theme row's index in the shown list.
+fn checked_row(theme: &ThemeState) -> usize {
+    let scheme = theme.resolved_scheme();
+    shown_slugs(scheme)
+        .iter()
+        .position(|slug| *slug == theme.resolved())
+        .expect("shown list holds the resolved theme")
+}
+
+/// The menu's focus stop for a hit, when the hit is a stop.
+fn stop_of(hit: Hit) -> Option<FocusSlot> {
+    match hit.kind {
+        HitKind::SettingsLightDark if (hit.index as usize) < LIGHT_DARK_ORDER.len() => {
+            Some(FocusSlot::LightDark(LIGHT_DARK_ORDER[hit.index as usize]))
+        }
+        HitKind::SettingsTheme => Some(FocusSlot::Theme(hit.index as usize)),
+        _ => None,
+    }
+}
+
+/// Clay padding for a `pad` CSS padding inside a 1 px border: the border
+/// takes no layout space, so it joins the padding.
+fn bordered(pad: f32) -> clay::Padding {
+    let both = (pad as u16) + 1;
+    clay::Padding {
+        left: both,
+        right: both,
+        top: both,
+        bottom: both,
+    }
+}
+
+/// Lays out the open menu as a floating sibling under the gear: anchored
+/// right to the gear's right bottom, 8 px below it, like the popover's
+/// `top: anchor(bottom); right: anchor(right)`. Skipped while closed: the
+/// hidden popover takes no part in the layout.
+pub fn menu(app: &mut App) {
+    if !app.settings.open {
+        return;
+    }
+    let theme = app.theme;
+    let scheme = theme.resolved_scheme();
+    let slugs = shown_slugs(scheme);
+    let mut decl = crate::ui::empty_decl();
+    decl.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_fixed(layout::MENU_WIDTH),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    decl.layout.padding = bordered(layout::MENU_PAD);
+    let page = crate::ui::current_theme(app).clone();
+    let ink = |token| crate::ui::ink(&page, token);
+    decl.backgroundColor = ink(mv_theme::Token::Card);
+    decl.border = clay::BorderElementConfig {
+        color: ink(mv_theme::Token::Border),
+        width: mv_clay::border_outside(1),
+    };
+    decl.cornerRadius = crate::ui::corner_radius_all(layout::MENU_RADIUS);
+    decl.layout.childGap = layout::TITLE_GAP as u16;
+    decl.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
+    decl.floating = clay::FloatingElementConfig {
+        offset: [0.0, layout::MENU_OFFSET_Y],
+        expand: clay::Dimensions {
+            width: 0.0,
+            height: 0.0,
+        },
+        parentId: mv_clay::id(crate::top_bar::GEAR_ID, 0).id,
+        zIndex: 1,
+        attachment: clay::FloatingAttachPoints {
+            element: clay::FloatingAttachPointType::RightTop,
+            parent: clay::FloatingAttachPointType::RightBottom,
+        },
+        pointerCaptureMode: clay::PointerCaptureMode::Passthrough,
+        attachTo: clay::FloatingAttachToElement::ElementWithId,
+        clipTo: clay::FloatingClipToElement::None,
+    };
+    crate::ui::ui_scope(app, mv_clay::id(layout::MENU_ID, 0), &decl, |app| {
+        appearance(app, &theme);
+        // The inner column: the message over the theme list with a 16 px gap,
+        // 8 px under the appearance section (the CSS `-8 px` top margin).
+        let mut rest = crate::ui::empty_decl();
+        rest.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        };
+        rest.layout.childGap = 16;
+        rest.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
+        crate::ui::ui_scope(app, mv_clay::id("MenuRest", 0), &rest, |app| {
+            message(app, &theme);
+            theme_list(app, &theme, scheme, &slugs);
+        });
+    });
+}
+
+/// The Appearance section: the caps legend over the three-cell segmented control.
+fn appearance(app: &mut App, theme: &ThemeState) {
+    let mut section = crate::ui::empty_decl();
+    section.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    section.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
+    crate::ui::ui_scope(app, mv_clay::id("MenuAppearance", 0), &section, |app| {
+        legend(app, "MenuAppearanceTitle", "APPEARANCE");
+        segmented(app, theme);
+    });
+}
+
+/// A caps section legend: full-bleed text with 12 px side padding and an 8 px
+/// margin under it.
+fn legend(app: &mut App, id: &str, text: &str) {
+    let page = crate::ui::current_theme(app).clone();
+    let mut wrap = crate::ui::empty_decl();
+    wrap.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    wrap.layout.padding = clay::Padding {
+        left: layout::ROW_PAD_X as u16,
+        right: layout::ROW_PAD_X as u16,
+        top: 0,
+        bottom: layout::TITLE_GAP as u16,
+    };
+    crate::ui::ui_scope(app, mv_clay::id(id, 0), &wrap, |app| {
+        crate::typography::text(
+            app,
+            mv_clay::id(id, 1),
+            crate::typography::Type::MenuLabel,
+            text,
+            crate::ui::ink(&page, mv_theme::Token::ForegroundMuted),
+            false,
+        );
+    });
+}
+
+/// The segmented light/dark/system control: three 92 px cells in a 36 px
+/// bordered row, dividers as left borders on the second and third.
+fn segmented(app: &mut App, theme: &ThemeState) {
+    let page = crate::ui::current_theme(app).clone();
+    let ink = |token| crate::ui::ink(&page, token);
+    let mut grid = crate::ui::empty_decl();
+    grid.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fixed(layout::SEG_HEIGHT),
+    };
+    grid.backgroundColor = ink(mv_theme::Token::Card);
+    grid.border = clay::BorderElementConfig {
+        color: ink(mv_theme::Token::Border),
+        width: mv_clay::border_outside(1),
+    };
+    grid.cornerRadius = crate::ui::corner_radius_all(layout::MENU_RADIUS);
+    grid.layout.padding = bordered(0.0);
+    crate::ui::ui_scope(app, mv_clay::id("MenuSegmented", 0), &grid, |app| {
+        let checked = checked_cell(theme);
+        for (i, option) in LIGHT_DARK_ORDER.iter().enumerate() {
+            cell(app, *option, i, i == checked);
+        }
+    });
+}
+
+/// One segmented cell: the 16 px option icon over the label, centred.
+fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
+    let page = crate::ui::current_theme(app).clone();
+    let ink = |token| crate::ui::ink(&page, token);
+    let hovered = app.input.hover
+        == (Hit {
+            kind: HitKind::SettingsLightDark,
+            index: index as i64,
+        });
+    let mut decl = crate::ui::empty_decl();
+    decl.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_fixed(layout::CELL_WIDTH),
+        height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+    };
+    decl.layout.padding = clay::Padding {
+        left: layout::CELL_PAD_X as u16,
+        right: layout::CELL_PAD_X as u16,
+        top: 0,
+        bottom: 0,
+    };
+    decl.layout.childGap = layout::CELL_GAP as u16;
+    decl.layout.childAlignment = clay::ChildAlignment {
+        x: clay::LayoutAlignmentX::Center,
+        y: clay::LayoutAlignmentY::Center,
+    };
+    decl.backgroundColor = if checked {
+        ink(mv_theme::Token::Primary)
+    } else if hovered {
+        ink(mv_theme::Token::Secondary)
+    } else {
+        ink(mv_theme::Token::Card)
+    };
+    if index > 0 {
+        decl.border = clay::BorderElementConfig {
+            color: ink(mv_theme::Token::Border),
+            width: clay::BorderWidth {
+                left: 1,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                betweenChildren: 0,
+            },
+        };
+    }
+    if checked {
+        // The control clips to its radius; the end cells keep the outer corners.
+        let (left, right) = match index {
+            0 => (layout::CELL_RADIUS, 0.0),
+            2 => (0.0, layout::CELL_RADIUS),
+            _ => (0.0, 0.0),
+        };
+        decl.cornerRadius = clay::CornerRadius {
+            topLeft: left,
+            topRight: right,
+            bottomLeft: left,
+            bottomRight: right,
+        };
+    }
+    let foreground = if checked {
+        ink(mv_theme::Token::PrimaryForeground)
+    } else {
+        ink(mv_theme::Token::Foreground)
+    };
+    let kind = cell_icon(option);
+    crate::ui::ui_scope(app, mv_clay::id("MenuCell", index as u32), &decl, |app| {
+        icon(
+            app,
+            mv_clay::id("MenuCellIcon", index as u32),
+            kind,
+            layout::CELL_ICON,
+            foreground,
+        );
+        crate::typography::text(
+            app,
+            mv_clay::id("MenuCellText", index as u32),
+            crate::typography::Type::OptionText,
+            option.name(),
+            foreground,
+            false,
+        );
+    });
+    crate::input::region(
+        app,
+        mv_clay::id("MenuCell", index as u32),
+        Hit {
+            kind: HitKind::SettingsLightDark,
+            index: index as i64,
+        },
+        Cursor::Pointer,
+        Cursor::Pointer,
+        checked,
+        crate::ui::corner_radius_all(0.0),
+    );
+}
+
+/// The selection message under the appearance section.
+fn message(app: &mut App, theme: &ThemeState) {
+    let page = crate::ui::current_theme(app).clone();
+    let text = light_dark_message(theme.light_dark, theme.system);
+    let mut wrap = crate::ui::empty_decl();
+    wrap.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    wrap.layout.padding = clay::Padding {
+        left: layout::ROW_PAD_X as u16,
+        right: layout::ROW_PAD_X as u16,
+        top: 0,
+        bottom: 0,
+    };
+    crate::ui::ui_scope(app, mv_clay::id("MenuMessage", 0), &wrap, |app| {
+        crate::typography::text(
+            app,
+            mv_clay::id("MenuMessage", 1),
+            crate::typography::Type::MenuHelp,
+            &text,
+            crate::ui::ink(&page, mv_theme::Token::ForegroundMuted),
+            false,
+        );
+    });
+}
+
+/// The theme list: the scheme legend over the three rows.
+fn theme_list(app: &mut App, theme: &ThemeState, scheme: SystemScheme, slugs: &[ThemeSlug; 3]) {
+    let mut list = crate::ui::empty_decl();
+    list.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    list.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
+    crate::ui::ui_scope(app, mv_clay::id("MenuThemeList", 0), &list, |app| {
+        let title = match scheme {
+            SystemScheme::Dark => "DARK THEME",
+            SystemScheme::Light => "LIGHT THEME",
+        };
+        legend(app, "MenuThemeTitle", title);
+        let resolved = theme.resolved();
+        for (i, slug) in slugs.iter().enumerate() {
+            row(app, *slug, i, *slug == resolved);
+        }
+    });
+}
+
+/// One theme row: the swatch, the label, a spacer, and the check when selected.
+fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
+    let page = crate::ui::current_theme(app).clone();
+    let row_theme = app.themes[port_slug(slug)].clone();
+    let hovered = app.input.hover
+        == (Hit {
+            kind: HitKind::SettingsTheme,
+            index: index as i64,
+        });
+    let mut decl = crate::ui::empty_decl();
+    decl.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fixed(layout::ROW_HEIGHT),
+    };
+    decl.layout.padding = clay::Padding {
+        left: layout::ROW_PAD_X as u16,
+        right: layout::ROW_PAD_X as u16,
+        top: 0,
+        bottom: 0,
+    };
+    decl.layout.childGap = layout::ROW_GAP as u16;
+    decl.layout.childAlignment = clay::ChildAlignment {
+        x: clay::LayoutAlignmentX::Left,
+        y: clay::LayoutAlignmentY::Center,
+    };
+    // The checked row has no background (only weight and check); hover paints
+    // the row's own secondary, as the theme class on the row resolves it.
+    decl.backgroundColor = if !selected && hovered {
+        crate::ui::ink(&row_theme, mv_theme::Token::Secondary)
+    } else {
+        crate::ui::ink(&page, mv_theme::Token::Card)
+    };
+    crate::ui::ui_scope(app, mv_clay::id("MenuRow", index as u32), &decl, |app| {
+        let mut swatch_decl = crate::ui::empty_decl();
+        swatch_decl.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_fixed(swatch::WIDTH as f32),
+            height: mv_clay::sizing_fixed(swatch::HEIGHT as f32),
+        };
+        swatch_decl.custom = custom_data(Swatch { theme: slug });
+        crate::ui::ui_scope(
+            app,
+            mv_clay::id("MenuSwatch", index as u32),
+            &swatch_decl,
+            |_| {},
+        );
+        crate::typography::text(
+            app,
+            mv_clay::id("MenuRowText", index as u32),
+            if selected {
+                crate::typography::Type::StrongBody
+            } else {
+                crate::typography::Type::Body
+            },
+            slug.name(),
+            crate::ui::ink(&page, mv_theme::Token::Foreground),
+            false,
+        );
+        // The spacer the check's `margin-left: auto` absorbs.
+        let mut spacer = crate::ui::empty_decl();
+        spacer.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        };
+        crate::ui::ui_scope(
+            app,
+            mv_clay::id("MenuRowSpacer", index as u32),
+            &spacer,
+            |_| {},
+        );
+        if selected {
+            let mut check = crate::ui::empty_decl();
+            check.layout.sizing = clay::Sizing {
+                width: mv_clay::sizing_fixed(layout::CHECK),
+                height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+            };
+            check.layout.padding = clay::Padding {
+                left: 0,
+                right: 0,
+                top: layout::CHECK_TOP as u16,
+                bottom: 0,
+            };
+            crate::ui::ui_scope(app, mv_clay::id("MenuCheck", index as u32), &check, |app| {
+                icon(
+                    app,
+                    mv_clay::id("MenuCheckIcon", index as u32),
+                    crate::icons::IconKind::Check,
+                    layout::CHECK,
+                    crate::ui::ink(&row_theme, mv_theme::Token::Primary),
+                );
+            });
+        }
+    });
+    crate::input::region(
+        app,
+        mv_clay::id("MenuRow", index as u32),
+        Hit {
+            kind: HitKind::SettingsTheme,
+            index: index as i64,
+        },
+        Cursor::Pointer,
+        Cursor::Pointer,
+        selected,
+        crate::ui::corner_radius_all(0.0),
+    );
+}
+
+/// Declares a square icon element painting `kind` in `ink`.
+fn icon(
+    app: &mut App,
+    id: clay::ElementId,
+    kind: crate::icons::IconKind,
+    size: f32,
+    ink: mv_nvg::Color,
+) {
+    let mut decl = crate::ui::empty_decl();
+    decl.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_fixed(size),
+        height: mv_clay::sizing_fixed(size),
+    };
+    decl.custom = crate::icons::custom_data(crate::icons::Icon { kind, ink });
+    crate::ui::ui_scope(app, id, &decl, |_| {});
+}
+
+/// Paints the gear's hover border and focus ring over the frame: the button
+/// keeps its resting border in the layout, this post-pass strokes the primary
+/// border while hovered or pressed and the 3 px primary ring while keyboard
+/// focused. The `:active` scale is skipped (no rest state shows it).
+pub fn paint_chrome(app: &mut App) {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::top_bar::GEAR_ID, 0));
+    if !data.found {
+        return;
+    }
+    let page = crate::ui::current_theme(app).clone();
+    let density = density_of(app);
+    let b = data.boundingBox;
+    let hovered = matches!(app.input.hover.kind, HitKind::Gear)
+        || matches!(app.input.pressed.kind, HitKind::Gear);
+    if hovered {
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            crate::draw::snap_box(b, density),
+            crate::ui::corner_radius_all(crate::top_bar::GEAR_SIZE / 2.0),
+        );
+        app.vg.stroke_color(crate::draw::nvg_color(crate::ui::ink(
+            &page,
+            mv_theme::Token::Primary,
+        )));
+        app.vg.stroke_width(1.0);
+        app.vg.stroke();
+    }
+    if app.input.focus.kind == HitKind::Gear && app.input.focus_visible {
+        let ring = crate::ui::ink(&page, mv_theme::Token::Primary);
+        let ring = [ring[0], ring[1], ring[2], ring[3] * 0.32];
+        let at = clay::BoundingBox {
+            x: b.x - 1.5,
+            y: b.y - 1.5,
+            width: b.width + 3.0,
+            height: b.height + 3.0,
+        };
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            crate::draw::snap_box(at, density),
+            crate::ui::corner_radius_all(crate::top_bar::GEAR_SIZE / 2.0 + 1.5),
+        );
+        app.vg.stroke_color(crate::draw::nvg_color(ring));
+        app.vg.stroke_width(3.0);
+        app.vg.stroke();
+    }
+}
+
+fn density_of(app: &App) -> f32 {
+    if app.size[0] > 0.0 {
+        app.pixels[0] as f32 / app.size[0]
+    } else {
+        1.0
+    }
+}
+
+/// Routes a pointer press: an outside pointer-down light-dismisses the open
+/// menu, as the popover does. The gear and the menu's own hits stay for the
+/// click on release.
+pub fn press_down(app: &mut App) {
+    if !app.settings.open {
+        return;
+    }
+    match app.input.pressed.kind {
+        HitKind::Gear | HitKind::SettingsLightDark | HitKind::SettingsTheme => {}
+        HitKind::None => app.settings.close(),
+    }
+}
+
+/// Routes a click: the release whose down-hit and up-hit agree. The gear
+/// toggles the menu; a cell or row picks through the `App` setters (which
+/// save and start the transition); anything else is no change.
+pub fn click(app: &mut App, down: Hit) {
+    let up = app.input.hover;
+    if down != up {
+        return;
+    }
+    match down.kind {
+        HitKind::Gear => {
+            app.settings.toggle();
+            app.input.focus = Hit::default();
+            app.dirty = true;
+        }
+        HitKind::SettingsLightDark if (down.index as usize) < LIGHT_DARK_ORDER.len() => {
+            let option = LIGHT_DARK_ORDER[down.index as usize];
+            app.set_light_dark(option);
+            app.input.focus = down;
+            app.input.focus_visible = false;
+        }
+        HitKind::SettingsTheme => {
+            let scheme = app.theme.resolved_scheme();
+            if let Some(slug) = shown_slugs(scheme).get(down.index as usize) {
+                app.set_theme_slug(*slug);
+                app.input.focus = down;
+                app.input.focus_visible = false;
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Routes a key. Tab walks the menu's stops while open (the DOM's one stop
+/// per radio group) and the generic stops otherwise; Esc closes the open
+/// menu; the arrows move and check within the focused group; Space and Enter
+/// toggle on the gear and confirm in the menu (already picked, so no change).
+/// Returns whether the key was consumed.
+pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
+    use sdl3::keyboard::Keycode;
+    if !event.down || event.repeat {
+        return false;
+    }
+    let shift = event
+        .mods
+        .intersects(sdl3::keyboard::Mod::LSHIFTMOD | sdl3::keyboard::Mod::RSHIFTMOD);
+    match event.key {
+        Keycode::Escape => {
+            if app.settings.open {
+                app.settings.close();
+                app.dirty = true;
+                return true;
+            }
+            false
+        }
+        Keycode::Tab => {
+            if app.settings.open {
+                let checked_row = checked_row(&app.theme);
+                let next = if shift {
+                    app.settings.shift_tab(app.theme.light_dark, checked_row)
+                } else {
+                    app.settings.tab(app.theme.light_dark, checked_row)
+                };
+                match next {
+                    None => crate::input::set_focus(app, Hit::default(), false),
+                    Some(FocusSlot::LightDark(option)) => {
+                        let index = LIGHT_DARK_ORDER
+                            .iter()
+                            .position(|choice| *choice == option)
+                            .expect("focus names a cell");
+                        crate::input::set_focus(
+                            app,
+                            Hit {
+                                kind: HitKind::SettingsLightDark,
+                                index: index as i64,
+                            },
+                            true,
+                        );
+                    }
+                    Some(FocusSlot::Theme(index)) => crate::input::set_focus(
+                        app,
+                        Hit {
+                            kind: HitKind::SettingsTheme,
+                            index: index as i64,
+                        },
+                        true,
+                    ),
+                }
+            } else {
+                crate::input::move_focus(app, if shift { -1 } else { 1 });
+            }
+            true
+        }
+        Keycode::Left | Keycode::Right | Keycode::Up | Keycode::Down if app.settings.open => {
+            let arrow = match event.key {
+                Keycode::Left => Arrow::Left,
+                Keycode::Right => Arrow::Right,
+                Keycode::Up => Arrow::Up,
+                _ => Arrow::Down,
+            };
+            match stop_of(app.input.focus) {
+                Some(FocusSlot::LightDark(option)) => {
+                    let at = LIGHT_DARK_ORDER
+                        .iter()
+                        .position(|choice| *choice == option)
+                        .expect("focus names a cell");
+                    let next = arrow_index(at, LIGHT_DARK_ORDER.len(), arrow);
+                    app.set_light_dark(LIGHT_DARK_ORDER[next]);
+                    crate::input::set_focus(
+                        app,
+                        Hit {
+                            kind: HitKind::SettingsLightDark,
+                            index: next as i64,
+                        },
+                        true,
+                    );
+                    true
+                }
+                Some(FocusSlot::Theme(index)) => {
+                    let scheme = app.theme.resolved_scheme();
+                    let slugs = shown_slugs(scheme);
+                    let next = arrow_index(index, slugs.len(), arrow);
+                    app.set_theme_slug(slugs[next]);
+                    crate::input::set_focus(
+                        app,
+                        Hit {
+                            kind: HitKind::SettingsTheme,
+                            index: next as i64,
+                        },
+                        true,
+                    );
+                    true
+                }
+                None => false,
+            }
+        }
+        Keycode::Space | Keycode::Return if app.input.focus.kind == HitKind::Gear => {
+            app.settings.toggle();
+            app.dirty = true;
+            true
+        }
+        Keycode::Space | Keycode::Return => false,
+        _ => false,
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme_state::{DarkTheme, LightTheme};
 
     #[test]
     fn labels_spell_like_slug_to_label() {
@@ -508,11 +1018,11 @@ mod tests {
     #[test]
     fn theme_lists_match_use_app_theme() {
         assert_eq!(
-            ThemeSlug::slugs_for(SystemScheme::Dark).map(ThemeSlug::slug),
+            shown_slugs(SystemScheme::Dark).map(ThemeSlug::slug),
             ["arctic-ice", "tron-cyan", "midnight-violet"]
         );
         assert_eq!(
-            ThemeSlug::slugs_for(SystemScheme::Light).map(ThemeSlug::slug),
+            shown_slugs(SystemScheme::Light).map(ThemeSlug::slug),
             ["clean-teal", "educational-warm", "sage-editorial"]
         );
     }
@@ -532,7 +1042,8 @@ mod tests {
         state.set_theme_slug(ThemeSlug::SageEditorial);
         assert_eq!(state.light_theme, LightTheme::SageEditorial);
         assert_eq!(state.dark_theme, DarkTheme::MidnightViolet);
-        // A slug from the other scheme's list never lands.
+        // A slug from the other scheme's list never lands: the port's
+        // deliberate hardening (the TS writes it blindly).
         state.set_theme_slug(ThemeSlug::ArcticIce);
         assert_eq!(state.light_theme, LightTheme::SageEditorial);
     }
@@ -593,11 +1104,80 @@ mod tests {
     #[test]
     fn swatch_geometry_matches_theme_swatch() {
         assert_eq!((swatch::WIDTH, swatch::HEIGHT), (30.0, 20.0));
-        assert_eq!(swatch::CURVE_START, (6.0, 4.63));
-        assert_eq!(swatch::CURVE_CONTROL, (15.0, 25.37));
-        assert_eq!(swatch::CURVE_END, (24.0, 4.63));
+        assert_eq!(swatch::RADIUS, 5.0);
+        assert_eq!(swatch::OUTLINE, 1.0);
+        assert_eq!(swatch::CURVE, "M6 4.63Q15 25.37 24 4.63");
         assert_eq!(swatch::STROKE_WIDTH, 1.75);
         assert_eq!(swatch::POINT, (21.0, 10.39));
         assert_eq!(swatch::POINT_RADIUS, 2.25);
+    }
+
+    /// The layout slack: boxes within half a CSS pixel of the reference's.
+    const SLACK: f32 = 0.5;
+
+    /// The open menu's boxes match the reference's, in CSS pixels, in both
+    /// schemes: the dark list at `settings-open`, the light list at
+    /// `settings-light-dark-system`.
+    #[test]
+    fn menu_matches_the_reference() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        app.settings.open();
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot = crate::fixture::fixture_shot(&fixture, "settings-open")
+            .expect("settings-open in fixture");
+        for (id, index, name) in [
+            ("Menu", 0, "menu"),
+            ("MenuCell", 0, "radio_system"),
+            ("MenuCell", 1, "radio_dark"),
+            ("MenuCell", 2, "radio_light"),
+            ("MenuRow", 0, "option_0"),
+            ("MenuRow", 1, "option_1"),
+            ("MenuRow", 2, "option_2"),
+            ("MenuSwatch", 0, "swatch_0"),
+        ] {
+            let data = clay.get_element_data(mv_clay::id(id, index));
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{name}[{i}]: laid out {got}, reference {want}"
+                );
+            }
+        }
+        // The light scheme shows the light list in the same boxes.
+        app.theme.system = crate::theme_state::SystemScheme::Light;
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let shot = crate::fixture::fixture_shot(&fixture, "settings-light-dark-system")
+            .expect("settings-light-dark-system in fixture");
+        for (index, name) in [(0, "option_3"), (1, "option_4"), (2, "option_5")] {
+            let data = clay.get_element_data(mv_clay::id("MenuRow", index));
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{name}[{i}]: laid out {got}, reference {want}"
+                );
+            }
+        }
     }
 }

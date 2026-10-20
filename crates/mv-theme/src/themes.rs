@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at af434dc (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at adb0534 (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as
@@ -42,6 +42,7 @@ pub enum Token {
     Ordinal10,
     Ordinal11,
     Ordinal12,
+    ShadowColor,
 }
 
 /// An oklch colour as a theme file writes it.
@@ -391,6 +392,15 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (
+                    Token::ShadowColor,
+                    Value::Oklch(Oklch {
+                        l: 0.0,
+                        c: 0.0,
+                        h: 0.0,
+                        alpha: 0.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -682,6 +692,15 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0069,
                         h: 247.9,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ShadowColor,
+                    Value::Oklch(Oklch {
+                        l: 0.0,
+                        c: 0.0,
+                        h: 0.0,
+                        alpha: 0.0,
                     }),
                 ),
             ],
@@ -977,6 +996,15 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (
+                    Token::ShadowColor,
+                    Value::Oklch(Oklch {
+                        l: 0.0,
+                        c: 0.0,
+                        h: 0.0,
+                        alpha: 0.0,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1270,6 +1298,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 1.0,
                     }),
                 ),
+                (
+                    Token::ShadowColor,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 12.0,
+                        b: None,
+                    }),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1561,6 +1597,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.2258,
                         h: 323.95,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ShadowColor,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 12.0,
+                        b: None,
                     }),
                 ),
             ],
@@ -1862,6 +1906,14 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0374,
                         h: 257.28,
                         alpha: 1.0,
+                    }),
+                ),
+                (
+                    Token::ShadowColor,
+                    Value::Mix(Mix {
+                        a: Token::Foreground,
+                        p: 12.0,
+                        b: None,
                     }),
                 ),
             ],

@@ -22,6 +22,7 @@ from act import REPO, init_script, serve, web_dir
 from browser import PageLog, engine_type
 from images import difference, load_rgb, region
 from script import Start
+
 OUT = REPO / ".local" / "shots" / "keys"
 
 # b's box (330, 513.5, 107 x 32 at 1440 x 900, field-arrows.act) and k's box centre (383, 468,
@@ -58,9 +59,7 @@ def app_problems(log: PageLog, stacks: list[str]) -> list[str]:
     into the browser's UI, e.g. its inspector bootstrap failing headless as it acts)."""
     noise = any(BROWSER_NOISE in stack for stack in stacks)
     return [
-        p
-        for p in log.problems()
-        if not (noise and p == "pageerror: The operation is insecure.")
+        p for p in log.problems() if not (noise and p == "pageerror: The operation is insecure.")
     ]
 
 
@@ -162,16 +161,16 @@ def passthrough_case(
             step = Step(
                 f"{name} outside a field not prevented",
                 url != "?",
-                f"the page left ({url}): the browser acted on the shortcut"
-                if url != "?"
-                else "the page died: no keydown recorded",
+                (
+                    f"the page left ({url}): the browser acted on the shortcut"
+                    if url != "?"
+                    else "the page died: no keydown recorded"
+                ),
             )
         else:
             found = keydown(records, code)
             if found is None:
-                step = Step(
-                    f"{name} outside a field not prevented", False, "no keydown recorded"
-                )
+                step = Step(f"{name} outside a field not prevented", False, "no keydown recorded")
             else:
                 step = Step(
                     f"{name} outside a field not prevented",
@@ -180,17 +179,13 @@ def passthrough_case(
                 )
         problems = app_problems(log, stacks)
         if problems:
-            step = Step(
-                step.what, False, f"{step.said}; {len(problems)} problems: {problems[:2]}"
-            )
+            step = Step(step.what, False, f"{step.said}; {len(problems)} problems: {problems[:2]}")
         return step, log
     finally:
         page.close()
 
 
-def field_case(
-    context: BrowserContext, out: Path
-) -> tuple[list[Step], dict[str, Path], PageLog]:
+def field_case(context: BrowserContext, out: Path) -> tuple[list[Step], dict[str, Path], PageLog]:
     """b's field: Meta+arrows/A prevented with the caret moved; Escape ends it."""
     steps: list[Step] = []
     crops: dict[str, Path] = {}
@@ -235,10 +230,12 @@ def field_case(
                 Step(
                     what,
                     found is not None and found.prevented,
-                    "the page left: the browser acted, nothing stayed with the app"
-                    if records is None
-                    else "defaultPrevented="
-                    + ("?" if found is None else str(found.prevented).lower()),
+                    (
+                        "the page left: the browser acted, nothing stayed with the app"
+                        if records is None
+                        else "defaultPrevented="
+                        + ("?" if found is None else str(found.prevented).lower())
+                    ),
                 )
             )
             return found
@@ -263,9 +260,7 @@ def field_case(
             """[...new Set(window.__keysSeen.filter(e => e.type === "keypress" && e.metaKey)
                 .map(e => e.code))]"""
         )
-        steps.append(
-            Step("keypress with Meta observed", True, f"codes: {list(firing)}")
-        )
+        steps.append(Step("keypress with Meta observed", True, f"codes: {list(firing)}"))
 
         start = len(log.console)
         page.keyboard.press("Escape")
@@ -287,10 +282,12 @@ def field_case(
             Step(
                 "Meta+ArrowLeft not prevented again",
                 (records is None) or (found is not None and not found.prevented),
-                "the page left: the browser acted on the shortcut again"
-                if records is None
-                else "defaultPrevented="
-                + ("?" if found is None else str(found.prevented).lower()),
+                (
+                    "the page left: the browser acted on the shortcut again"
+                    if records is None
+                    else "defaultPrevented="
+                    + ("?" if found is None else str(found.prevented).lower())
+                ),
             )
         )
         problems = app_problems(log, stacks)
