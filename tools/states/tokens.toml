@@ -144,20 +144,21 @@ token = "--ordinal-12"
 selector = "body"
 token = "--shadow-color"
 
-# H4 at 5714319: the transform rows' parameter inks, one per theme under the
-# sidebar's [data-theme] rules (SideBar.module.css), read on the sidebar.
+# h4-readout: the readout's per-parameter inks, resolved per theme. The values
+# live on the sidebar ([data-theme] on .sidebar); the terms inherit them, so
+# the form line's letter terms (always present, even at defaults) select them.
 [[pair]]
-selector = "#root > div > div:nth-child(2)"
+selector = '[data-testid="function-form"] [data-param="a"]'
 token = "--param-a"
 
 [[pair]]
-selector = "#root > div > div:nth-child(2)"
+selector = '[data-testid="function-form"] [data-param="k"]'
 token = "--param-k"
 
 [[pair]]
-selector = "#root > div > div:nth-child(2)"
+selector = '[data-testid="function-form"] [data-param="b"]'
 token = "--param-b"
 
 [[pair]]
-selector = "#root > div > div:nth-child(2)"
+selector = '[data-testid="function-form"] [data-param="h"]'
 token = "--param-h"

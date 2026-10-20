@@ -32,8 +32,8 @@ pub enum TransformParam {
 impl TransformParam {
     /// The letter as the URL, the equation and the rows spell it.
     ///
-    /// Named as  and h4-rows' stub spell it, so the
-    /// three transform-parameter definitions share the spelling.
+    /// Named as_str, as the readout's terms and h4-rows' rows spell it, so
+    /// the transform-parameter definitions share the spelling.
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {

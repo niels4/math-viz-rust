@@ -141,6 +141,9 @@ pub enum HitKind {
     /// A function-picker option; `Hit.index` names the option in picker
     /// order (h3's selector declares the regions).
     Selector,
+    /// A readout term; `Hit.index` names the parameter in A B H K order, in
+    /// both lines (h4-readout's readout declares the regions).
+    ReadoutTerm,
     /// A transform row; `Hit.index` names the parameter in `TransformParam`
     /// order (h4-rows' transform_row declares the regions).
     TransformRow,
@@ -363,6 +366,9 @@ pub fn collect_regions(app: &mut App) {
     let (input, scroll) = (&mut app.input, &app.scroll);
     input.regions.clear();
     input.stops.clear();
+    // The last frame's texts the I-beam shows over: like the regions, they
+    // are re-noted every layout (h4-readout's runs note theirs post-pass).
+    input.texts.clear();
     for d in &input.declared {
         let mut r = d.region;
         if !d.keep_box {
@@ -635,6 +641,10 @@ pub fn retarget(app: &mut App) {
         crate::transform_row::sync_hover(app, before, hit);
         app.dirty = true;
     }
+    // The highlight model follows the hover: terms and rows light (or drop)
+    // as the pointer moves across them (h4-readout; the row kinds map in
+    // `readout::hit_param` too).
+    crate::readout::sync_hover(app);
     update_cursor(app);
 }
 

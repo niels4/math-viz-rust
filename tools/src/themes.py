@@ -17,8 +17,9 @@ port's Theme type still carries them: they are carried from the copied file verb
 milestone that draws them re-sources them (h1-frame the page tokens). Tokens no theme file
 defines are dropped, not carried (the driver's condition on the copy): math-viz's page tokens
 (ParamA and friends, the chart points, the curve glow) are gone; the milestone that sources a
-token adds it to tokens.toml and regenerates (h4-rows the --param-* rows from
-SideBar.module.css). theme.rs's tests and testdata/tokens.json still name the dropped tokens:
+token adds it to tokens.toml and regenerates (h4-readout the --param-* rows from
+SideBar.module.css's per-theme blocks, read by read_sidebar_params below).
+theme.rs's tests and testdata/tokens.json still name the dropped tokens:
 h1-frame regenerates them with tools/run tokens (named in the t0-harness return)."""
 
 import json
@@ -113,42 +114,31 @@ def read_themes(ref: Path) -> list[Theme]:
     for theme in themes[1:]:
         if theme.colour_tokens() != first:
             sys.exit(f"{theme.slug} defines other tokens than {themes[0].slug}")
-    params = read_sidebar_params(ref)
+    sidebar = read_sidebar_params(ref)
     for theme in themes:
-        for name in SIDEBAR_PARAMS:
-            theme.declarations[name] = params[theme.slug][name]
+        params = sidebar[theme.slug]
+        if list(params) != ["--param-a", "--param-k", "--param-b", "--param-h"]:
+            sys.exit(f"{theme.slug}: sidebar params out of order: {list(params)}")
+        theme.declarations.update(params)
     return themes
 
 
-# The sidebar's per-theme parameter inks (h4-rows, from SideBar.module.css):
-# `--param-a/k/b/h` live under `.sidebar[data-theme="<slug>"]`, not in the
-# theme files, so they merge into each theme's declarations in `read_themes`
-# above, in the file's order, after the theme files' own tokens.
-SIDEBAR_PARAMS = ("--param-a", "--param-k", "--param-b", "--param-h")
+SIDEBAR_THEME = re.compile(r'&\[data-theme="([a-z-]+)"\]\s*\{([^}]*)\}')
 
 
 def read_sidebar_params(ref: Path) -> dict[str, dict[str, str]]:
-    """Each theme's parameter inks as SideBar.module.css writes them."""
+    """The readout's per-parameter inks: `--param-a/k/b/h` from SideBar.module.css's
+    per-theme blocks (h4-readout sources them; the theme files never define them).
+    Values read as written (oklch colours), in the blocks' order."""
     css = (
-        ref
-        / "src"
-        / "components"
-        / "views"
-        / "FunctionViewer"
-        / "SideBar"
-        / "SideBar.module.css"
+        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
     ).read_text()
     out: dict[str, dict[str, str]] = {}
-    for slug in SLUGS:
-        block = re.search(r'&\[data-theme="' + slug + r'"\]\s*\{(.*?)\}', css, re.S)
-        if block is None:
-            sys.exit(f'SideBar.module.css defines no [data-theme="{slug}"] block')
-        found = {
-            m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block.group(1))
-        }
-        if list(found) != list(SIDEBAR_PARAMS):
-            sys.exit(f"{slug}: the sidebar's params are not {', '.join(SIDEBAR_PARAMS)}")
-        out[slug] = found
+    for match in SIDEBAR_THEME.finditer(css):
+        slug, block = match.group(1), match.group(2)
+        out[slug] = {m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block)}
+    if sorted(out) != sorted(SLUGS):
+        sys.exit(f"sidebar params cover {sorted(out)}, want {sorted(SLUGS)}")
     return out
 
 

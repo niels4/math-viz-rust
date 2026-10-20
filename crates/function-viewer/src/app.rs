@@ -269,6 +269,9 @@ impl App {
             // uncommitted text. Each `build()` re-seeds the params from the
             // real page query (`transform_section::init_params_from_url`).
             state: crate::state::HighlightState::touched_out(),
+            // The transform params at the URL defaults; no uncommitted text.
+            // Each `build()` re-seeds the params from the real page query
+            // (`transform_section::init_params_from_url`).
             a_param: crate::url::QueryParam::new(&crate::functions::A_PARAM, ""),
             b_param: crate::url::QueryParam::new(&crate::functions::B_PARAM, ""),
             h_param: crate::url::QueryParam::new(&crate::functions::H_PARAM, ""),

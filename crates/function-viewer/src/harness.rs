@@ -116,6 +116,8 @@ pub struct Harness<'a> {
     pub url: String,
     /// The camera as last written to `views.json`.
     pub camera: String,
+    /// The lit parameter as last written to `views.json`.
+    pub lit: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -149,6 +151,7 @@ pub fn run_harness(
         moving: Vec::new(),
         url: String::new(),
         camera: String::new(),
+        lit: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -495,6 +498,13 @@ fn harness_frame(h: &mut Harness<'_>) {
     if h.app.url.query() != h.url {
         h.url = h.app.url.query().to_string();
         h.views.extend_from_slice(url_line(&h.url).as_bytes());
+    }
+    // The lit parameter, whenever the highlight moves (h4-readout; the
+    // behaviour checks read it against the reference's data-lit).
+    let lit = lit_line(h.app.state.lit());
+    if lit != h.lit {
+        h.lit = lit;
+        h.views.extend_from_slice(h.lit.as_bytes());
     }
     // The camera, whenever it changed: center, scale, whether a frame is
     // scheduled (h2-input; the behaviour checks read these against the
@@ -852,6 +862,15 @@ fn camera_line(center: [f64; 2], scale: f64, animating: bool) -> String {
         fmt_g17(center[1]),
         fmt_g17(scale),
     )
+}
+
+/// One `lit` line: the highlighted parameter, or null at rest. Pure, so
+/// the shape is testable without the app.
+fn lit_line(lit: Option<crate::state::TransformParam>) -> String {
+    match lit {
+        Some(param) => format!("{{\"lit\": \"{}\"}}\n", param.as_str()),
+        None => "{\"lit\": null}\n".to_string(),
+    }
 }
 
 /// The shots taken mid-motion, as <out>/motion.json when there are any. The

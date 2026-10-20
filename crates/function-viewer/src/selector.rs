@@ -17,7 +17,8 @@ use crate::app::App;
 use crate::functions::{FUNCTION_SLUGS, FunctionSlug};
 use crate::input::{Cursor, Hit, HitKind};
 
-/// The card: `--card`, radius `--radius-card`, padding
+/// The card: `--section` (the inner surface since 82c2809's restyle;
+/// `--card` before), radius `--radius-card`, padding
 /// `--space-inset`/`--space-inset`/`--space-section` (12/12/16).
 pub const CARD_PAD_X: f32 = 12.0;
 pub const CARD_PAD_TOP: f32 = 12.0;
@@ -33,11 +34,11 @@ pub const TITLE_GAP: f32 = 12.0;
 pub const TITLE: &str = "Function";
 
 /// The segmented grid: 36 px tall, 1 px `--border`, radius 4,
-/// `overflow: hidden`; four 83 px cells fill the 332 px content.
+/// `overflow: hidden`; four 87 px cells fill the 348 px content.
 pub const BUTTONS_HEIGHT: f32 = 36.0;
 pub const BUTTONS_BORDER: f32 = 1.0;
 pub const BUTTONS_RADIUS: f32 = 4.0;
-pub const CELL_WIDTH: f32 = 83.0;
+pub const CELL_WIDTH: f32 = 87.0;
 
 /// A label's side padding (`padding: 0 var(--space-section)`).
 pub const CELL_PAD_X: f32 = 16.0;
@@ -137,11 +138,26 @@ pub fn function_card(app: &mut App, current: FunctionSlug) {
     };
     card.layout.childGap = TITLE_GAP as u16;
     card.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
-    card.backgroundColor = ink(mv_theme::Token::Card);
+    card.backgroundColor = ink(mv_theme::Token::Section);
     card.cornerRadius = crate::ui::corner_radius_all(CARD_RADIUS);
     crate::ui::ui_scope(app, mv_clay::id(CARD_ID, 0), &card, |app| {
         legend(app, ink(mv_theme::Token::Foreground));
         buttons(app, current);
+        // The readout's two lines, in their own column with the form's
+        // margin-top between them (h4-readout; the card's gap covers the
+        // readout's own margin-top above it).
+        let mut lines = crate::ui::empty_decl();
+        lines.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        };
+        lines.layout.childGap = crate::readout::FORM_MARGIN_TOP as u16;
+        lines.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
+        crate::ui::ui_scope(app, mv_clay::id("FunctionReadout", 0), &lines, |app| {
+            let mut ids = crate::readout::LayoutIds::fresh();
+            crate::readout::layout_value_line(app, current, &mut ids);
+            crate::readout::layout_form_line(app, current, &mut ids);
+        });
     });
 }
 
@@ -468,7 +484,7 @@ mod tests {
         assert_eq!(BUTTONS_HEIGHT, 36.0);
         assert_eq!(BUTTONS_BORDER, 1.0);
         assert_eq!(BUTTONS_RADIUS, 4.0);
-        assert_eq!(CELL_WIDTH, 83.0);
+        assert_eq!(CELL_WIDTH, 87.0);
         assert_eq!(CELL_PAD_X, 16.0);
         assert_eq!(DIVIDER_WIDTH, 1.0);
         assert_eq!(CELL_RADIUS, 3.0);
@@ -512,13 +528,13 @@ mod tests {
         let mut app = crate::fixture::headless_app();
         assert!(mv_text::init(&mut app.fonts));
         crate::ui::init_clay(&mut app);
-        app.size = [358.0, 900.0];
-        app.pixels = [716, 1800];
+        app.size = [374.0, 900.0];
+        app.pixels = [748, 1800];
         app.clay
             .as_mut()
             .expect("clay context initialised")
             .set_layout_dimensions(clay::Dimensions {
-                width: 358.0,
+                width: 374.0,
                 height: 900.0,
             });
         app.clay
@@ -527,7 +543,7 @@ mod tests {
             .begin_layout();
         let mut root = crate::ui::empty_decl();
         root.layout.sizing = clay::Sizing {
-            width: mv_clay::sizing_fixed(358.0),
+            width: mv_clay::sizing_fixed(374.0),
             height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
         };
         crate::ui::ui_scope(&mut app, mv_clay::id("CardScope", 0), &root, |app| {
@@ -543,20 +559,22 @@ mod tests {
             assert!(data.found, "element laid out");
             data.boundingBox
         };
-        // x, y, w, h card-relative: card [37,117,358,104] on the reference.
+        // x, y, w, h card-relative: card [29,109,374,237.5] on the reference
+        // at the h4 hash (the readout's two lines below the buttons; the
+        // wider card holds 87 px cells).
         for (id, want) in [
-            (mv_clay::id(CARD_ID, 0), [0.0, 0.0, 358.0, 104.0]),
-            (mv_clay::id("FunctionTitle", 0), [12.0, 12.0, 334.0, 28.0]),
-            (mv_clay::id("FunctionButtons", 0), [12.0, 52.0, 334.0, 36.0]),
-            (mv_clay::id("FunctionCell", 0), [13.0, 53.0, 83.0, 34.0]),
-            (mv_clay::id("FunctionCell", 1), [96.0, 53.0, 83.0, 34.0]),
-            (mv_clay::id("FunctionCell", 2), [179.0, 53.0, 83.0, 34.0]),
-            (mv_clay::id("FunctionCell", 3), [262.0, 53.0, 83.0, 34.0]),
-            (mv_clay::id("FunctionDivider", 1), [96.0, 53.0, 1.0, 34.0]),
-            (mv_clay::id("FunctionDivider", 2), [179.0, 53.0, 1.0, 34.0]),
-            (mv_clay::id("FunctionDivider", 3), [262.0, 53.0, 1.0, 34.0]),
-            (mv_clay::id("FunctionRuns", 0), [13.0, 53.0, 83.0, 34.0]),
-            (mv_clay::id("FunctionRuns", 1), [97.0, 53.0, 82.0, 34.0]),
+            (mv_clay::id(CARD_ID, 0), [0.0, 0.0, 374.0, 237.5]),
+            (mv_clay::id("FunctionTitle", 0), [12.0, 12.0, 350.0, 28.0]),
+            (mv_clay::id("FunctionButtons", 0), [12.0, 52.0, 350.0, 36.0]),
+            (mv_clay::id("FunctionCell", 0), [13.0, 53.0, 87.0, 34.0]),
+            (mv_clay::id("FunctionCell", 1), [100.0, 53.0, 87.0, 34.0]),
+            (mv_clay::id("FunctionCell", 2), [187.0, 53.0, 87.0, 34.0]),
+            (mv_clay::id("FunctionCell", 3), [274.0, 53.0, 87.0, 34.0]),
+            (mv_clay::id("FunctionDivider", 1), [100.0, 53.0, 1.0, 34.0]),
+            (mv_clay::id("FunctionDivider", 2), [187.0, 53.0, 1.0, 34.0]),
+            (mv_clay::id("FunctionDivider", 3), [274.0, 53.0, 1.0, 34.0]),
+            (mv_clay::id("FunctionRuns", 0), [13.0, 53.0, 87.0, 34.0]),
+            (mv_clay::id("FunctionRuns", 1), [101.0, 53.0, 86.0, 34.0]),
         ] {
             let b = at(id);
             for (i, (got, want)) in [b.x, b.y, b.width, b.height]

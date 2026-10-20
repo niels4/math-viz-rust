@@ -1,17 +1,14 @@
 # rows-arrows (H4): the pointer on a's left chevron (291, 299) and clicked —
 # the chevrons are decorative (no handler at this hash), so the card is
 # unchanged and the URL keeps nothing.
-# Coordinates are this tree's (the function card is 104 tall without
-# the readout): row a/k/b/h at y 277/321/382/426. h4-readout grows the
-# function card by 133.5, landing rows at the reference y; flip back then.
 size 1440 900
 density 2
 scheme dark
 mode dark
 theme arctic-ice
 wait 2000
-move 291 299
+move 291 432
 wait 150
-click 291 299
+click 291 432
 wait 200
 shot rows-arrows

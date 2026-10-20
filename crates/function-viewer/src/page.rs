@@ -235,6 +235,8 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
+    // The readout's two lines, scaled to fit where the equation is long.
+    crate::readout::paint_readout(app);
     // The transform rows' inset rings, focus rings and chevrons (h4-rows).
     crate::transform_row::paint_rows(app);
     if let Some((active, progress)) = fading {

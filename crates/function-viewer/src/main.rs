@@ -48,6 +48,7 @@ pub mod platform_web;
 pub mod platform_windows;
 pub mod plot;
 pub mod prefs;
+pub mod readout;
 pub mod scale_legend;
 pub mod scroll;
 pub mod selector;
