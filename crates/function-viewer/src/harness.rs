@@ -118,6 +118,10 @@ pub struct Harness<'a> {
     pub camera: String,
     /// The lit parameter as last written to `views.json`.
     pub lit: String,
+    /// The cursor as last written to `views.json`.
+    pub cursor: String,
+    /// The shown transform as last written to `views.json`.
+    pub shown: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -152,6 +156,8 @@ pub fn run_harness(
         url: String::new(),
         camera: String::new(),
         lit: String::new(),
+        cursor: String::new(),
+        shown: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -501,10 +507,20 @@ fn harness_frame(h: &mut Harness<'_>) {
     }
     // The lit parameter, whenever the highlight moves (h4-readout; the
     // behaviour checks read it against the reference's data-lit).
-    let lit = lit_line(h.app.state.lit());
+    let lit = lit_line(&h.app.state.lit());
     if lit != h.lit {
         h.lit = lit;
         h.views.extend_from_slice(h.lit.as_bytes());
+    }
+    // The cursor, whenever it changed between the plane's three
+    // (`CartesianPlane.tsx`'s `data-cursor`, read by `act.py`'s
+    // `plane_cursor`): other cursors write no line, so states that never
+    // touch the plane keep byte-identical views.
+    if let Some(cursor) = cursor_line(h.app.input.cursor)
+        && cursor != h.cursor
+    {
+        h.cursor = cursor;
+        h.views.extend_from_slice(h.cursor.as_bytes());
     }
     // The camera, whenever it changed: center, scale, whether a frame is
     // scheduled (h2-input; the behaviour checks read these against the
@@ -517,6 +533,18 @@ fn harness_frame(h: &mut Harness<'_>) {
     if camera != h.camera {
         h.camera = camera;
         h.views.extend_from_slice(h.camera.as_bytes());
+    }
+    // The shown transform, whenever it changed: the live values with the
+    // flip's spring blended in, and whether a flip is turning (h6-curve;
+    // the behaviour checks read it against the reference's box value and
+    // canvas curve at each frame).
+    let shown = shown_line(
+        crate::flip::shown_transform(&h.app.flip, crate::flip::live_transform(h.app)),
+        h.app.flip.is_animating(),
+    );
+    if shown != h.shown {
+        h.shown = shown;
+        h.views.extend_from_slice(h.shown.as_bytes());
     }
 }
 
@@ -864,13 +892,47 @@ fn camera_line(center: [f64; 2], scale: f64, animating: bool) -> String {
     )
 }
 
-/// One `lit` line: the highlighted parameter, or null at rest. Pure, so
-/// the shape is testable without the app.
-fn lit_line(lit: Option<crate::state::TransformParam>) -> String {
-    match lit {
-        Some(param) => format!("{{\"lit\": \"{}\"}}\n", param.as_str()),
-        None => "{\"lit\": null}\n".to_string(),
+/// One `lit` line: the highlighted parameters in order, or null at rest.
+/// Pure, so the shape is testable without the app. (h7-p-state: narrowed to
+/// the lit list with the highlight model; h7-plane owns the line and its
+/// `act.py` reader.)
+fn lit_line(lit: &[crate::state::TransformParam]) -> String {
+    if lit.is_empty() {
+        return "{\"lit\": null}\n".to_string();
     }
+    let params: Vec<String> = lit
+        .iter()
+        .map(|param| format!("\"{}\"", param.as_str()))
+        .collect();
+    format!("{{\"lit\": [{}]}}\n", params.join(", "))
+}
+
+/// One `cursor` line: the canvas's cursor in the reference's `data-cursor`
+/// words, or `None` off the plane's three (the crosshair at rest, the open
+/// hand over a handle, the closed hand on a press or drag). `None` writes
+/// no line, so states off the plane keep byte-identical views. Pure, so
+/// the shape is testable without the app.
+fn cursor_line(cursor: crate::input::Cursor) -> Option<String> {
+    let name = match cursor {
+        crate::input::Cursor::Crosshair => "pan",
+        crate::input::Cursor::Grab => "grab-hover",
+        crate::input::Cursor::Grabbing => "grab-active",
+        _ => return None,
+    };
+    Some(format!("{{\"cursor\": \"{name}\"}}\n"))
+}
+
+/// One `shown` line: the transform the plane draws, with whether a flip is
+/// turning it. Pure, like `lit_line` above, so the shape is testable
+/// without the app.
+fn shown_line(shown: crate::transform_curves::Transform, animating: bool) -> String {
+    format!(
+        "{{\"shown\": {{\"a\": {}, \"b\": {}, \"h\": {}, \"k\": {}, \"animating\": {animating}}}}}\n",
+        fmt_g17(shown.a),
+        fmt_g17(shown.b),
+        fmt_g17(shown.h),
+        fmt_g17(shown.k),
+    )
 }
 
 /// The shots taken mid-motion, as <out>/motion.json when there are any. The
@@ -1260,6 +1322,47 @@ mod tests {
         assert_eq!(
             camera_line([0.0, 0.0], 0.5, true),
             "{\"camera\": {\"center\": [0, 0], \"scale\": 0.5, \"animating\": true}}\n"
+        );
+    }
+
+    #[test]
+    fn cursor_line_names_the_plane_cursors_in_data_cursor_words() {
+        use crate::input::Cursor;
+        assert_eq!(
+            cursor_line(Cursor::Crosshair),
+            Some("{\"cursor\": \"pan\"}\n".to_string())
+        );
+        assert_eq!(
+            cursor_line(Cursor::Grab),
+            Some("{\"cursor\": \"grab-hover\"}\n".to_string())
+        );
+        assert_eq!(
+            cursor_line(Cursor::Grabbing),
+            Some("{\"cursor\": \"grab-active\"}\n".to_string())
+        );
+        // Off the plane's three no line is written, so states off the plane
+        // keep byte-identical views.
+        assert_eq!(cursor_line(Cursor::Default), None);
+        assert_eq!(cursor_line(Cursor::Pointer), None);
+    }
+
+    #[test]
+    fn shown_line_has_its_shape() {
+        assert_eq!(
+            shown_line(
+                crate::transform_curves::Transform {
+                    a: 2.0,
+                    b: 1.0,
+                    h: 1.0,
+                    k: -3.0,
+                },
+                false,
+            ),
+            "{\"shown\": {\"a\": 2, \"b\": 1, \"h\": 1, \"k\": -3, \"animating\": false}}\n"
+        );
+        assert_eq!(
+            shown_line(crate::transform_curves::Transform::IDENTITY, true),
+            "{\"shown\": {\"a\": 1, \"b\": 1, \"h\": 0, \"k\": 0, \"animating\": true}}\n"
         );
     }
 

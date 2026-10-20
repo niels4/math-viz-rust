@@ -1,0 +1,13 @@
+# handle-hover-scale (h7-plane): the pointer resting on the scale square
+# (unit point at plot (2,-1) = page (1028,540)). a and b lit, one dashed
+# box with both measured sides, cursor grab-hover.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 1028 540
+wait 300
+shot handle-hover-scale

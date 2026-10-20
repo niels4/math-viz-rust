@@ -589,7 +589,10 @@ fn field(app: &mut App, param: TransformParam, shown: &str, field_ink: clay::Col
 
 /// Paints the card's rings and chevrons after the command walk (the rings
 /// are box-shadows Clay has no arm for; the chevrons are paths, not text).
-/// Call from `draw_page` after `draw_commands`, as the settings chrome is.
+/// The tip layer walks later in `draw_page` (above these rings, as the DOM's
+/// `z-index: 1` holds it), with the tip arrows after it — so this stops at
+/// the chevrons. Call from `draw_page` after `draw_commands`, as the settings
+/// chrome is.
 pub fn paint_rows(app: &mut App) {
     let theme = crate::ui::current_theme(app).clone();
     let density = density_of(app);
@@ -674,7 +677,6 @@ pub fn paint_rows(app: &mut App) {
             paint_focus_ring(app, &theme, density, mv_clay::id(FLIP_ID, index));
         }
     }
-    crate::scrub_value::paint_extras(app);
 }
 
 /// Paints a 3 px primary-32 % ring outside a button's box (the `:focus-visible`
@@ -782,11 +784,11 @@ pub fn sync_hover(app: &mut App, before: Hit, now: Hit) {
     if was == is {
         return;
     }
-    if was.is_some() {
-        app.state.set_hover(None);
+    if let Some(param) = was {
+        app.state.set_hover(&[param], false);
     }
     if let Some(param) = is {
-        app.state.set_hover(Some(param));
+        app.state.set_hover(&[param], true);
     }
 }
 
@@ -812,14 +814,17 @@ pub fn click(app: &mut App, down: Hit) {
     match down.kind {
         HitKind::TransformFlip => {
             if let Some(param) = index_param(down.index) {
-                let value = crate::transform_section::param_value(app, param);
-                store_param(app, param, crate::reset::flipped(value));
+                crate::flip::flip_press(app, param);
                 blur_button(app);
             }
         }
         HitKind::TransformReset => {
             if let Some(param) = index_param(down.index) {
-                store_param(app, param, crate::reset::reset_value(param));
+                let to = crate::reset::reset_value(param);
+                let from = crate::transform_section::param_value(app, param);
+                app.state.jumps.single(param, from, to);
+                crate::flip::adopt_jumps(app);
+                store_param(app, param, to);
                 blur_button(app);
             }
         }
@@ -835,7 +840,7 @@ pub fn click(app: &mut App, down: Hit) {
 fn blur_button(app: &mut App) {
     app.input.focus = Hit::default();
     app.input.focus_visible = false;
-    app.state.set_focus(None);
+    app.state.set_focus(&[], true);
     app.dirty = true;
 }
 
@@ -864,8 +869,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
         match focus.kind {
             HitKind::TransformFlip => {
                 if let Some(param) = index_param(focus.index) {
-                    let value = crate::transform_section::param_value(app, param);
-                    store_param(app, param, crate::reset::flipped(value));
+                    crate::flip::flip_press(app, param);
                 }
             }
             _ => {
@@ -977,8 +981,9 @@ pub fn text(app: &mut App, text: &str) {
 }
 
 /// Stores a parameter's value, flushed to the URL at once (the hook's `set`
-/// with `{ flush: true }`).
-fn store_param(app: &mut App, param: TransformParam, value: f64) {
+/// with `{ flush: true }`). `pub(crate)` for the flip toggle's press
+/// ([`crate::flip::flip_press`], which stores the negated value).
+pub(crate) fn store_param(app: &mut App, param: TransformParam, value: f64) {
     match param {
         TransformParam::A => app.a_param.set_flushed(&mut app.url, value),
         TransformParam::K => app.k_param.set_flushed(&mut app.url, value),
@@ -1015,14 +1020,16 @@ pub fn commit_param(app: &mut App, param: TransformParam) {
 /// restore point are the opener's (click selects, Tab parks at the end).
 pub(crate) fn focus_field(app: &mut App, param: TransformParam) {
     crate::input::set_focus(app, field_hit(param), true);
-    app.state.set_focus(Some(param));
+    app.state.set_focus(&[param], true);
     start_text_input(app);
 }
 
 /// The highlight follows the keyboard's focus (Tab moves, presses clear).
 fn sync_focus_state(app: &mut App) {
-    let param = hit_param(app.input.focus);
-    app.state.set_focus(param);
+    match hit_param(app.input.focus) {
+        Some(param) => app.state.set_focus(&[param], true),
+        None => app.state.set_focus(&[], true),
+    }
 }
 
 /// Starts the platform's text input for the focused field; headless tests
@@ -1108,14 +1115,14 @@ mod tests {
         // click moves no touch itself; the blur drops the row's focus and the
         // pointer-off drops its hover.
         let mut state = HighlightState::touched_out();
-        state.set_hover(Some(TransformParam::A));
-        state.set_focus(Some(TransformParam::A));
+        state.set_hover(&[TransformParam::A], true);
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // The click's blur.
-        state.set_focus(None);
+        state.set_focus(&[TransformParam::A], false);
         // The pointer moving off after.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1126,11 +1133,11 @@ mod tests {
         assert!(!state.is_lit(TransformParam::A));
 
         // Pointing at the row lights it (the form's term reads the same state).
-        state.set_hover(Some(TransformParam::A));
+        state.set_hover(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // Moving off it puts it out.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1138,16 +1145,16 @@ mod tests {
     fn focus_keeps_a_lit_after_the_pointer_leaves() {
         // The highlight test: focusing a's box lights a.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // Pointing at the row and moving off leaves a lit (focus leads now).
-        state.set_hover(Some(TransformParam::A));
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], true);
+        state.set_hover(&[TransformParam::A], false);
         assert!(state.is_lit(TransformParam::A));
 
         // Leaving the box puts it out.
-        state.set_focus(None);
+        state.set_focus(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1155,17 +1162,17 @@ mod tests {
     fn only_the_last_moved_parameter_lights() {
         // The highlight test: focusing a's box lights a, not k.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
         assert!(!state.is_lit(TransformParam::K));
 
         // Pointing at k lights k and puts a out.
-        state.set_hover(Some(TransformParam::K));
+        state.set_hover(&[TransformParam::K], true);
         assert!(state.is_lit(TransformParam::K));
         assert!(!state.is_lit(TransformParam::A));
 
         // Moving off k gives the light back to a, which still has the focus.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::K], false);
         assert!(!state.is_lit(TransformParam::K));
         assert!(state.is_lit(TransformParam::A));
     }
@@ -1174,9 +1181,9 @@ mod tests {
     fn clearing_a_side_hands_the_light_to_the_other() {
         // Hover moved last, then leaves: the focused parameter lights.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
-        state.set_hover(Some(TransformParam::K));
-        state.set_hover(None);
+        state.set_focus(&[TransformParam::A], true);
+        state.set_hover(&[TransformParam::K], true);
+        state.set_hover(&[TransformParam::K], false);
         assert!(state.is_lit(TransformParam::A));
     }
 
@@ -1219,7 +1226,7 @@ mod tests {
 
         app.input.focus = field_hit(TransformParam::K);
         app.input.focus_visible = true;
-        app.state.set_focus(Some(TransformParam::K));
+        app.state.set_focus(&[TransformParam::K], true);
         let tab = crate::input::KeyEvent {
             key: Keycode::Tab,
             mods: Mod::empty(),
@@ -1228,12 +1235,12 @@ mod tests {
         };
         assert!(key(&mut app, &tab));
         assert_eq!(app.input.focus, flip_hit(TransformParam::B));
-        assert_eq!(app.state.lit(), Some(TransformParam::B));
+        assert_eq!(app.state.lit(), vec![TransformParam::B]);
         // Tabbing on into the field parks the caret at the end with the
         // restore point armed, as focusing the DOM input would.
         assert!(key(&mut app, &tab));
         assert_eq!(app.input.focus, field_hit(TransformParam::B));
-        assert_eq!(app.state.lit(), Some(TransformParam::B));
+        assert_eq!(app.state.lit(), vec![TransformParam::B]);
         assert_eq!(app.drafts[TransformParam::B].typing_from, Some(1.0));
         let len = crate::scrub_value::box_text(&app, TransformParam::B)
             .chars()
@@ -1273,5 +1280,27 @@ mod tests {
             height: 12.0,
         };
         assert!(!box_contains(tip, straddling));
+    }
+
+    #[test]
+    fn reset_click_jumps_from_the_live_value_to_the_default() {
+        // The row test: at a=3 the reset click sets the one-jump list from
+        // 3 to 1, flushes the key out of the URL at once, and starts the
+        // spring (the shown values still ease from 3).
+        let mut app = crate::fixture::headless_app();
+        app.url = crate::url::Url::from_query("a=3");
+        crate::transform_section::init_params_from_url(&mut app);
+        app.input.hover = reset_hit(TransformParam::A);
+        click(&mut app, reset_hit(TransformParam::A));
+        assert_eq!(
+            app.state.jumps.list,
+            vec![crate::state::Jump {
+                param: TransformParam::A,
+                from: 3.0,
+                to: 1.0,
+            }]
+        );
+        assert_eq!(app.url.query(), "");
+        assert!(app.flip.is_animating());
     }
 }

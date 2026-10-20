@@ -1,0 +1,19 @@
+# rows-lit-hk-drag (H7): a held shift-handle drag (x2, h=1, k=-2, scale 0.5:
+# diamond at plot (1,-2) = page (978,590)) lights the h and k rows with both
+# rulers out and their marks sliding at the live values; a and b stay dark.
+# Pressed 2 px off-centre and moved +40,-32 px, as the reference probe does.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&h=1&k=-2&scale=0.5
+wait 500
+move 980 592
+wait 200
+down
+wait 150
+move 1020 558 over 160
+wait 300
+shot rows-lit-hk-drag
+up

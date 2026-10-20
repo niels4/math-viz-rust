@@ -26,6 +26,34 @@ pub const SIDEBAR_RADIUS: f32 = 4.0;
 /// The page's sidebar box, for the settings menu's later use and tests.
 pub const SIDEBAR_ID: &str = "Sidebar";
 
+/// The plane's two handles from the drawn transform: the shift diamond at
+/// the vertex, then the scale square at the unit point, in that order so
+/// the square wins a tie (as `FunctionViewer.tsx` builds them at
+/// `251c080`, replacing h6-handles' `transform_handles` call). The draw
+/// and the input dispatch build the same handles from the same `shown`
+/// values, so a press hit-tests what the frame paints.
+#[must_use]
+pub fn build_handles(app: &App) -> Vec<crate::plot::PlotHandle> {
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let base = crate::functions::base(slug);
+    vec![
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Diamond,
+            at: crate::plot::PlotPoint {
+                x: shown.h,
+                y: shown.k,
+            },
+        },
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Square,
+            at: crate::transform_curves::unit_point(base, unit, shown),
+        },
+    ]
+}
+
 /// Lays out the page in `app`'s Clay context and returns the frame's render
 /// commands. The caller opens the layout first and ends it after.
 pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
@@ -107,8 +135,14 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
             body.cornerRadius = crate::ui::corner_radius_all(crate::plane::CANVAS_RADIUS);
             crate::ui::ui_scope(app, mv_clay::id(crate::plane::PLANE_ID, 0), &body, |_| {});
         });
-        // The settings menu floats under the gear, above the page.
+        // The settings menu floats under the gear, above the page: its
+        // regions ride one layer up, so the plane's canvas region (declared
+        // after the layout, over the same pixels) never shadows the cells
+        // and rows it floats over. The gear keeps the page's layer: nothing
+        // overlaps it.
+        app.input.z = 1;
         crate::settings::menu(app);
+        app.input.z = 0;
         // The scrub ruler floats under its row while a box scrubs (h5-ruler).
         crate::ruler::layout_open_drag(app);
     });
@@ -134,7 +168,7 @@ fn plane_box(app: &App) -> Option<clay::BoundingBox> {
 /// after the layout (the button's box derives from the canvas's), before the
 /// regions resolve.
 fn declare_plane_button(app: &mut App) {
-    if !crate::overlay::button_visible() {
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
         return;
     }
     let Some(canvas) = plane_box(app) else {
@@ -159,7 +193,7 @@ fn declare_plane_button(app: &mut App) {
 /// legend on the content box, then the overlay's brackets and button. Runs
 /// after the Clay commands (over the page background), before the
 /// transition's fade.
-fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
         return;
     };
@@ -169,10 +203,25 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // `cur` at publish, which the React draw reads as props).
     let (center, scale) = (app.camera.center, app.camera.scale);
     let colors = crate::plane::plane_colors(theme);
-    // The plotted function from the picker's switch state (h3's curves,
-    // through `plot.rs`): the whole curve at rest, the old fading under the
-    // drawing new one mid-switch.
-    let curves = crate::plot::curves(&app.shown);
+    // The plotted curves under the shown transform (h6-curve's `Plot`): the
+    // switch's curves (`plot.rs`) through `transform_curves`, the dashed
+    // original behind each transformed one; the flip's spring blends the
+    // shown values. At rest with no values the curves pass through whole.
+    // The handles and lines (h6-handles) ride the same shown transform
+    // (`transformHandles(..., shown)` and `transformLines(lit, ..., shown)`
+    // at `5cef052`). At h7-p-state `transformHandles` is gone (the plane
+    // builds its own handles at `251c080`, h7-plane's work), so the draw
+    // builds the two handles from the same points here; `transform_lines`
+    // takes the lit list with the base function.
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let switch = crate::plot::curves(&app.shown);
+    let curves = crate::transform_curves::transform_curves(&switch, shown);
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let base = crate::functions::base(slug);
+    let handles = build_handles(app);
+    let lines = crate::transform_curves::transform_lines(&app.state.lit(), base, unit, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -185,6 +234,10 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         true,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
+        theme.colors[mv_theme::Token::ForegroundMuted],
+        &handles,
+        &lines,
+        theme.colors[mv_theme::Token::Primary],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -193,10 +246,33 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         &crate::overlay::corner_boxes(&overlay),
         ocolors.chrome,
     );
+    // The button and its tip show off the default camera only (`moved`).
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+        return;
+    }
     let button = crate::overlay::overlay_button_box(&canvas);
     let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
     crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
+    // The tooltip's hover clock: armed while the pointer is on the button,
+    // dropped the moment it leaves (the CSS `:hover` rule). The timer keeps
+    // the app's turns coming until the delay is over, as the scrub rest
+    // tip's does.
+    if hovered {
+        if app.overlay_tip_since.is_none() {
+            app.overlay_tip_since = Some(now);
+            app.timers[crate::app_loop::Timer::OverlayTip] =
+                now + crate::overlay::TIP_DELAY_MS * crate::app_loop::MS;
+        }
+    } else {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+    }
+    if crate::overlay::tip_visible(app.overlay_tip_since, focused, app.input.focus_visible, now) {
+        crate::overlay::paint_tip(&mut app.fonts, &mut app.vg, &button, &ocolors);
+    }
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -220,20 +296,46 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
-    // The canvas first, then the overlay button, so the button wins their
-    // overlap at equal z.
+    // The scrub tips float above the rows (the DOM's `z-index: 1` on `.tip`):
+    // the commands a laid-out tip's box holds walk after the rows' post-pass
+    // rings, which would otherwise print over them (h5-fix-tip: k's inset
+    // ring over a's tip). The walks keep Clay's order within each layer; a
+    // neighbour's text fully inside the tip keeps its place ahead of the
+    // tip's plate in both, so it paints the same.
+    let tip_ids = crate::scrub_value::tip_box_ids();
+    let mut tip_rects: Vec<clay::BoundingBox> = Vec::new();
+    for command in &commands {
+        if command.commandType == clay::RenderCommandType::Rectangle
+            && tip_ids.contains(&command.id)
+        {
+            tip_rects.push(command.boundingBox);
+        }
+    }
+    let (tips, rest): (Vec<clay::RenderCommand>, Vec<clay::RenderCommand>) =
+        commands.into_iter().partition(|command| {
+            tip_rects
+                .iter()
+                .any(|tip| contains_box(*tip, &command.boundingBox))
+        });
+    // The canvas first: the grid, curves and overlay paint under the
+    // page's Clay content, as the canvas paints under the DOM that floats
+    // over it. The floating menu (and its shadow) then paint over the
+    // canvas they overlap, as the popover stacks above the page. The bar
+    // and sidebar shadows keep their place under the canvas, as before.
+    // The canvas's region first, then the overlay button's, so the button
+    // wins their overlap at equal z.
     crate::plane_input::declare_plane_region(app);
     declare_plane_button(app);
     crate::input::collect_regions(app);
     paint_bar_shadow(app, &theme);
     paint_sidebar_shadow(app, &theme);
-    paint_menu_shadow(app, &theme);
     let fading = app
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
-    draw_commands(app, density, &commands);
-    draw_plane(app, &theme);
+    draw_plane(app, &theme, now);
+    paint_menu_shadow(app, &theme);
+    draw_commands(app, density, &rest);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
@@ -246,6 +348,12 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
+    // The tip layer above the rings (partitioned above): the tip's plate,
+    // caps and words cover whatever ring segments run beneath them, as the
+    // DOM paints the positioned tip over the boxes. The arrows land on the
+    // caps last, as `paint_rows` held them.
+    draw_commands(app, density, &tips);
+    crate::scrub_value::paint_extras(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }
@@ -256,6 +364,11 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         snapshot_frame(app);
     }
     crate::input::update_cursor(app);
+    // The canvas's own cursor wins per frame (h7-plane): the regions'
+    // cursor doesn't know the hover rule (a diamond-to-square jump leaves
+    // pan under the pointer), so the state rule re-resolves after every
+    // layout's retarget.
+    crate::plane_input::plane_cursor(app);
 }
 
 /// Paints the top bar's shadow: 0 6 px 18 px in the shadow colour
@@ -310,6 +423,17 @@ fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
         .expect("clay context initialised")
         .get_element_data(id);
     data.found.then_some(data.boundingBox)
+}
+
+/// Whether the tip's box holds the command's box: the tip's own plate and
+/// border share its box exactly, its caps and words sit strictly inside.
+/// Neighbour boxes only overlap it (their far edges stick out), so exact
+/// comparison needs no slack.
+fn contains_box(tip: clay::BoundingBox, inner: &clay::BoundingBox) -> bool {
+    tip.x <= inner.x
+        && tip.y <= inner.y
+        && inner.x + inner.width <= tip.x + tip.width
+        && inner.y + inner.height <= tip.y + tip.height
 }
 
 /// Paints a 0 6 px 18 px shadow behind the box.

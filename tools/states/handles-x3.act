@@ -1,0 +1,9 @@
+# handles-x3 (H6): x3 at a=2, h=1, k=-3, the diamond on the vertex and the square on the curve.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x3&a=2&h=1&k=-3
+wait 2000
+shot handles-x3

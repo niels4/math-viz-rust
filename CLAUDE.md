@@ -33,6 +33,7 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - function-viewer (h3-p-plot): the plot switch keeps the hook's shape as data (`Shown { func, old: Option, elapsed }`, `PlotCurve { func, alpha, draw_to }` — the TS field `fn` is renamed `func`, a keyword); graphed functions are plain `fn(f64) -> f64` pointers and identity is address comparison through `std::ptr::fn_addr_eq` (plain `==` on fn pointers is compiler-linted, including inside a derived `PartialEq`, so `PlotCurve` implements it by hand); the rAF loop is `switch_to` (the render-phase transition, `canAnimate()` in as a `bool` the coder wires) plus `step` (first frame carries `FIRST_FRAME_MS`, as `camera.rs`'s `first_frame`, but only on a rest-to-switch transition — a mid-switch change keeps the running clock, as the hook's loop is keyed on `switching`); `sample_curve` is `drawCurve`'s sampling without the paint (per-column points, `insideShare`, cumulative inside-length, interpolated stop), taking the canvas dims beside the grid, which stores none; vitest `toBeCloseTo(x, 2)` is `|diff| < 0.005`, and frame-driven tests accumulate time and diff it exactly like the hook's `now - last` so `elapsed` sums bit-identically.
 - function-viewer (h5-p-scrub): the scrub maths keep the TS shapes (`ScrubMode` enum, `scrub_mode`/`wheel_dx` plain args since h4's rows are unmerged); `quantize` is `mv-numfmt::quantize` exactly (the TS rounds `|v|` then re-applies the sign — including negative exact halves — which is what that helper does, so no local rounding); `shown` formats via `round_to` plus a plain print (the field shows the keyboard hyphen, never `format_number`'s U+2212), `-0` normalised to `0`; the tape is an enum (`Shift`/`Scale`, never a `kind` field), `multiples` keeps an f64 counter exactly like the TS loop (the `1e20` case falls out empty through identical float ops), and label text is `String(Number(toFixed))` including the ECMA-262 exponential rule outside `[1e-6, 1e21)` and the first-hyphen-only true-minus replace (`−5e-7` keeps its exponent hyphen).
 - function-viewer (h6-p-transform): the transform is `Transform { a, b, h, k }` (a struct — the fixed keys read as the TS literals do — with `get`/`with` for the two indexed uses, not an `EnumMap`); a transformed function is data (`TransformedFunction { base, transform }` with `value(x)`), never a closure, since a transformed curve cannot be a `fn` pointer; `transform_curves` returns `TransformedCurve { func, alpha, draw_to, dashed }` (the dashed flag rides the new curve type, `plot::PlotCurve` untouched) with the original untransformed under `Transform::IDENTITY`; the flip is `ShownTransform { jump, seen }` with `step(flip, transform, dt, can_animate)` (adoption split into pub `adopt`, which the press turn calls before any frame passes, plus `pub shown` for that turn's draw; the first-frame `FIRST_FRAME_MS`, the `durationMs` finish, the per-param `===` passthrough for typed-mid values; `Flip.seq` is the press identity behind the hook's `flip !== seenFlip`, set from a counter where the flip is created); the params type is `state::TransformParam` (h4's; this module's own copy deleted at the h6 merge); `plane_geometry` is pure canvas positions (`to_px`, `clamp_curve_y` with `OVERSHOOT_PX`, `handle_path`, `line_path` with `None` for zero length, `line_tick_halves` as the painter's single source) while widths, dashes and alphas stay the painters' (h6-handles); `PlotLine.label` is always `None` from `transform_lines` (the TS carries no label).
+- function-viewer (h7-p-state): the highlight holds ordered lists (`hover`/`focus: Vec<TransformParam>`, `lead: Touch::{Hover, Focus}` defaulting to hover): `lit()` is the scrubbed params in a-b-h-k order while any `scrub_mode` entry is `Some`, else the lead side's list while non-empty, else the other's; `set_hover/set_focus(&[params], on)` store-and-take-lead on `on` and clear only on element-for-element equality off (`same_params`), so a handle's stale end never clears a newer list; an unconditional drop passes `&[]` with `on` (the emptied side is unreadable whichever side leads, exactly as the source's off leaves it). `scrub_mode: EnumMap<TransformParam, Option<ScrubMode>>` is the `scrubModeAtoms` record; `Jump { param, from, to }` is the atom's element and `Jumps { list, seq }` the `jumpsAtom` list, every `set`/`single` bumping `seq` even with equal values (the hook's fresh-array identity), so the flip's call stays one line (`app.state.jumps.single(param, from, to)`). The flip animation is unchanged apart from the identity: `ShownTransform { jump, seen: u64 }` with `step(&Jumps, transform, dt, can_animate)` folding every jump over the transform for the `from`/`to` ends; `transform_lines(lit: &[T], g, u, transform)` draws the dashed box once while a or b is lit, then one line per lit param in list order; `unit_point` is public; `transformHandles` is gone (the plane builds its own handles).
 
 ## Harness notes
 
@@ -313,7 +314,9 @@ no new tokens (all eight tabled).
   `Touch{param, at}` records with an internal move sequence; `lit()` is the
   present touch with the greater `at` (equals the source's lead/fallback
   rules); `set_hover/set_focus(None)` clears unconditionally (the input layer
-  sends it only when its side is on no parameter).
+  sends it only when its side is on no parameter). (h7-p-state widens all of
+  this to ordered lists with a `lead` side — see the h7-p-state bullet above;
+  the unconditional drop is now `set_*(&[], true)`.)
 - `readout.rs` builds the value and form lines as token runs (`Part`: plain
   text, parameter term, stacked fraction, sup digit; reader-only spans feed
   `spoken()` only). Values print through `mv_numfmt::to_fixed(v, 2)` with the
@@ -387,6 +390,221 @@ no new tokens (all eight tabled).
   hold plus a fresh row-box lookup: one derivation feeds the ruler.
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
+
+### h5-fix-tip (tip above the post-pass rings; flip-focus verdict)
+
+- The scrub tip is the DOM's `z-index: 1` layer: `draw_page` partitions the
+  frame's commands and walks everything a laid-out tip's box holds after
+  the rows' post-pass rings (which print over it otherwise — measured: k's
+  inset ring over a's tip, 304 saturated-gold px in the tip box vs 5 in the
+  reference). Clay order holds within each walk; a neighbour's text fully
+  inside the tip keeps its place ahead of the tip's plate in both, so it
+  paints the same.
+- Only a Rectangle command carries its element's id: Clay derives Border
+  ids (`HashNumber(elementId, children.length)`) and Text ids
+  (`HashNumber(lineIndex, elementId)`) from it (`clay.h`'s
+  `Clay__CalculateFinalLayout`). Matching a layer by id set alone moves the
+  plate and buries its border and words under it (measured: +3827 px);
+  anchor on the id-matched plate Rectangle's box and take everything the
+  box holds. The arrow glyph scopes declare no commands; their paths paint
+  in `paint_extras`, which moved from the end of `paint_rows` to after the
+  tip walk.
+- flip-focus settles from the CSS/TS at `b8a0e1d`, not the pixels: `.box`
+  digits are unconditionally `var(--row-ink)` (the lit state drives row
+  tint, inset width and `data-lit`, never digit colour), and the toggle's
+  focus lights b's row through `onFocus` → `focusAtom` → `litAtom`
+  (lead-wins). Measured in ref-Chromium and ref-Firefox alike: b's toggle
+  focused with its ring, only b lit, all digits full param colour — the
+  port matches on every target, so the union's gold-vs-peach claim does not
+  reproduce and there is no defect and no new quirk; the only engine split
+  stays the known WebKit Tab quirk (focuses b's box, buttons skipped).
+### h6-curve (the transform's wiring)
+
+- The flip's render phase needs the adoption without the advance: the
+  press's own turn must draw the jump at elapsed 0 (a=2.00), so
+  `ShownTransform` splits `adopt` (render-phase, called from the press)
+  from `step` (adopt + advance, called from the frame loop). Without the
+  split the press turn draws one frame in (a≈1.96), a 4-device-px curve
+  defect. The loop's first step after the press carries `FIRST_FRAME_MS`
+  through the jump's `first_frame` flag, as the hook's first rAF callback
+  carries no measured gap.
+- A transformed curve cannot stay a `fn` pointer: `plot::sample_curve`
+  takes `impl Fn(f64) -> f64` (plain curves pass their pointer, transformed
+  ones `|x| curve.func.value(x)`), and the overshoot clamp
+  (`plane_geometry::clamp_curve_y`) sits inside the shared sampler, exactly
+  where `drawCurve` clamps before pushing the point. Identity transforms
+  sample bit-equal through `TransformedFunction::value` (`1.0 * g + 0.0` is
+  exact), so one paint path serves all curves.
+- Canvas dashes emulate by cutting the polyline into on-interval subpaths
+  (`plane::dash_pieces`, the first port's `dash.rs` technique) stroked with
+  the look's caps: Canvas caps each dash, which is what makes round-capped
+  `[6, 6]` from offset 3 match. The pattern phase is the offset into the
+  period (`(d + offset) % period`), not a trimmed first dash.
+- Never pipe a check into a commit chain: `./build.sh check | tail`
+  exits 0 through `tail`, so one commit landed while a test was red. Chain
+  the check and the commit with `&&` only and no pipe.
+- At a new hash, re-read every shared artifact the reference may have
+  renamed: the 5cef052 tooltip commit renamed the overlay button's
+  aria-label (fixture selector) and hid the button at the default camera
+  (fixture shot + box test source). The button's own visibility rule stays
+  its owner's (h6-handles).
+### h6-handles (the shift/scale handles, the lit-parameter lines, the overlay tooltip)
+
+- Handles and lines paint in `theme.primary`, never the parameter colours:
+  the source sets `strokeStyle`/`fillStyle` to primary for every handle and
+  line (probed on every op), with the page colour as the handle fill.
+- NanoVG inherits the context the last painter left, while Canvas 2D
+  `save`/`restores` each curve and line back to butt caps and miter joins:
+  the handle and line painters set butt + round (handles) and butt + miter
+  (lines) explicitly and restore miter after, so the legend's bar strokes as
+  probed whatever the curve painters leave.
+- The dashes are `dash_polyline` pieces, not an API (`mv-nvg` has none):
+  the first port's `dash.rs` technique with its 0.01 px cutoff, one subpath
+  per piece, `lineDashOffset = dash[0] / 2`; solid shafts stroke directly.
+  The shared `pub(crate) dash_pieces` in `plane.rs` is h6-curve's for the
+  dashed original too.
+- The hover redraw lands a task late on the reference (a hover lights the
+  row at once but the canvas repaints after): every hover state is its own
+  fresh page with `wait 1000` after the move, as the user's
+  `transform-lines.mjs` reloads per param. Settled shots are exact.
+- The tooltip needs a timer, not a timestamp: the app sleeps between input
+  turns, so arming `overlay_tip_since` in the draw never fires — the delay
+  is `loop::Timer::OverlayTip` (+400 ms, armed with the hover, cancelled on
+  leave, `tip_fired` dirties while still hovered), mirroring the scrub rest
+  tip. Forgetting the button gate the first time painted it at the default
+  view (a 3335 px max-235 cluster on the button box in every state); the
+  gate covers the region, the paint and the tip together.
+- The fixture's WebKit and Chromium tip boxes disagree by 0.58 px (their
+  shapers differ); the port's stb advance matches Chromium to 0.01. The tip
+  geometry test pins the math from a given advance (the legend precedent),
+  not the port's measure against WebKit.
+- Judge boxes from `judge.json` are CSS px, not device px: a 34x32 "mystery
+  cluster" at (1360, 781) is the button box, and element boxes need the
+  canvas offset (433, 97) added — costs an hour when missed.
+### h7-p-plane (the grid carried on the layout)
+
+- Since `1cfd34a` the grid is laid out once per camera update: `GridLayout`
+  stores the `width`, `height` and `scale` it was computed for (appended
+  fields, not TS order), and `x_label_lines` / `layout_labels` / the legend
+  entry read them from the grid instead of taking them as args.
+  `layout_grid` keeps its `(center, scale, width, height, margin)` arg order.
+- `labelMargin` moved from a local in `drawCartesianPlane.ts` to an export
+  in `constants.ts` in the stretch; in Rust it stays `plane::LABEL_MARGIN`
+  (already public) — a deliberate non-move.
+- `hitTest`'s handler filter (`handlers?.[action] === undefined` skips the
+  handle) is vacuous at this hash — both handles carry all five handlers —
+  and is left out; `plot::PlotHandle { kind, at }` stays, handlers dispatch
+  in the app.
+
+### fix-theme-switch (union H1-H6 finding: theme-switch-frames frame 0)
+
+- A floating overlay needs its stacking layer, not just its paint order:
+  the plane's canvas region (declared after the layout) shadowed the open
+  menu's cells/rows at equal z=0, so row clicks light-dismissed the menu
+  instead of switching the theme. `app.input.z` is the designed mechanism
+  (nothing had ever assigned it); the menu now lays out at layer 1. Hit
+  regressions from shadowing show as cursor `default` + theme stuck in
+  views.json, and a headless test (layout + declare_plane_region +
+  collect_regions, then `hit_at` on the click point) pins the layer.
+- The plane paints under the page's Clay content: grid/curves printed over
+  the open menu. `draw_plane` runs before `draw_commands`, with only the
+  menu shadow moved after the plane (bar/sidebar shadows keep their place
+  under it). Nothing else overlaps the canvas, so no other state moves.
+- Mid-fade whole-frame diffs are the transition's shape, not its timing:
+  math-viz2 leaves the view transition uncustomised, so each engine runs
+  its UA default — Chromium's is linear (h1's probe), WebKit's ease-like
+  (measured per-frame: the port's linear fade sits ~0.2 progress behind
+  mid-fade, endpoints equal). One build can't match both; the port stays
+  linear (Chromium-measured, h1's call). The fade's start can lag the click
+  up to one 16 ms grid frame (facts run on the grid), worth ≤6 levels at
+  the end — inherent, like the last-grid-draw note.
+- WebKit doesn't focus buttons on click (macOS convention): after a gear
+  click focus stays on body, so Tab lands on the first page stop (the "a"
+  field, with selection + hint bar), while the port clears focus to the
+  menu's system cell. Chromium agrees with the port. That is the
+  `settings-focus-radio` remainder (engine quirk (d) + h6's new stops),
+  left for the tab-order owner — the menu paint half of it is fixed here.
+
+### h7-plane: the plane's handles made live
+
+- No new HitKinds and no handle regions: the press and the hover both name
+  the Plane hit, and `plane_input` hit-tests inside (`plane_geometry`'s
+  `hit_test`/`from_px` over `page.rs::build_handles`, the FunctionViewer
+  build order). `App` appends `hovering`, `hovered` (None = the source's
+  -1), `dragging`, `grab` and `dragged` (the press's handle index: the drag
+  formula's pair never changes mid-drag while the hover index follows the
+  moves).
+- The cursor is state, not regions: `plane_cursor` (`dragging` or a Plane
+  press → Grabbing, else `hovering` → Grab, else Crosshair) runs after the
+  dispatch, the retarget, the press and the release, and at the end of
+  `draw_page` — the per-frame win that matters, because
+  `collect_regions` → `retarget` → `update_cursor` re-resolves the region
+  cursor after every layout and would otherwise stomp the hover override
+  (found by trace: Grab set at the input turn, Crosshair back before the
+  shot). The diamond-to-square single jump lands pan with a and b lit, by
+  the source's statement order (new hover first, then the old end).
+- `harness.rs` writes a `{"cursor": "pan"|"grab-hover"|"grab-active"}`
+  line on change between the plane's three only (other cursors write no
+  line, so off-plane states keep byte-identical views); `act.py` allows the
+  shape and reads `data-cursor`/`[data-param][data-lit]` for the behaviour
+  checks. Shot lines keep the CSS cursor name (`grab`/`crosshair`); the
+  single lines carry the reference's words.
+- Scripting rule (measured on the reference, all engines): a scripted
+  pointermove hit-tests the last render's handles, one step stale, so
+  drags step at most 5 px with the press on the handle centre, and every
+  decisive hover read is preceded by a settle plus a 1 px nudge. The drag
+  past the canvas edge keeps following (pointer capture; offsetX works past
+  the width). (Superseded by h7-fix-capture: the port's web glue now
+  captures too, so handle-drag-out ends at x=1500 with h=11.44 on native,
+  web-webkit, web-chromium and the reference; the past-the-viewport stop
+  was a glue gap, not a stack limit.)
+  Chromium draws 2 fixed dash-edge pixels at 41/255 where native draws them
+  (same spots every same-camera state; everything else ≤15, 0 flat).
+- Harness gotcha: never pipe `./tools/run` through head/tail — the SIGPIPE
+  kills the venv's pip mid-install and the run proceeds without deps.
+
+### h7-fix-capture: canvas pointer capture on the web; HandleId
+
+- The web past-the-viewport stop was a glue gap, not a stack limit:
+  `useCamera.ts:180-182` captures the canvas on every press
+  (`setPointerCapture`, implicit release — the hook never calls release)
+  and the port's `web/library.js` never did, so SDL's canvas listeners
+  lost the moves past the viewport edge. `mv_web_init` now captures on
+  canvas pointerdown (try/catch, `Module.canvas ??
+  document.getElementById("canvas")`), mirroring the hook exactly.
+  handle-drag-out is back at x=1500: h=11.44 on native, web-webkit,
+  web-chromium, ref-webkit and ref-chromium.
+- Harness/engine limit, measured: Playwright's Firefox dispatches broken
+  coordinates for moves past the viewport edge, and the reference follows
+  them too (ref-firefox h=-18.56, k=11.5 — the canvas maps the last move
+  to window ~(0,-85)); the port lands on the identical values, so judge
+  Firefox port-vs-ref directly on input-driven states.
+- `plane_input` carries handles as `HandleId { Shift, Scale }`
+  (`Option<HandleId>` in `App::hovered`/`dragged`, `from_index`/`index`
+  helpers at the hit-test boundary): `handle_params`, `drag_move` and
+  `plane_up` match both arms with a `None => {}` no-op (nothing may set
+  or flush without a press — the old `_` fallback flushed h/k).
+
+### h7-sidebar (the handles' sidebar side)
+
+- The reset/Reset-all animation is jump-list adopt, not a value write: set
+  `jumps` (one, or four in section order a/k/b/h with from=live), adopt at
+  elapsed 0 (`flip::adopt_jumps`), then flush — the press's own turn still
+  draws the old values while the boxes show the new ones, exactly like the
+  flip's `press_flip` + `store_param` order.
+- The shared scrub-mode map is the single source: box drags sync it in
+  `mirror_scrub` (was/held transition on the box's own mirrored drag only —
+  a handle drag's modes never pass through `store`), `drag_mode()` reads the
+  map, and the ruler opens one card per mode-held param at the live query
+  value (the box drag's card is never doubled). Rows, readout terms and the
+  box chrome all follow the same slot.
+- The diamond→square single-jump cursor-pan quirk is reference behaviour at
+  this hash (`onHover` before the old handle's `onHoverEnd` clears
+  `hovering`): keep the dispatch order, approach the square from empty plane
+  in states.
+- Ruler boxes only exist mid-drag: the dom fixture runs the held-drag state
+  (`rows-lit-hk-drag`) for them, and the layout test reads them at that shot
+  — the pattern for any drag-only geometry.
 
 ## Long runs
 

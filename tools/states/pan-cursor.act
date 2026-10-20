@@ -1,0 +1,20 @@
+# pan-cursor (h7-plane): a press off the handles ((700,300) misses both),
+# dragged +50 px and released — the CartesianPlane closed-hand test's
+# shape: grab-active while held (in the views.json cursor line), pan after
+# release, centre -1.0 in the URL.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 700 300
+wait 200
+down
+wait 200
+move 750 300 over 80
+wait 200
+up
+wait 800
+shot pan-cursor

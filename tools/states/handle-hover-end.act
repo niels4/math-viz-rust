@@ -1,0 +1,14 @@
+# handle-hover-end (h7-plane): the pointer off the handles onto empty
+# canvas (700,300): nothing lit, cursor pan.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 300
+move 700 300
+wait 300
+shot handle-hover-end
