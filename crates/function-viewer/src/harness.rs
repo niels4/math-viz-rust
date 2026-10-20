@@ -126,6 +126,11 @@ pub struct Harness<'a> {
     pub q: String,
     /// The shown transform as last written to `views.json`.
     pub shown: String,
+    /// The page's hash route as last written to `views.json` (h10-page; the
+    /// behaviour checks read it against the reference's `location.hash`).
+    /// `None` until the first frame records it, so the line is written at
+    /// start and whenever the route changes.
+    pub route: Option<String>,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -164,6 +169,7 @@ pub fn run_harness(
         cursor: String::new(),
         q: String::new(),
         shown: String::new(),
+        route: None,
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -417,13 +423,18 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
             // scripted frames bypass SDL's event queue and a pushed event
             // would sit unhandled). Param live values follow through each
             // param's `sync` on the coming frames, once their owners wire it.
-            // The frame now records the changed query in views.json at the
-            // verb's time (a hash queues no fact, and `inputs_now` only
-            // frames on pending facts, so without it a hash-then-shot script
-            // would record no `url` line).
+            // A hash that changes the route enters it (a fresh mount, as the
+            // web `hashchange` path does). The frame now records the changed
+            // query in views.json at the verb's time (a hash queues no fact,
+            // and `inputs_now` only frames on pending facts, so without it a
+            // hash-then-shot script would record no `url` line).
+            let prev = h.app.url.route().to_string();
             h.app
                 .url
                 .sync_from_hash(&format!("#{HASH_ROUTE}?{}", q.query));
+            if prev != h.app.url.route() {
+                crate::welcome::enter_route(h.app);
+            }
             harness_frame(h);
         }
     }
@@ -510,6 +521,15 @@ fn harness_frame(h: &mut Harness<'_>) {
     if h.app.url.query() != h.url {
         h.url = h.app.url.query().to_string();
         h.views.extend_from_slice(url_line(&h.url).as_bytes());
+    }
+    // The hash route, at start and whenever it changed (h10-page; the
+    // behaviour checks read it against the reference's `location.hash`
+    // route, through h10-t-route's readers). Written beside the query, so a
+    // navigation records both lines at its frame.
+    if h.route.as_deref() != Some(h.app.url.route()) {
+        h.route = Some(h.app.url.route().to_string());
+        h.views
+            .extend_from_slice(route_line(h.app.url.route()).as_bytes());
     }
     // The lit parameter, whenever the highlight moves (h4-readout; the
     // behaviour checks read it against the reference's data-lit).
@@ -899,6 +919,13 @@ fn views_line(
 /// `views_line` above, so the shape is testable without the app.
 fn url_line(url: &str) -> String {
     format!("{{\"url\": {}}}\n", json_string(url))
+}
+
+/// One `route` line: the page's hash route (`""` or `"function-viewer"`),
+/// as the frame left it (h10-page; the shape h10-t-route's reader expects).
+/// Pure, like `url_line` above, so the shape is testable without the app.
+fn route_line(route: &str) -> String {
+    format!("{{\"route\": {}}}\n", json_string(route))
 }
 
 /// One `camera` line: the plane's center and scale with whether a frame is
@@ -1355,6 +1382,15 @@ mod tests {
             "{\"url\": \"center=1,2&scale=2\"}\n"
         );
         assert_eq!(url_line(""), "{\"url\": \"\"}\n");
+    }
+
+    #[test]
+    fn route_line_has_its_shape() {
+        assert_eq!(route_line(""), "{\"route\": \"\"}\n");
+        assert_eq!(
+            route_line("function-viewer"),
+            "{\"route\": \"function-viewer\"}\n"
+        );
     }
 
     #[test]

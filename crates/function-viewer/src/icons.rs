@@ -36,6 +36,8 @@ pub enum IconKind {
     Reset,
     FlipVertical,
     FlipHorizontal,
+    /// The welcome button's arrow (`ArrowRightIcon` in `icons.tsx`).
+    Arrow,
 }
 
 /// An icon to paint: its kind and its ink, already resolved to a colour.
@@ -88,6 +90,14 @@ pub const RESET_ARC: &str = "M12.213 4.465A5.5 5.5 0 1 1 4.465 3.787";
 pub const RESET_ARC_STROKE: f32 = 1.75;
 pub const RESET_HEAD: &str = "M9.013 0.865L14.813 2.065L11.813 6.865Z";
 
+/// The welcome arrow's viewBox (`ArrowRightIcon`, 14). Round caps and joins,
+/// like every stroked icon above.
+pub const ARROW_VIEWBOX: f32 = 14.0;
+/// The welcome arrow's stroke width (`ArrowRightIcon`, 1.4).
+pub const ARROW_STROKE: f32 = 1.4;
+/// The welcome arrow's path (`ArrowRightIcon`).
+pub const ARROW_PATH: &str = "M2 7h9.5M8 3.5 11.5 7 8 10.5";
+
 /// The flip icon's viewBox (`FlipIcon.tsx`, 14). Each axis pairs a 1.6 round
 /// shaft stroke with two filled heads.
 pub const FLIP_VIEWBOX: f32 = 14.0;
@@ -106,6 +116,7 @@ pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon)
         IconKind::Check => (CHECK_VIEWBOX, CHECK_STROKE),
         IconKind::Reset => (RESET_VIEWBOX, RESET_ARC_STROKE),
         IconKind::FlipVertical | IconKind::FlipHorizontal => (FLIP_VIEWBOX, FLIP_SHAFT_STROKE),
+        IconKind::Arrow => (ARROW_VIEWBOX, ARROW_STROKE),
     };
     vg.save();
     vg.translate(at[0], at[1]);
@@ -207,6 +218,14 @@ pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon)
                 eprintln!("math-viz2-rust: icon path NanoVG can't draw: {heads:?}");
             }
             vg.fill();
+        }
+        IconKind::Arrow => {
+            vg.line_join(mv_nvg::LineCapType::ROUND);
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, ARROW_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {ARROW_PATH:?}");
+            }
+            vg.stroke();
         }
     }
     vg.restore();

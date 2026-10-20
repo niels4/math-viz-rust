@@ -69,6 +69,17 @@ pub enum Type {
     KeyText,
     /// The Transform card's Reset all: Work Sans 600, 13 px.
     ResetAll,
+    /// The welcome page's title (`WelcomePage.module.css .title`): Work Sans
+    /// 800, 96 px, line-height 1, −0.035em.
+    WelcomeTitle,
+    /// The welcome page's description (`.description`): Work Sans 400, 22 px,
+    /// line-height 1.5.
+    WelcomeDescription,
+    /// The welcome page's button label (`.cta`): Work Sans 600, 18 px, the
+    /// 53 px button height with 16 px padding leaving a 21 px line box.
+    WelcomeCta,
+    /// The welcome page's hint (`.hint`): Work Sans 400, 16 px.
+    WelcomeHint,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -202,6 +213,39 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 15.0,
         },
+        // The welcome title's 96 px line box (`line-height: 1`), measured on
+        // the reference (h10-page: box 96 tall, −3.36 px tracking).
+        Type::WelcomeTitle => TypeStyle {
+            face: Face::WorkSans800,
+            size: 96.0,
+            tracking: -3.36,
+            line_height: 96.0,
+        },
+        // The welcome description's 33 px line box (`line-height: 1.5`),
+        // measured on the reference (h10-page: three lines at a 33 px pitch).
+        Type::WelcomeDescription => TypeStyle {
+            face: Face::WorkSans400,
+            size: 22.0,
+            tracking: 0.0,
+            line_height: 33.0,
+        },
+        // The welcome button label's 21 px line box (the 53 px button less
+        // 16 px of padding each side), measured on the reference (h10-page).
+        Type::WelcomeCta => TypeStyle {
+            face: Face::WorkSans600,
+            size: 18.0,
+            tracking: 0.0,
+            line_height: 21.0,
+        },
+        // The welcome hint's line box for 16 px (`line-height: normal`),
+        // measured on the reference (h10-page: baseline 18.48 px into the
+        // 26 px row, matching a 19 px box centred with the font's ascent).
+        Type::WelcomeHint => TypeStyle {
+            face: Face::WorkSans400,
+            size: 16.0,
+            tracking: 0.0,
+            line_height: 19.0,
+        },
     }
 }
 
@@ -224,6 +268,10 @@ fn type_from_id(id: u16) -> Type {
         14 => Type::TipText,
         15 => Type::KeyText,
         16 => Type::ResetAll,
+        17 => Type::WelcomeTitle,
+        18 => Type::WelcomeDescription,
+        19 => Type::WelcomeCta,
+        20 => Type::WelcomeHint,
         _ => unreachable!("clay font id names a text style"),
     }
 }
@@ -370,6 +418,10 @@ mod tests {
             (Type::Heading, "Function"),
             (Type::Maths, "sin "),
             (Type::MathsItalic, "x"),
+            (Type::WelcomeTitle, "MathViz"),
+            (Type::WelcomeDescription, "Interactive math "),
+            (Type::WelcomeCta, "Open the Function Viewer"),
+            (Type::WelcomeHint, "Pick a function, then drag"),
         ];
         app.clay
             .as_mut()

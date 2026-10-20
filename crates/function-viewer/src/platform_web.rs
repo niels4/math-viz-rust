@@ -77,6 +77,11 @@ unsafe extern "C" {
     /// Writes the page's hash through `history.replaceState` (no history
     /// entry), so the page behaves as math-viz2's does.
     pub fn mv_write_hash(hash: *const std::os::raw::c_char);
+    /// Navigates to the hash (an anchor's assignment): a history entry, and
+    /// the `hashchange` the app's subscription reads back, as math-viz2's
+    /// anchors do. A function Rust calls, so it lives in `library.js` and is
+    /// never exported.
+    pub fn mv_navigate_hash(hash: *const std::os::raw::c_char);
     /// The C allocator's memalign.
     pub fn memalign(alignment: usize, size: usize) -> *mut std::ffi::c_void;
     /// The C allocator's free.
@@ -638,6 +643,23 @@ pub fn platform_write_hash(hash: &str) {
     // it before returning.
     unsafe {
         mv_write_hash(hash.as_ptr());
+    }
+}
+
+/// Navigates to the hash, as an anchor does: assigning `location.hash` makes
+/// a history entry and fires `hashchange`, which the app's subscription
+/// reads back. Takes the bare hash (`function-viewer`, or `""` for the root);
+/// a hash with an interior NUL is never written. h10-page's navigations (the
+/// welcome button, the wordmark) call this; the debounced URL writes keep
+/// using `platform_write_hash` (no entry).
+pub fn platform_navigate_hash(hash: &str) {
+    let Ok(hash) = std::ffi::CString::new(hash) else {
+        return;
+    };
+    // SAFETY: the NUL-terminated hash is live for the call; the shell copies
+    // it before returning.
+    unsafe {
+        mv_navigate_hash(hash.as_ptr());
     }
 }
 

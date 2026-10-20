@@ -1702,6 +1702,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         // The paint's refresh, as the app runs it: seed the cache from the
         // laid-out plane so the second pass lays the card out converged.
@@ -1752,7 +1753,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
-        app.url = crate::url::Url::from_query("func=x3&p=-123.4");
+        app.url = crate::url::Url::new("#function-viewer?func=x3&p=-123.4");
         crate::transform_section::init_params_from_url(&mut app);
         let _commands = crate::page::layout_page(&mut app);
         app.visible_range = crate::visible_range::live(&app);
