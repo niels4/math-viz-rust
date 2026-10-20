@@ -746,6 +746,12 @@ no new tokens (all eight tabled).
 - Fractions floor in WebKit mouse input (press at 249.54 reads clientX 249):
   scripts use whole px and the unit tests pin the integer-coord values
   (press 250 → 2.03, +30 → 3.82, click 100 → −6.92).
+- `mv_theme`'s `ring`/`plate`/`band`/`badge` return 0..1 theme colors;
+  `draw::nvg_color` takes 0..255 Clay colors (divides by 255). Wrap with
+  `ui::ink` first, as every other `nvg_color` call site does — passing a
+  helper's output straight in paints at alpha ~0.001 (an invisible halo and
+  focus ring, found by judging slider-focus at 6x and proved by a radial
+  profile against the reference).
 
 ## Long runs
 
