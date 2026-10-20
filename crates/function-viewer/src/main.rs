@@ -84,6 +84,7 @@ pub mod visible_range;
 pub mod welcome;
 pub mod welcome_backdrop;
 pub mod welcome_loop;
+pub mod welcome_step;
 pub mod x_field;
 
 use std::sync::Mutex;

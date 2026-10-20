@@ -1,0 +1,22 @@
+# welcome-loop-switch (H10): the sin x switch's fade and draw-on inside the
+# loop, h3's switch-frames shape. The switch flips at loop frame 106 =
+# 4416.67 ms loop time; the port and the reference both cross it on the 4432
+# frame (16.67 + 276 * 16), so a wait of 4432 after the click lands the f0
+# shot on the reset curves (old whole, new at draw 0). Model:
+# f0 reset (x2 whole fading, sinx draw_to 0); f83 old alpha ~0.48, new barely
+# started (~0.003); f450 old gone, draw_to 0.5; f1000 switch done, sinx whole.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 104 48
+wait 4432
+shot loop-switch-f0
+wait 83
+shot loop-switch-f83
+wait 367
+shot loop-switch-f450
+wait 550
+shot loop-switch-f1000

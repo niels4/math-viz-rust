@@ -215,6 +215,13 @@ pub fn iterate(app: &mut App) -> bool {
             app.dirty = true;
         }
     }
+    // The welcome loop's step (h10-loop): on the welcome route each frame
+    // advances the tour clock and the hero's switch, before the draw so the
+    // frame draws what the loop moved to. The entering turn draws the mount
+    // unstepped; a playing loop repaints, as a switch does.
+    if crate::welcome_step::welcome_step(app, now) {
+        app.dirty = true;
+    }
     let mut drawn = false;
     // The theme fade redraws until done: no timer arms its frames, so the
     // turn does while one is in flight (its last frame clears the active).
@@ -254,13 +261,17 @@ pub fn schedule(app: &mut App, _now: Time) {
     // params once the frame settles. A flip in flight does the same
     // (h6-curve): each turn steps it, and the settle stops the loop —
     // without this the curve stalls after its first step, since the draw
+    // consumes the dirty its step set. A playing welcome loop does the same
+    // (h10-loop): each turn steps it, and the still lets the app sleep —
+    // without this the tour stalls after its first step, since the draw
     // consumes the dirty its step set.
     app.r#loop.awake = app.dirty
         || app.transition.active.is_some()
         || app.camera.animating()
         || app.shown.is_switching()
         || app.flip.is_animating()
-        || crate::transform_section::params_pending(app);
+        || crate::transform_section::params_pending(app)
+        || crate::welcome_step::animating(app);
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

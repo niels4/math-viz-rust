@@ -133,6 +133,13 @@ pub struct Harness<'a> {
     pub q: String,
     /// The shown transform as last written to `views.json`.
     pub shown: String,
+    /// The welcome loop as last written to `views.json` (h10-loop; the
+    /// port's own record: the reference's loop state is not in the DOM, so
+    /// the behaviour check reads this against `loop_at` of the port's own
+    /// elapsed). `None` until a welcome frame records it, so the line is
+    /// written at each shot and whenever the function switches — never
+    /// every frame.
+    pub welcome_loop: Option<crate::welcome_loop::LoopState>,
     /// The page's hash route as last written to `views.json` (h10-page; the
     /// behaviour checks read it against the reference's `location.hash`).
     /// `None` until the first frame records it, so the line is written at
@@ -179,6 +186,7 @@ pub fn run_harness(
         cursor: String::new(),
         q: String::new(),
         shown: String::new(),
+        welcome_loop: None,
         route: None,
         script_route: script_hash_route(run),
     };
@@ -599,6 +607,24 @@ fn harness_frame(h: &mut Harness<'_>) {
         h.shown = shown;
         h.views.extend_from_slice(h.shown.as_bytes());
     }
+    // The welcome loop, whenever the function switches on the welcome
+    // route: the elapsed ms with what the tour shows (h10-loop; the port's
+    // own record beside the pixels, since the reference's loop state is not
+    // in the DOM). Shots record the values too, so drags between shots need
+    // no line every frame.
+    if crate::welcome::Route::of(&h.app.url) == crate::welcome::Route::Welcome {
+        let current = h.app.welcome.current;
+        match h.welcome_loop {
+            None => h.welcome_loop = Some(current),
+            Some(last) if last.func != current.func => {
+                h.welcome_loop = Some(current);
+                h.views.extend_from_slice(
+                    loop_line(h.app.welcome.clock.elapsed(), current).as_bytes(),
+                );
+            }
+            Some(_) => {}
+        }
+    }
 }
 
 /// The pointer to `at`. SDL reports no motion that moves nothing.
@@ -895,6 +921,14 @@ fn shot(h: &mut Harness<'_>, name: &str) -> bool {
         "",
     );
     h.views.extend_from_slice(line.as_bytes());
+    // The welcome loop at the shot: the elapsed ms with what the tour
+    // shows (h10-loop; the port's own record beside the pixels).
+    if crate::welcome::Route::of(&h.app.url) == crate::welcome::Route::Welcome {
+        let current = h.app.welcome.current;
+        h.welcome_loop = Some(current);
+        h.views
+            .extend_from_slice(loop_line(h.app.welcome.clock.elapsed(), current).as_bytes());
+    }
     true
 }
 
@@ -1009,6 +1043,23 @@ fn shown_line(shown: crate::transform_curves::Transform, animating: bool) -> Str
         fmt_g17(shown.b),
         fmt_g17(shown.h),
         fmt_g17(shown.k),
+    )
+}
+
+/// One `loop` line: the welcome loop's elapsed ms with the function and
+/// transform the tour shows, through exact `toFixed(2)` (h10-loop; the
+/// port's own record beside the pixels, read against `loop_at` of the
+/// port's own elapsed). Pure, like `lit_line` above, so the shape is
+/// testable without the app.
+fn loop_line(ms: f64, loop_state: crate::welcome_loop::LoopState) -> String {
+    format!(
+        "{{\"loop\": {{\"ms\": {}, \"func\": \"{}\", \"a\": {}, \"k\": {}, \"b\": {}, \"h\": {}}}}}\n",
+        mv_numfmt::to_fixed(ms, 2),
+        loop_state.func.as_str(),
+        mv_numfmt::to_fixed(loop_state.a, 2),
+        mv_numfmt::to_fixed(loop_state.k, 2),
+        mv_numfmt::to_fixed(loop_state.b, 2),
+        mv_numfmt::to_fixed(loop_state.h, 2),
     )
 }
 
@@ -1462,6 +1513,23 @@ mod tests {
         assert_eq!(
             shown_line(crate::transform_curves::Transform::IDENTITY, true),
             "{\"shown\": {\"a\": 1, \"b\": 1, \"h\": 0, \"k\": 0, \"animating\": true}}\n"
+        );
+    }
+
+    #[test]
+    fn loop_line_has_its_shape() {
+        assert_eq!(
+            loop_line(
+                1833.33,
+                crate::welcome_loop::LoopState {
+                    func: crate::functions::FunctionSlug::X2,
+                    a: 1.0,
+                    b: 1.0,
+                    h: 0.0,
+                    k: -1.19,
+                },
+            ),
+            "{\"loop\": {\"ms\": 1833.33, \"func\": \"x2\", \"a\": 1.00, \"k\": -1.19, \"b\": 1.00, \"h\": 0.00}}\n"
         );
     }
 
