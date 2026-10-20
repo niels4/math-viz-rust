@@ -18,6 +18,7 @@ pub mod app;
 // (one file per app file) is declared under this name.
 #[path = "loop.rs"]
 pub mod app_loop;
+pub mod camera;
 pub mod draw;
 pub mod effects;
 pub mod equation;
