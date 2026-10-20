@@ -240,6 +240,7 @@ KEPT: dict[str, dict[str, str]] = {
     },
 }
 
+
 def definition(theme: Theme, tokens: list[str]) -> str:
     d = theme.declarations
     lines = [

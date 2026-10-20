@@ -15,7 +15,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["black", "isort", "ruff", "pyright"]
+# Pinned exact (t1-hash): a fresh venv formats nothing it didn't touch. black
+# 26.10.1 + isort 9.0.2 canonicalised six files once (keys, loop, main,
+# states, themes, tokens); ruff 0.17.1 and pyright 1.1.414 keep tools/check
+# green on the tree as pinned.
+dev = ["black==26.10.1", "isort==9.0.2", "ruff==0.17.1", "pyright==1.1.414"]
 
 [tool.black]
 line-length = 100

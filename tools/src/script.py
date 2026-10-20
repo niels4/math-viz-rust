@@ -5,7 +5,8 @@ together.
 
 A line is a verb and its arguments, and '#' starts a comment. Lines before the first action say
 how the page opens (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space` and
-`query`); after it, size, scheme and reduced-motion change it live. Positions are logical pixels,
+`query`); after it, size, scheme and reduced-motion change it live, and `hash` edits the page's
+hash query mid-run. Positions are logical pixels,
 times milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every surface:
 appended to the reference and web URLs, passed as --query natively."""
 
@@ -125,6 +126,11 @@ class Wait:
 
 
 @dataclass(frozen=True)
+class Hash:
+    query: str  # the page's hash query (?key=value&...), edited mid-run
+
+
+@dataclass(frozen=True)
 class Shot:
     name: str
 
@@ -183,6 +189,7 @@ Verb = (
     | Hold
     | Type
     | Wait
+    | Hash
     | Shot
     | Frames
     | Video
@@ -390,6 +397,10 @@ def _line(start: Start, started: bool, text: str, surface: str = "all") -> Verb 
             if len(fields) != 1:
                 raise _LineError("wait takes MS")
             return Wait(_ms(fields[0]))
+        case "hash":
+            if len(fields) != 1:
+                raise _LineError("hash takes the page's hash query, e.g. hash center=1,2&scale=2")
+            return Hash(fields[0])
         case "shot":
             if len(fields) != 1:
                 raise _LineError("shot takes a name")
