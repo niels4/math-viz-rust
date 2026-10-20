@@ -1,0 +1,11 @@
+# slider-press-jump (h8-points-slider): a press on the track away from the
+# thumb (100, 748). P jumps to -6.92 and the release writes p=-6.92.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 100 748
+wait 1200
+shot slider-press-jump

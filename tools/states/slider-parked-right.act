@@ -1,0 +1,15 @@
+# slider-parked-right (h8-points-slider): p=8 parks right only past the
+# visible range, so the query also centres at -2 (maxX 7.9 < 8; bare p=8 at
+# this frame sits at 309.14px unparked, measured). Hovered: the thumb parks
+# at width-INSET with the parked mark, data-parked="right", the tip with the
+# right triangle clamped flush to the track's right edge.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query p=8&center=-2,0
+wait 500
+move 200 748
+wait 200
+shot slider-parked-right

@@ -1,0 +1,11 @@
+# slider-camera (h8-points-slider): query scale=1. The plane's visible range
+# widens to +-19.8 at 1440x900 (the prompt's -10..10 is the 500x400-fixture
+# equivalent) and the thumb moves to 191.77px. Behaviour: valuemin -19.8.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query scale=1
+wait 500
+shot slider-camera

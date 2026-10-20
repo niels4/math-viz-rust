@@ -1,0 +1,11 @@
+# slider-parked-left (h8-points-slider): query p=-50. P lies left of the
+# visible range: the thumb parks at the track's left end (left 9px) with the
+# dashed parked mark, data-parked="left". At rest, no tip.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query p=-50
+wait 500
+shot slider-parked-left

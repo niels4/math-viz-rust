@@ -1,0 +1,16 @@
+# slider-drag-30 (h8-points-slider): pressed on the thumb (250, 748: on the
+# mark) and moved +30 px, held. P follows the pointer (2.03 -> 3.82), the
+# halo and tip follow, P's drop lines show on the plane, the URL stays
+# unwritten (shot lands inside the 200 ms debounce). Behaviour: aria 3.82.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 250 748
+down
+move 280 748 over 80
+shot slider-drag-30
+up
+wait 1200

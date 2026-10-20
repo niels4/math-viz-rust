@@ -1,0 +1,14 @@
+# slider-release (h8-points-slider): the +30 px drag released. p=3.82 in the
+# URL, no halo, no drop lines, the thumb at rest there.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 250 748
+down
+move 280 748 over 80
+up
+wait 1200
+shot slider-release

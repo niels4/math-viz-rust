@@ -1,0 +1,19 @@
+# slider-keys (h8-points-slider): Tab x5 to the track, ArrowRight twice then
+# Shift+ArrowRight: 2 -> 2.1 -> 2.2 -> 3.2, written through the debounce.
+# Behaviour: aria-valuenow 3.2, p=3.2 in the URL.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+key Tab
+key Tab
+key Tab
+key Tab
+key Tab
+key ArrowRight
+key ArrowRight
+key ArrowRight shift
+wait 1200
+shot slider-keys

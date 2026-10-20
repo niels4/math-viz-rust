@@ -1,0 +1,21 @@
+# slider-home-end (h8-points-slider): at center=0.123,0 the inward bounds are
+# -9.77..10.02 (the prompt's -4.87/5.12 is the 500x400-fixture equivalent).
+# Home sends -9.77 (mid-run URL line), End sends 10.02; the shot shows the End
+# state with the tip (the track keeps focus).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=0.123,0
+wait 500
+key Tab
+key Tab
+key Tab
+key Tab
+key Tab
+key Home
+wait 400
+key End
+wait 1200
+shot slider-home-end
