@@ -321,6 +321,54 @@ mod tests {
         text.len() as f64 * 8.4
     }
 
+    /// The port's boxes against `testdata/page.json` (the reference at this
+    /// hash, `tools/run dom --fixture`): the canvas and the overlay button
+    /// within the plan's 0.5 CSS px, and the content and button boxes derived
+    /// from the canvas exactly.
+    #[test]
+    fn boxes_match_fixture() {
+        const SLACK: f64 = 0.5;
+        let fixture: serde_json::Value =
+            serde_json::from_str(crate::fixture::PAGE_FIXTURE).expect("page fixture parses");
+        let boxes = &fixture["shots"]["default"]["webkit"]["boxes"];
+        let canvas = boxes["canvas"].as_array().expect("canvas box");
+        let canvas = clay::BoundingBox {
+            x: canvas[0].as_f64().expect("x") as f32,
+            y: canvas[1].as_f64().expect("y") as f32,
+            width: canvas[2].as_f64().expect("w") as f32,
+            height: canvas[3].as_f64().expect("h") as f32,
+        };
+        let content = canvas_content(&canvas);
+        for (got, want) in [
+            (f64::from(content.width), 990.0),
+            (f64::from(content.height), 786.0),
+        ] {
+            assert!((got - want).abs() <= SLACK, "content {got} against {want}");
+        }
+        let button = crate::overlay::overlay_button_box(&canvas);
+        let want = boxes["overlay_button"].as_array().expect("button box");
+        for (i, (got, want)) in [
+            f64::from(button.x),
+            f64::from(button.y),
+            f64::from(button.width),
+            f64::from(button.height),
+        ]
+        .into_iter()
+        .zip([
+            want[0].as_f64().expect("x"),
+            want[1].as_f64().expect("y"),
+            want[2].as_f64().expect("w"),
+            want[3].as_f64().expect("h"),
+        ])
+        .enumerate()
+        {
+            assert!(
+                (got - want).abs() <= SLACK,
+                "button box [{i}]: {got} against {want}"
+            );
+        }
+    }
+
     /// The default grid against the reference's draw record (WebKit,
     /// `.local/probe/default.json` on the 990 x 786 content box): the steps,
     /// the origins and the first lines of each batch.

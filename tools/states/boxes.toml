@@ -8,3 +8,4 @@
 canvas = "canvas"
 header = "header"
 root = "#root"
+overlay_button = "button[aria-label=\"Return to center\"]"

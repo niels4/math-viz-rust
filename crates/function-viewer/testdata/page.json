@@ -1,5 +1,5 @@
 {
- "reference": "math-viz2 af434dc",
+ "reference": "math-viz2 c409aad",
  "shots": {
   "default": {
    "size": [
@@ -8,29 +8,51 @@
    ],
    "webkit": {
     "boxes": {
+     "canvas": [
+      432,
+      96,
+      992,
+      788
+     ],
      "root": [
       0,
       0,
       1440,
       900
+     ],
+     "overlay_button": [
+      1359.5,
+      780.5,
+      36,
+      36
      ]
     },
     "missing": [
-     "canvas",
      "header"
     ]
    },
    "chromium": {
     "boxes": {
+     "canvas": [
+      432,
+      96,
+      992,
+      788
+     ],
      "root": [
       0,
       0,
       1440,
       900
+     ],
+     "overlay_button": [
+      1359.5,
+      780.5,
+      36,
+      36
      ]
     },
     "missing": [
-     "canvas",
      "header"
     ]
    }

@@ -1,3 +1,4 @@
 # The states each milestone renders with `tools/run states <milestone>` (README: The harness):
 # the scripts in this directory, named without .act. Each milestone appends its group.
 H0 = ["default"]
+H2 = ["plane-default", "plane-scale-0.25", "plane-scale-1.25", "plane-scale-5", "plane-scale-0.01", "plane-scale-100", "plane-far-pan-x", "plane-far-pan-y", "axes-off-left", "axes-off-right", "axes-off-top", "axes-off-bottom", "axes-corner", "overlay-visible"]
