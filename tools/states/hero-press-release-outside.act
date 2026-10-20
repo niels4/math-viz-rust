@@ -1,0 +1,15 @@
+# hero-press-release-outside (h11-hero): down at (940, 450), move to (940, 760) over 160 ms, up.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+down 940 450
+move 940 760
+wait 160
+up 940 760
+wait 500
+shot hero-press-release-outside

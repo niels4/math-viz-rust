@@ -1,0 +1,14 @@
+# hero-click-corner (h11-hero): click 2 px inside hero's bottom-right.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 1358 708
+wait 2000
+move 720 48
+wait 300
+shot hero-click-corner
