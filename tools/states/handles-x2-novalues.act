@@ -1,0 +1,9 @@
+# handles-x2-novalues (H6): x2 untouched, the diamond at the origin and the square at (1, 1).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2
+wait 2000
+shot handles-x2-novalues

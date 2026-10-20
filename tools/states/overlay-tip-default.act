@@ -1,0 +1,8 @@
+# overlay-tip-default (H6): at the default camera: no button, no tip.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot overlay-tip-default

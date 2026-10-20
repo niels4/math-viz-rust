@@ -247,9 +247,20 @@ fn inside_share(y0: f64, y1: f64, height: f64) -> f64 {
 /// `grid` is the canvas's [`GridLayout`]; it stores no canvas dims, so
 /// `width` and `height` ride along. `draw_to` is the curve's share from the
 /// left (1 for all of it); the curve's `alpha` is paint, not sampling.
+///
+/// The function rides generic (`drawCurve` reads `curve.fn`, which is the
+/// base function or the transform's closure): a plain curve passes its `fn`
+/// pointer, a transformed one its [`TransformedFunction::value`]. Each
+/// sampled y is clamped to the overshoot band
+/// ([`clamp_curve_y`], `drawCurve`'s `Math.min`/`Math.max` with
+/// `overshootPx`, arrived at `5cef052`) before the inside length
+/// accumulates, exactly as the source clamps before pushing the point.
+///
+/// [`TransformedFunction::value`]: crate::transform_curves::TransformedFunction::value
+/// [`clamp_curve_y`]: crate::plane_geometry::clamp_curve_y
 #[must_use]
 pub fn sample_curve(
-    func: PlotFunction,
+    func: impl Fn(f64) -> f64,
     grid: &GridLayout,
     width: f64,
     height: f64,
@@ -263,7 +274,10 @@ pub fn sample_curve(
     let cols = width as usize;
     for i in 0..=cols {
         let px = i as f64;
-        let y = origin_y - func((px - origin_x) / px_per_unit) * px_per_unit;
+        let y = crate::plane_geometry::clamp_curve_y(
+            origin_y - func((px - origin_x) / px_per_unit) * px_per_unit,
+            height,
+        );
         if let Some(&(prev, _)) = points.last() {
             at += (px - prev[0]).hypot(y - prev[1]) * inside_share(prev[1], y, height);
         }
@@ -474,6 +488,20 @@ mod tests {
     fn sampled(func: PlotFunction, draw_to: f64) -> Vec<[f64; 2]> {
         let grid = layout_grid([0.0, 0.0], 0.5, 400.0, 300.0, 64.0);
         sample_curve(func, &grid, 400.0, 300.0, draw_to)
+    }
+
+    /// y = (x / 0.001)^3 stays inside the strokeable band: every sampled y
+    /// within [-10000, height + 10000] (h6-curve's review: the clamp
+    /// inside `sample_curve` carries a test).
+    #[test]
+    fn a_steep_curve_samples_within_10000px_of_the_canvas() {
+        let steep = |x: f64| (x / 0.001).powi(3);
+        for [_, y] in sampled(steep, 1.0) {
+            assert!(
+                (-10_000.0..=10_300.0).contains(&y),
+                "sampled y {y} outside the band"
+            );
+        }
     }
 
     #[test]

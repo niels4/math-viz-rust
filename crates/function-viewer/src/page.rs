@@ -134,7 +134,7 @@ fn plane_box(app: &App) -> Option<clay::BoundingBox> {
 /// after the layout (the button's box derives from the canvas's), before the
 /// regions resolve.
 fn declare_plane_button(app: &mut App) {
-    if !crate::overlay::button_visible() {
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
         return;
     }
     let Some(canvas) = plane_box(app) else {
@@ -159,7 +159,7 @@ fn declare_plane_button(app: &mut App) {
 /// legend on the content box, then the overlay's brackets and button. Runs
 /// after the Clay commands (over the page background), before the
 /// transition's fade.
-fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
         return;
     };
@@ -169,10 +169,20 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // `cur` at publish, which the React draw reads as props).
     let (center, scale) = (app.camera.center, app.camera.scale);
     let colors = crate::plane::plane_colors(theme);
-    // The plotted function from the picker's switch state (h3's curves,
-    // through `plot.rs`): the whole curve at rest, the old fading under the
-    // drawing new one mid-switch.
-    let curves = crate::plot::curves(&app.shown);
+    // The plotted curves under the shown transform (h6-curve's `Plot`): the
+    // switch's curves (`plot.rs`) through `transform_curves`, the dashed
+    // original behind each transformed one; the flip's spring blends the
+    // shown values. At rest with no values the curves pass through whole.
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let switch = crate::plot::curves(&app.shown);
+    let curves = crate::transform_curves::transform_curves(&switch, shown);
+    // The shift and scale handles and the lit parameter's lines, from the
+    // same shown transform (h6-handles' two call lines).
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let handles = crate::transform_curves::transform_handles(slug, unit, shown);
+    let lines = crate::transform_curves::transform_lines(app.state.lit(), slug, unit, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -185,6 +195,10 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         true,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
+        theme.colors[mv_theme::Token::ForegroundMuted],
+        &handles,
+        &lines,
+        theme.colors[mv_theme::Token::Primary],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -193,10 +207,33 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         &crate::overlay::corner_boxes(&overlay),
         ocolors.chrome,
     );
+    // The button and its tip show off the default camera only (`moved`).
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+        return;
+    }
     let button = crate::overlay::overlay_button_box(&canvas);
     let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
     crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
+    // The tooltip's hover clock: armed while the pointer is on the button,
+    // dropped the moment it leaves (the CSS `:hover` rule). The timer keeps
+    // the app's turns coming until the delay is over, as the scrub rest
+    // tip's does.
+    if hovered {
+        if app.overlay_tip_since.is_none() {
+            app.overlay_tip_since = Some(now);
+            app.timers[crate::app_loop::Timer::OverlayTip] =
+                now + crate::overlay::TIP_DELAY_MS * crate::app_loop::MS;
+        }
+    } else {
+        app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
+    }
+    if crate::overlay::tip_visible(app.overlay_tip_since, focused, app.input.focus_visible, now) {
+        crate::overlay::paint_tip(&mut app.fonts, &mut app.vg, &button, &ocolors);
+    }
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -233,7 +270,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         .active
         .map(|active| (active, Transition::progress(active, now)));
     draw_commands(app, density, &commands);
-    draw_plane(app, &theme);
+    draw_plane(app, &theme, now);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);

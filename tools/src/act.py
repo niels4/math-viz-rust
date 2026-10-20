@@ -790,7 +790,8 @@ def check_views(out: Path) -> list[str]:
     frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
     camera, written whenever it changes (h2-input). A line holding only `lit` ("a", "b", "h",
     "k" or null) is the highlighted parameter, written whenever the highlight moves
-    (h4-readout; h4-rows reuses it for its rows)."""
+    (h4-readout; h4-rows reuses it for its rows). A line holding only `shown` ({a, b, h, k,
+    animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -832,6 +833,18 @@ def check_views(out: Path) -> list[str]:
             lit: object = view.get("lit")
             if lit is not None and lit not in ("a", "b", "h", "k"):
                 problems.append(f"views.json line {number}: 'lit' is not a parameter or null")
+            continue
+        if set(view) == {"shown"}:
+            shown_raw: object = view.get("shown")
+            if not isinstance(shown_raw, dict):
+                problems.append(f"views.json line {number}: 'shown' is not an object")
+                continue
+            shown = cast(dict[str, object], shown_raw)
+            for param in ("a", "b", "h", "k"):
+                if not _is_num(shown.get(param)):
+                    problems.append(f"views.json line {number}: 'shown.{param}' is not a number")
+            if not isinstance(shown.get("animating"), bool):
+                problems.append(f"views.json line {number}: 'shown.animating' is not a bool")
             continue
         for key in VIEW_KEYS:
             if key not in view:

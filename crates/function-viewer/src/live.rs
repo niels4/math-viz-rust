@@ -165,6 +165,7 @@ pub fn live_start(app: &mut App, run: &mv_script::Script, out: &str) -> bool {
             url: String::new(),
             camera: String::new(),
             lit: String::new(),
+            shown: String::new(),
         };
         if !crate::harness::play(&mut h, run) {
             return false;

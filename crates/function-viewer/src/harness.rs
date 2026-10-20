@@ -118,6 +118,8 @@ pub struct Harness<'a> {
     pub camera: String,
     /// The lit parameter as last written to `views.json`.
     pub lit: String,
+    /// The shown transform as last written to `views.json`.
+    pub shown: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -152,6 +154,7 @@ pub fn run_harness(
         url: String::new(),
         camera: String::new(),
         lit: String::new(),
+        shown: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -518,6 +521,18 @@ fn harness_frame(h: &mut Harness<'_>) {
         h.camera = camera;
         h.views.extend_from_slice(h.camera.as_bytes());
     }
+    // The shown transform, whenever it changed: the live values with the
+    // flip's spring blended in, and whether a flip is turning (h6-curve;
+    // the behaviour checks read it against the reference's box value and
+    // canvas curve at each frame).
+    let shown = shown_line(
+        crate::flip::shown_transform(&h.app.flip, crate::flip::live_transform(h.app)),
+        h.app.flip.is_animating(),
+    );
+    if shown != h.shown {
+        h.shown = shown;
+        h.views.extend_from_slice(h.shown.as_bytes());
+    }
 }
 
 /// The pointer to `at`. SDL reports no motion that moves nothing.
@@ -877,6 +892,19 @@ fn lit_line(lit: &[crate::state::TransformParam]) -> String {
         .map(|param| format!("\"{}\"", param.as_str()))
         .collect();
     format!("{{\"lit\": [{}]}}\n", params.join(", "))
+}
+
+/// One `shown` line: the transform the plane draws, with whether a flip is
+/// turning it. Pure, like `lit_line` above, so the shape is testable
+/// without the app.
+fn shown_line(shown: crate::transform_curves::Transform, animating: bool) -> String {
+    format!(
+        "{{\"shown\": {{\"a\": {}, \"b\": {}, \"h\": {}, \"k\": {}, \"animating\": {animating}}}}}\n",
+        fmt_g17(shown.a),
+        fmt_g17(shown.b),
+        fmt_g17(shown.h),
+        fmt_g17(shown.k),
+    )
 }
 
 /// The shots taken mid-motion, as <out>/motion.json when there are any. The
@@ -1266,6 +1294,26 @@ mod tests {
         assert_eq!(
             camera_line([0.0, 0.0], 0.5, true),
             "{\"camera\": {\"center\": [0, 0], \"scale\": 0.5, \"animating\": true}}\n"
+        );
+    }
+
+    #[test]
+    fn shown_line_has_its_shape() {
+        assert_eq!(
+            shown_line(
+                crate::transform_curves::Transform {
+                    a: 2.0,
+                    b: 1.0,
+                    h: 1.0,
+                    k: -3.0,
+                },
+                false,
+            ),
+            "{\"shown\": {\"a\": 2, \"b\": 1, \"h\": 1, \"k\": -3, \"animating\": false}}\n"
+        );
+        assert_eq!(
+            shown_line(crate::transform_curves::Transform::IDENTITY, true),
+            "{\"shown\": {\"a\": 1, \"b\": 1, \"h\": 0, \"k\": 0, \"animating\": true}}\n"
         );
     }
 
