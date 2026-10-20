@@ -1,0 +1,22 @@
+# field-enter (h8-points-field): "1.5" committed with Enter — p applied,
+# the field closed showing "1.50", the focus back on the slider.
+# Behaviour: the URL "p=1.5", the slider aria-valuenow "1.5", the focus ring
+# on the slider.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "1.5"
+wait 100
+key Enter
+wait 400
+shot field-enter

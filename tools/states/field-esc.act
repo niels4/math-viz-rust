@@ -1,0 +1,24 @@
+# field-esc (h8-points-field): "abc" refused with Enter, then Escape —
+# the base comes back and the edit ends with the focus back on the slider.
+# Behaviour: the URL unchanged, the field "2.00" closed, the focus ring on
+# the slider.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "abc"
+wait 100
+key Enter
+wait 200
+key Escape
+wait 300
+shot field-esc

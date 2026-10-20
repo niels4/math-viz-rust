@@ -1,0 +1,22 @@
+# field-blur (h8-points-field): "3.256" typed into P's x field, then a
+# click on the plane — leaving commits, rounded to three decimals in the
+# URL and two in the field. Behaviour: the URL "p=3.256", the field "3.26",
+# the focus off the slider.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "3.256"
+wait 100
+click 700 450
+wait 400
+shot field-blur

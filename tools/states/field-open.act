@@ -1,0 +1,18 @@
+# field-open (h8-points-field): P's x field opened from Enter on the slider.
+# Click the number, Escape (focus back on the slider), Enter (the slider's
+# Enter opens the field): the text selected, the editing ring, the normal
+# tip under the head. Behaviour: the URL unchanged, the field "2.00" with
+# data-editing, the tip "Enter apply - nudge 0.01".
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Escape
+wait 150
+key Enter
+wait 300
+shot field-open

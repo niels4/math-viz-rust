@@ -1,0 +1,19 @@
+# field-typed (h8-points-field): "1.5" typed into P's x field, Enter not
+# yet pressed — the field shows the draft, the normal tip stays, the URL is
+# unchanged.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "1.5"
+wait 200
+shot field-typed

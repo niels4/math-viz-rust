@@ -1,0 +1,16 @@
+# field-arrows (h8-points-field): ArrowUp twice in P's x field — the
+# nudge writes p live (debounced) with the text reformatted. Behaviour: the
+# field "2.02", the URL "p=2.02" past the debounce.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key ArrowUp
+wait 100
+key ArrowUp
+wait 400
+shot field-arrows

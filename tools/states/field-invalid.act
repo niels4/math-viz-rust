@@ -1,0 +1,22 @@
+# field-invalid (h8-points-field): "abc" typed into P's x field, then
+# Enter — the text doesn't parse, so the edit stays open in the error tone
+# with the error tip. Behaviour: the URL unchanged, aria-invalid true, the
+# tip "Type a number such as 1.5 - Esc puts back 2.00".
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 293 716
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "abc"
+wait 100
+key Enter
+wait 300
+shot field-invalid
