@@ -34,11 +34,11 @@ use crate::app::App;
 use crate::input::{Cursor, Hit, HitKind};
 
 /// The design size the page lays out at (`designWidth`, `designHeight`).
-pub const DESIGN_WIDTH: f32 = 1440.0;
-pub const DESIGN_HEIGHT: f32 = 900.0;
+pub(crate) const DESIGN_WIDTH: f32 = 1440.0;
+pub(crate) const DESIGN_HEIGHT: f32 = 900.0;
 
 /// The viewer route's hash word (`function-viewer`).
-pub const VIEWER_ROUTE: &str = "function-viewer";
+pub(crate) const VIEWER_ROUTE: &str = "function-viewer";
 
 /// The page's routes: `""` is the welcome page, `function-viewer` the
 /// viewer, any other route the welcome page (the template's not-found page
@@ -65,7 +65,7 @@ impl Route {
 /// The still the hero graphs (h10-loop's `welcomeStill`, through h10-p-loop's
 /// `welcome_loop`: sin x at a 3, k 0, b 1.48, h 1). h10-loop replaces this
 /// constant with the loop's state, one line.
-pub const WELCOME_STILL: crate::transform_curves::Transform = crate::transform_curves::Transform {
+pub(crate) const WELCOME_STILL: crate::transform_curves::Transform = crate::transform_curves::Transform {
     a: 3.0,
     b: 1.48,
     h: 1.0,
@@ -73,54 +73,54 @@ pub const WELCOME_STILL: crate::transform_curves::Transform = crate::transform_c
 };
 
 /// The welcome page's mark: 28 px, stroked in `--primary`, at (32, 30).
-pub const MARK_SIZE: f32 = 28.0;
+pub(crate) const MARK_SIZE: f32 = 28.0;
 
 /// The top row's gear: 40 px, as the viewer's (`top_bar.rs`).
-pub const GEAR_SIZE: f32 = crate::top_bar::GEAR_SIZE;
+pub(crate) const GEAR_SIZE: f32 = crate::top_bar::GEAR_SIZE;
 
 /// The intro column: 380 wide, gap 28; the content row's gap 60.
-pub const INTRO_WIDTH: f32 = 380.0;
-pub const INTRO_GAP: u16 = 28;
-pub const CONTENT_GAP: u16 = 60;
+pub(crate) const INTRO_WIDTH: f32 = 380.0;
+pub(crate) const INTRO_GAP: u16 = 28;
+pub(crate) const CONTENT_GAP: u16 = 60;
 
 /// The actions column's gap 18; the button's padding 16 24 16 26 and gap 12;
 /// the hint's gap 8; a chip 26 × 26.
-pub const ACTIONS_GAP: u16 = 18;
-pub const CTA_PAD_TOP: u16 = 16;
-pub const CTA_PAD_RIGHT: u16 = 24;
-pub const CTA_PAD_BOTTOM: u16 = 16;
-pub const CTA_PAD_LEFT: u16 = 26;
-pub const CTA_GAP: u16 = 12;
-pub const CTA_ICON: f32 = 14.0;
-pub const HINT_GAP: u16 = 8;
-pub const CHIP_SIZE: f32 = 26.0;
+pub(crate) const ACTIONS_GAP: u16 = 18;
+pub(crate) const CTA_PAD_TOP: u16 = 16;
+pub(crate) const CTA_PAD_RIGHT: u16 = 24;
+pub(crate) const CTA_PAD_BOTTOM: u16 = 16;
+pub(crate) const CTA_PAD_LEFT: u16 = 26;
+pub(crate) const CTA_GAP: u16 = 12;
+pub(crate) const CTA_ICON: f32 = 14.0;
+pub(crate) const HINT_GAP: u16 = 8;
+pub(crate) const CHIP_SIZE: f32 = 26.0;
 
 /// The welcome radius (`--radius-card`, 4 px), as the sidebar's own 4 px
 /// constant has it.
-pub const WELCOME_RADIUS: f32 = 4.0;
+pub(crate) const WELCOME_RADIUS: f32 = 4.0;
 
 /// The hero: 840 × 520.
-pub const HERO_WIDTH: f32 = 840.0;
-pub const HERO_HEIGHT: f32 = 520.0;
+pub(crate) const HERO_WIDTH: f32 = 840.0;
+pub(crate) const HERO_HEIGHT: f32 = 520.0;
 
 /// The button's label and the hint's copy.
-pub const CTA_LABEL: &str = "Open the Function Viewer";
-pub const HINT_TEXT: &str = "Pick a function, then drag";
+pub(crate) const CTA_LABEL: &str = "Open the Function Viewer";
+pub(crate) const HINT_TEXT: &str = "Pick a function, then drag";
 
 /// The title.
-pub const TITLE_TEXT: &str = "MathViz";
+pub(crate) const TITLE_TEXT: &str = "MathViz";
 
 /// The description's lines: the reference wraps the sentence to three lines
 /// in 380 px (h10-page's probe: 367.49, 318.91 and 216.0 px wide at a 33 px
 /// pitch); Clay text never wraps, so the port lays the breaks out.
-pub const DESCRIPTION_LINES: [&str; 3] = [
+pub(crate) const DESCRIPTION_LINES: [&str; 3] = [
     "Interactive math visualizations for",
     "the browser, built with React,",
     "TypeScript and Vite.",
 ];
 
 /// The hint's chips, in order (`hintParams`: a k b h).
-pub const HINT_PARAMS: [crate::state::TransformParam; 4] = [
+pub(crate) const HINT_PARAMS: [crate::state::TransformParam; 4] = [
     crate::state::TransformParam::A,
     crate::state::TransformParam::K,
     crate::state::TransformParam::B,
@@ -704,8 +704,9 @@ pub fn enter_route(app: &mut App) {
             app.input.focus = Hit::default();
             app.input.focus_visible = false;
             // A fresh mount hovers nothing until the pointer acts: the
-            // browser applies no `:hover` without a mouse move after the
-            // route's components mount (retarget holds off while set).
+            // reference's post-navigation hover is racy engine to engine,
+            // so the port holds it off for determinism (retarget holds off
+            // while set; both sides photograph unlit after a navigation).
             app.input.hover_fresh = true;
             app.camera_frame_at = 0;
             crate::plane_input::init_camera_from_url(app);
@@ -738,7 +739,7 @@ pub fn click(app: &mut App, down: Hit) {
 
 /// Routes a key on the welcome route with the menu closed (open, the
 /// settings menu walks its own stops): Tab walks the gear and the link, and
-/// Space or Enter on the link navigates. Returns whether the key was
+/// Enter on the link navigates. Returns whether the key was
 /// consumed.
 pub fn welcome_key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
     use sdl3::keyboard::Keycode;
@@ -753,7 +754,10 @@ pub fn welcome_key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
             crate::input::move_focus(app, if shift { -1 } else { 1 });
             true
         }
-        Keycode::Space | Keycode::Return if app.input.focus.kind == HitKind::WelcomeCta => {
+        // The CTA is an anchor (`<a href="#function-viewer">`): browsers
+        // activate links on Enter only (Space scrolls the page instead), so
+        // Space never navigates, however focused.
+        Keycode::Return if app.input.focus.kind == HitKind::WelcomeCta => {
             navigate(app, VIEWER_ROUTE, "");
             true
         }

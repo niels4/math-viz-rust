@@ -165,6 +165,9 @@ pub fn shape(fonts: &mut Fonts, style: Style, text: &str) -> Shaped {
 /// word bare) and appends its glyphs, the pen carried across runs. `base` is
 /// the run's byte offset in the text, added to the shaper's per-run source
 /// ids.
+// Seven parameters: the shaper borrows four disjoint pieces at once (the
+// context, the pen, the glyph sink and the run's text), so they cannot fold
+// into fewer without reborrowing a whole struct beside itself.
 #[allow(clippy::too_many_arguments)]
 fn shape_segment(
     fonts: &mut Fonts,

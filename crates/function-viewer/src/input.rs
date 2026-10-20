@@ -250,8 +250,8 @@ pub struct InputState {
     /// The keyboard's focus is to come into view after the next layout.
     pub reveal: bool,
     /// A fresh mount hovers nothing until the pointer acts (h10-page: the
-    /// browser applies no `:hover` without a mouse move after the route's
-    /// components mount, as the menu's own hold has it). Set by
+    /// reference's post-navigation hover is racy engine to engine, so the
+    /// port holds it off for determinism). Set by
     /// `welcome::enter_route`, cleared by the next pointer fact; `retarget`
     /// retargets to nothing while it stands.
     pub hover_fresh: bool,
