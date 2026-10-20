@@ -190,7 +190,9 @@ pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
 pub fn schedule(app: &mut App, _now: Time) {
-    app.r#loop.awake = app.dirty;
+    // A fade in flight keeps the turns coming, as its frames do: the last
+    // one clears the active and lets the app sleep again.
+    app.r#loop.awake = app.dirty || app.transition.active.is_some();
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;
