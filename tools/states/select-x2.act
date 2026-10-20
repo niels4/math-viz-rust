@@ -1,5 +1,5 @@
-# select-x2 (H3): picking x2 at rest after the click. The x2 label's centre
-# is (174.5, 187): cell [133,170,83,34]. The click flushes func=x2 to the URL
+# select-x2 (H3): picking x (already checked) at rest after the click. The x label.s centre
+# is (174.5, 187): cell [49,170,83,34]. The click flushes func=x1 to the URL
 # at once; the switch draws on over 900 ms, so the shot waits 2 s.
 size 1440 900
 density 2
