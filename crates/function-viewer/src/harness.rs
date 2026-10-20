@@ -1321,6 +1321,12 @@ mod tests {
     }
 
     #[test]
+    fn p_line_has_its_shape() {
+        assert_eq!(p_line(2.0), "{\"p\": 2}\n");
+        assert_eq!(p_line(3.82), "{\"p\": 3.8199999999999998}\n");
+        assert_eq!(p_line(-5.0), "{\"p\": -5}\n");
+    }
+
     fn url_line_has_its_shape() {
         assert_eq!(
             url_line("center=1,2&scale=2"),

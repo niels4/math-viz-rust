@@ -1198,5 +1198,17 @@ mod tests {
             (tip[1] - (track[1] - 4.0 - 22.0)).abs() <= SLACK,
             "tip above"
         );
+        // The tip's laid-out box with real fonts: x, width and height.
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        let geom = tip_geom(&mut app, &laid, range, 2.0).expect("tip");
+        for (got, want) in [
+            (f64::from(geom.r#box.x), tip[0]),
+            (f64::from(geom.r#box.width), tip[2]),
+            (f64::from(geom.r#box.height), tip[3]),
+        ] {
+            assert!((got - want).abs() <= SLACK, "tip {got} against {want}");
+        }
     }
 }
