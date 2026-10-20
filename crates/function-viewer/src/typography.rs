@@ -67,6 +67,8 @@ pub enum Type {
     TipText,
     /// A scrub tip's key cap: Roboto Mono 600, 12 px.
     KeyText,
+    /// The Transform card's Reset all: Work Sans 600, 13 px.
+    ResetAll,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -193,6 +195,13 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 16.0,
         },
+        // Reset all's 15 px line box (`line-height: 15px`).
+        Type::ResetAll => TypeStyle {
+            face: Face::WorkSans600,
+            size: 13.0,
+            tracking: 0.0,
+            line_height: 15.0,
+        },
     }
 }
 
@@ -214,6 +223,7 @@ fn type_from_id(id: u16) -> Type {
         13 => Type::FieldText,
         14 => Type::TipText,
         15 => Type::KeyText,
+        16 => Type::ResetAll,
         _ => unreachable!("clay font id names a text style"),
     }
 }

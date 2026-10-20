@@ -239,9 +239,12 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     crate::settings::paint_chrome(app);
     // The readout's two lines, scaled to fit where the equation is long.
     crate::readout::paint_readout(app);
-    // The transform rows' inset rings, focus rings and chevrons (h4-rows).
+    // The transform rows' inset rings, focus rings and chevrons (h4-rows),
+    // and Reset all's focus ring (h5-buttons).
     crate::transform_row::paint_rows(app);
-    // The scrub ruler's tape under a dragged box (h5-ruler).
+    crate::transform_section::paint_head(app);
+    // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
+    // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);

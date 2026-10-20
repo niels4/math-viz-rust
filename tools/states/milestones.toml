@@ -12,6 +12,6 @@ H3 = ["sidebar-default", "select-x2", "select-sinx", "switch-frames", "switch-mi
 # equation, and with a lit by the pointer (h4-readout); then h4-rows' rows
 # and params states.
 H4 = ["readout-x1", "readout-x2", "readout-x3", "readout-sinx", "readout-values", "readout-narrow", "readout-hover-a", "rows-default", "rows-values", "rows-hover-a", "rows-focus-k", "rows-typed", "rows-enter", "rows-zero-scale", "rows-arrows", "url-params"]
-# H5 at b8a0e1d: h5-box's box-* states and h5-ruler's ruler-* states
-# (h5-buttons appends reset-*, flip-* and readout-b-height at its merge).
-H5 = ["box-drag-a-50", "box-drag-shift", "box-drag-ctrl", "box-drag-out", "box-release", "box-wheel", "box-click-open", "box-arrows-typing", "box-esc", "box-dblclick", "box-tip-rest", "box-tip-typing", "ruler-a-30", "ruler-k-30", "ruler-b-30", "ruler-h-30", "ruler-negative-scale", "ruler-shift-mode", "ruler-ctrl-mode"]
+# H5 at b8a0e1d: h5-box's box-* states, h5-ruler's ruler-* states, then
+# h5-buttons' reset-*, flip-* and readout-b-height states.
+H5 = ["box-drag-a-50", "box-drag-shift", "box-drag-ctrl", "box-drag-out", "box-release", "box-wheel", "box-click-open", "box-arrows-typing", "box-esc", "box-dblclick", "box-tip-rest", "box-tip-typing", "ruler-a-30", "ruler-k-30", "ruler-b-30", "ruler-h-30", "ruler-negative-scale", "ruler-shift-mode", "ruler-ctrl-mode", "reset-visible", "reset-hover-a", "reset-all-hover", "reset-click", "flip-rest", "flip-hover", "flip-pressed", "flip-focus", "flip-only-scale-rows", "readout-b-height"]

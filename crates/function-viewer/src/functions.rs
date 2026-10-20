@@ -6,11 +6,15 @@
 //!   function each picker option graphs.
 //! - `src/components/views/FunctionViewer/queryParams.ts`: [`FunctionSlug`],
 //!   [`FUNCTION_SLUGS`], [`FUNC_PARAM`] (key `func`, default `x1`).
+//! - `src/components/views/FunctionViewer/baseFunctions.ts` (at `5cef052`):
+//!   [`unit_x`], the plane x where a function shows its scale handle.
 //!
 //! Extended at `5714319` from the same file's `transformParam` and
 //! `transformParams`: [`A_PARAM`], [`B_PARAM`], [`H_PARAM`], [`K_PARAM`] (the
 //! transform `y = a · f((x − h) / b) + k`; scales default 1, shifts 0, a
 //! scale of 0 never reads).
+
+use std::f64::consts::FRAC_PI_2;
 
 use crate::plot::PlotFunction;
 use crate::url::{DEFAULT_DEBOUNCE_MS, QueryParamDef, default_equals, parse_js_number};
@@ -63,6 +67,16 @@ pub fn base(slug: FunctionSlug) -> PlotFunction {
         FunctionSlug::X2 => |x| x * x,
         FunctionSlug::X3 => |x| x * x * x,
         FunctionSlug::SinX => f64::sin,
+    }
+}
+
+/// The plane x where a picker option shows its scale handle (`unitX`): 1
+/// for `x`, `x²` and `x³`, π/2 (the peak) for `sin x`.
+#[must_use]
+pub fn unit_x(slug: FunctionSlug) -> f64 {
+    match slug {
+        FunctionSlug::X1 | FunctionSlug::X2 | FunctionSlug::X3 => 1.0,
+        FunctionSlug::SinX => FRAC_PI_2,
     }
 }
 
@@ -203,6 +217,14 @@ mod tests {
         assert_eq!(url.query(), "");
         param.set_flushed(&mut url, FunctionSlug::X2);
         assert_eq!(url.query(), "func=x2");
+    }
+
+    #[test]
+    fn unit_x_is_1_except_for_the_sine_peak() {
+        assert_eq!(unit_x(FunctionSlug::X1), 1.0);
+        assert_eq!(unit_x(FunctionSlug::X2), 1.0);
+        assert_eq!(unit_x(FunctionSlug::X3), 1.0);
+        assert_eq!(unit_x(FunctionSlug::SinX), FRAC_PI_2);
     }
 
     #[test]

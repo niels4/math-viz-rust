@@ -28,12 +28,7 @@ use mv_sys::clay;
 /// The readout row: flex, vertically centred, at least 78 px tall with the
 /// card's inset above it (`FunctionReadout.module.css`: `.readout` — 78 px
 /// since `2e6069e`, reserving the division bar's space so a horizontal scale
-/// stacking a fraction never moves the row).
-///
-/// Fix-forward for h5-buttons (their `readout.rs` height and
-/// `readout-b-height` state, which keep the tests and judgment): the h5
-/// reference moved the constant, and every sidebar box below the Function
-/// card — the whole Transform card — stands 18 px off without it.
+/// stacking a fraction never moves the row; h5-buttons's named change).
 pub const READOUT_MIN_HEIGHT: f32 = 78.0;
 /// `margin-top: var(--space-inset)`.
 pub const READOUT_MARGIN_TOP: f32 = 12.0;
@@ -479,6 +474,14 @@ mod tests {
     }
 
     #[test]
+    fn readout_row_reserves_the_division_bar_height() {
+        // `2e6069e` (h5-buttons): the value line's row is at least 78 px
+        // tall, so a stacking fraction (b=2 on x²) moves nothing below it
+        // (the readout-b-height state pins the behaviour).
+        assert_eq!(READOUT_MIN_HEIGHT, 78.0);
+    }
+
+    #[test]
     fn shows_the_bare_function_when_every_value_is_at_its_default() {
         // A fresh page graphs x, untransformed.
         let line = value_line(FunctionSlug::X1, &none());
@@ -825,10 +828,12 @@ pub fn hit_param(hit: Hit) -> Option<TransformParam> {
             _ => None,
         },
         // h4-rows' rows light the same model (the row and field hits carry
-        // the parameter in `TransformParam` order).
-        HitKind::TransformRow | HitKind::TransformField => {
-            crate::transform_row::index_param(hit.index)
-        }
+        // the parameter in `TransformParam` order); h5-buttons' flip and
+        // reset sit on their row, so they name it too.
+        HitKind::TransformRow
+        | HitKind::TransformField
+        | HitKind::TransformFlip
+        | HitKind::TransformReset => crate::transform_row::index_param(hit.index),
         _ => None,
     }
 }
@@ -942,7 +947,7 @@ fn frac_height(top: &[Part], bottom: &[Part], form: bool) -> f32 {
 }
 
 /// Lays out the value line's row in the open Function card: the row (at
-/// least 60 px tall, content centred) with the span holding one run per
+/// least 78 px tall, content centred) with the span holding one run per
 /// part. The card's own gap carries the readout's margin-top above it.
 /// Reads the live values and the highlight from the app.
 pub fn layout_value_line(app: &mut App, func: FunctionSlug, ids: &mut LayoutIds) {
@@ -1286,12 +1291,31 @@ fn paint_parts(
                 let size = size_px(&run.size, form);
                 let param_ink =
                     crate::draw::nvg_color(crate::ui::ink(theme, run.param.colour_token()));
-                // The upright prefix (the form's `+ ` before k) paints first,
-                // in the same ink under the same padding.
+                // The upright prefix (the form's `+ ` before k) measures
+                // first, in the same ink under the same padding. The tint
+                // paints before either glyph (below): it is opaque, so
+                // drawing the prefix first would cover it whenever the term
+                // is lit.
                 let mut at = *x;
+                let prefix_adv = if !run.prefix.is_empty() {
+                    let style = run_style(size, false, tabular);
+                    mv_text::measure(&mut app.fonts, style, &run.prefix)
+                } else {
+                    0.0
+                };
+                let style = run_style(size, run.italic, tabular);
+                let adv = mv_text::measure(&mut app.fonts, style, &run.text);
+                let outer = clay::BoundingBox {
+                    x: *x - TERM_PADDING_X,
+                    y: ctx.top + ctx.strut_drop,
+                    width: at - *x + prefix_adv + adv + 2.0 * TERM_PADDING_X,
+                    height: strut_h(form) + TERM_PADDING_BOTTOM,
+                };
+                if app.state.is_lit(run.param) {
+                    paint_lit(app, theme, run.param, outer, form);
+                }
                 if !run.prefix.is_empty() {
                     let style = run_style(size, false, tabular);
-                    let adv = mv_text::measure(&mut app.fonts, style, &run.prefix);
                     mv_text::draw(
                         &mut app.fonts,
                         &mut app.vg,
@@ -1301,18 +1325,7 @@ fn paint_parts(
                         &run.prefix,
                         param_ink,
                     );
-                    at += adv;
-                }
-                let style = run_style(size, run.italic, tabular);
-                let adv = mv_text::measure(&mut app.fonts, style, &run.text);
-                let outer = clay::BoundingBox {
-                    x: *x - TERM_PADDING_X,
-                    y: ctx.top + ctx.strut_drop,
-                    width: at - *x + adv + 2.0 * TERM_PADDING_X,
-                    height: strut_h(form) + TERM_PADDING_BOTTOM,
-                };
-                if app.state.is_lit(run.param) {
-                    paint_lit(app, theme, run.param, outer, form);
+                    at += prefix_adv;
                 }
                 mv_text::draw(
                     &mut app.fonts,
@@ -1462,11 +1475,36 @@ fn paint_lit(
         app.vg.fill();
     };
     if form {
-        bar(
-            app,
-            [outer.x, outer.y + outer.height - 2.0, outer.width, 2.0],
-            ink,
+        // The form's underline follows the panel's 4 px radius (an inset
+        // shadow): ink the full rounded panel, then cover all but the bottom
+        // 2 px with the tint panel, squared at its bottom. A square bar would
+        // stick square ends past the rounded corners.
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            outer,
+            crate::ui::corner_radius_all(TERM_RADIUS),
         );
+        app.vg.fill_color(ink);
+        app.vg.fill();
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            clay::BoundingBox {
+                x: outer.x,
+                y: outer.y,
+                width: outer.width,
+                height: outer.height - 2.0,
+            },
+            clay::CornerRadius {
+                topLeft: TERM_RADIUS,
+                topRight: TERM_RADIUS,
+                bottomLeft: 0.0,
+                bottomRight: 0.0,
+            },
+        );
+        app.vg.fill_color(tint);
+        app.vg.fill();
     } else {
         bar(app, [outer.x, outer.y - 1.0, outer.width, 1.0], tint);
         bar(

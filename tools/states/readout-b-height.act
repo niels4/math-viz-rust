@@ -1,0 +1,10 @@
+# readout-b-height (H5): b=2 on x2 — the readout stacks its fraction and
+# stays 78 tall, so the Transform card's top stays 376.5 as at rest.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&b=2
+wait 2000
+shot readout-b-height

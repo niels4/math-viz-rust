@@ -1,0 +1,14 @@
+# reset-click (H5): a's reset clicked (254, 450) — the box shows 1.00, the
+# reset and Reset all are gone (their slots kept), the hash drops a.
+# Behaviour: views.json URL line has no a; the DOM shows value 1.00 and no
+# reset button in a's row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+click 254 450
+wait 300
+shot reset-click

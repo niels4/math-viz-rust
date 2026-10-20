@@ -1,16 +1,18 @@
 //! The sidebar's Transform card: the four parameter rows.
 //!
 //! Ported from `SideBar/TransformSection.tsx` and
-//! `TransformSection.module.css` at `5714319`: the card over the sidebar
-//! column, the "Transform" legend, and the rows Vertical scale/a, Vertical
-//! shift/k, a rule, Horizontal scale/b, Horizontal shift/h — the parameters
-//! outside `f( )` first (they move the curve vertically), then the ones
-//! inside (they move it horizontally).
+//! `TransformSection.module.css` at `b8a0e1d`: the card over the sidebar
+//! column, the "Transform" legend with Reset all beside it while any value
+//! is off its default, and the rows y scale/a, y shift/k, a rule, x scale/b,
+//! x shift/h — the parameters outside `f( )` first (they move the curve
+//! vertically), then the ones inside (they move it horizontally). The names
+//! are the shortened ones (`999e0a0`).
 //!
 //! The card's box (background, radius, padding) stays the sidebar's
 //! declaration, as the Function card's does; this module lays the title, the
 //! rows and the rule inside it, and owns the rows' page params (their live
-//! values, debounce and flush, as `url.rs` owns the state machine).
+//! values, debounce and flush, as `url.rs` owns the state machine). Reset
+//! all's behaviour is [`crate::reset`]; its button paints here.
 
 use mv_sys::clay;
 
@@ -31,10 +33,19 @@ pub const CARD_RADIUS: f32 = 4.0;
 pub const TITLE: &str = "Transform";
 
 /// The legend's block: `--text-heading` (17 px), `--weight-heading` (700),
-/// 28 px line, `--space-inset` (12) under it (`card_title`).
+/// 28 px line, `--space-inset` (12) under it (`card_title`). The head holds
+/// the legend and, while any value is off its default, Reset all
+/// (`align-items: flex-start`, `justify-content: space-between`); Reset all
+/// is 20 px in the 28 px line, so the head stays 28 px tall either way and
+/// the card's height never moves.
 pub const TITLE_FONT_SIZE: f32 = 17.0;
 pub const TITLE_LINE_HEIGHT: f32 = 28.0;
 pub const TITLE_GAP: f32 = 12.0;
+
+/// Element ids for the head and Reset all.
+pub const RESET_ALL_ID: &str = "TransformResetAll";
+pub const RESET_ALL_ICON_ID: &str = "TransformResetAllIcon";
+pub const RESET_ALL_TEXT_ID: &str = "TransformResetAllText";
 
 /// The rule between the vertical and horizontal rows: 1 px tall,
 /// `background-muted`, 8 px margins.
@@ -50,19 +61,21 @@ pub const ROW_ORDER: [TransformParam; 4] = [
     TransformParam::H,
 ];
 
-/// Each row's name, by parameter.
+/// Each row's shortened name, by parameter (`999e0a0`).
 #[must_use]
 pub fn row_name(param: TransformParam) -> &'static str {
     match param {
-        TransformParam::A => "Vertical scale",
-        TransformParam::K => "Vertical shift",
-        TransformParam::B => "Horizontal scale",
-        TransformParam::H => "Horizontal shift",
+        TransformParam::A => "y scale",
+        TransformParam::K => "y shift",
+        TransformParam::B => "x scale",
+        TransformParam::H => "x shift",
     }
 }
 
 /// The card's measured height arithmetic (CSS px): top pad + title + gap +
-/// four rows + the rule's margins and height + bottom pad.
+/// four rows + the rule's margins and height + bottom pad. Reset all fits in
+/// the title's line, so the height holds with it shown (probed 261 px with
+/// `a=2`, `a=-2` and `a=2&h=3`).
 #[must_use]
 pub fn card_height() -> f32 {
     CARD_PAD_TOP
@@ -93,6 +106,36 @@ pub fn param_value(app: &App, param: TransformParam) -> f64 {
         TransformParam::B => *app.b_param.get(),
         TransformParam::H => *app.h_param.get(),
     }
+}
+
+/// Reset all's hit (a focus stop, `index` 0).
+#[must_use]
+pub fn reset_all_hit() -> crate::input::Hit {
+    crate::input::Hit {
+        kind: crate::input::HitKind::TransformResetAll,
+        index: 0,
+    }
+}
+
+/// The four live values, for Reset all's condition.
+#[must_use]
+pub fn live_values(app: &App) -> enum_map::EnumMap<TransformParam, f64> {
+    enum_map::EnumMap::from_fn(|param| param_value(app, param))
+}
+
+/// Reset all's click: every default comes back, each flushed, so the keys
+/// leave the URL at once.
+pub fn reset_all_params(app: &mut App) {
+    for param in ROW_ORDER {
+        let default = crate::reset::reset_value(param);
+        match param {
+            TransformParam::A => app.a_param.set_flushed(&mut app.url, default),
+            TransformParam::K => app.k_param.set_flushed(&mut app.url, default),
+            TransformParam::B => app.b_param.set_flushed(&mut app.url, default),
+            TransformParam::H => app.h_param.set_flushed(&mut app.url, default),
+        }
+    }
+    app.dirty = true;
 }
 
 /// The params start from the page query (each `build()` re-seeds them, as
@@ -164,7 +207,7 @@ pub fn section(app: &mut App) {
     card.backgroundColor = crate::ui::ink(&theme, mv_theme::Token::Section);
     card.cornerRadius = crate::ui::corner_radius_all(CARD_RADIUS);
     crate::ui::ui_scope(app, mv_clay::id("TransformCard", 0), &card, |app| {
-        title(app);
+        head(app);
         for param in ROW_ORDER {
             if param == TransformParam::B {
                 rule(app);
@@ -174,13 +217,21 @@ pub fn section(app: &mut App) {
     });
 }
 
-/// The legend block: the copy with `--space-inset` under it (`card_title`).
-fn title(app: &mut App) {
+/// The head row: the legend and, while any value is off its default, Reset
+/// all (`align-items: flex-start`, `justify-content: space-between`). Reset
+/// all is 20 px in the legend's 28 px line, so the head stays 28 px either
+/// way; the title gap sits under the head as before.
+fn head(app: &mut App) {
     let theme = crate::ui::current_theme(app).clone();
     let mut block = crate::ui::empty_decl();
     block.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
         height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    block.layout.layoutDirection = clay::LayoutDirection::LeftToRight;
+    block.layout.childAlignment = clay::ChildAlignment {
+        x: clay::LayoutAlignmentX::Left,
+        y: clay::LayoutAlignmentY::Top,
     };
     block.layout.padding = clay::Padding {
         left: 0,
@@ -197,7 +248,108 @@ fn title(app: &mut App) {
             crate::ui::ink(&theme, mv_theme::Token::Foreground),
             true,
         );
+        if crate::reset::any_changed(&live_values(app)) {
+            reset_all(app);
+        }
     });
+}
+
+/// Reset all: the reset mark and the copy in a 20 px button, foreground-muted
+/// on transparent (foreground on secondary while hovered or keyboard-focused,
+/// with the 3 px primary-32 % ring while keyboard-focused). The 4 px top
+/// margin rides on a wrapper, as Clay has no margins; the button's own box
+/// stays 20 px tall.
+fn reset_all(app: &mut App) {
+    use crate::reset::{
+        RESET_ALL_GAP, RESET_ALL_HEIGHT, RESET_ALL_LABEL, RESET_ALL_MARGIN_TOP, RESET_ALL_PAD_X,
+        RESET_ALL_PAD_Y,
+    };
+    let theme = crate::ui::current_theme(app).clone();
+    let hovered = app.input.hover == reset_all_hit();
+    let focused = app.input.focus == reset_all_hit() && app.input.focus_visible;
+    let mut wrap = crate::ui::empty_decl();
+    wrap.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    wrap.layout.padding = clay::Padding {
+        left: 0,
+        right: 0,
+        top: RESET_ALL_MARGIN_TOP as u16,
+        bottom: 0,
+    };
+    crate::ui::ui_scope(app, mv_clay::id("TransformResetAllWrap", 0), &wrap, |app| {
+        let mut button = crate::ui::empty_decl();
+        button.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fixed(RESET_ALL_HEIGHT),
+        };
+        button.layout.layoutDirection = clay::LayoutDirection::LeftToRight;
+        button.layout.childGap = RESET_ALL_GAP as u16;
+        button.layout.childAlignment = clay::ChildAlignment {
+            x: clay::LayoutAlignmentX::Left,
+            y: clay::LayoutAlignmentY::Center,
+        };
+        button.layout.padding = clay::Padding {
+            left: RESET_ALL_PAD_X as u16,
+            right: RESET_ALL_PAD_X as u16,
+            top: RESET_ALL_PAD_Y as u16,
+            bottom: RESET_ALL_PAD_Y as u16,
+        };
+        if hovered || focused {
+            button.backgroundColor = crate::ui::ink(&theme, mv_theme::Token::Secondary);
+        }
+        button.cornerRadius = crate::ui::corner_radius_all(crate::transform_row::ROW_RADIUS);
+        crate::ui::ui_scope(app, mv_clay::id(RESET_ALL_ID, 0), &button, |app| {
+            let mark = if hovered || focused {
+                crate::ui::ink(&theme, mv_theme::Token::Foreground)
+            } else {
+                crate::ui::ink(&theme, mv_theme::Token::ForegroundMuted)
+            };
+            let mut mark_decl = crate::ui::empty_decl();
+            mark_decl.layout.sizing = clay::Sizing {
+                width: mv_clay::sizing_fixed(crate::reset::RESET_ICON_SIZE),
+                height: mv_clay::sizing_fixed(crate::reset::RESET_ICON_SIZE),
+            };
+            mark_decl.custom = crate::icons::custom_data(crate::icons::Icon {
+                kind: crate::icons::IconKind::Reset,
+                ink: crate::draw::nvg_color(mark),
+            });
+            crate::ui::ui_scope(app, mv_clay::id(RESET_ALL_ICON_ID, 0), &mark_decl, |_| {});
+            crate::typography::text(
+                app,
+                mv_clay::id(RESET_ALL_TEXT_ID, 0),
+                crate::typography::Type::ResetAll,
+                RESET_ALL_LABEL,
+                mark,
+                false,
+            );
+        });
+        crate::input::region(
+            app,
+            mv_clay::id(RESET_ALL_ID, 0),
+            reset_all_hit(),
+            crate::input::Cursor::Pointer,
+            crate::input::Cursor::Pointer,
+            true,
+            crate::ui::corner_radius_all(crate::transform_row::ROW_RADIUS),
+        );
+    });
+}
+
+/// Paints Reset all's `:focus-visible` ring after the command walk. Call from
+/// `draw_page` beside `paint_rows`.
+pub fn paint_head(app: &mut App) {
+    if app.input.focus != reset_all_hit() || !app.input.focus_visible {
+        return;
+    }
+    let theme = crate::ui::current_theme(app).clone();
+    let density = if app.size[0] > 0.0 {
+        app.pixels[0] as f32 / app.size[0]
+    } else {
+        1.0
+    };
+    crate::transform_row::paint_focus_ring(app, &theme, density, mv_clay::id(RESET_ALL_ID, 0));
 }
 
 /// The rule between the pairs: 1 px `background-muted` with 8 px margins
@@ -236,12 +388,7 @@ mod tests {
     fn rows_stand_in_the_sources_order() {
         assert_eq!(
             ROW_ORDER.map(row_name),
-            [
-                "Vertical scale",
-                "Vertical shift",
-                "Horizontal scale",
-                "Horizontal shift"
-            ]
+            ["y scale", "y shift", "x scale", "x shift"]
         );
         assert_eq!(ROW_ORDER.map(TransformParam::as_str), ["a", "k", "b", "h"]);
     }
@@ -330,6 +477,27 @@ mod tests {
             (mv_clay::id("TransformField", 0), [271.5, 63.0, 62.0, 22.0]),
             (mv_clay::id("TransformChevron", 0), [259.5, 68.0, 6.0, 12.0]),
             (mv_clay::id("TransformChevron", 1), [339.5, 68.0, 6.0, 12.0]),
+            // The flip toggles stand on the scale rows only (a: index 0, b:
+            // index 1): 24×24 at 165 px into the row, holding still. The
+            // reset slot keeps 24 px on every row, button or none.
+            (mv_clay::id("TransformFlip", 0), [177.0, 62.0, 24.0, 24.0]),
+            (mv_clay::id("TransformFlip", 1), [177.0, 167.0, 24.0, 24.0]),
+            (
+                mv_clay::id("TransformResetSlot", 0),
+                [213.0, 52.0, 24.0, 44.0],
+            ),
+            (
+                mv_clay::id("TransformResetSlot", 3),
+                [213.0, 96.0, 24.0, 44.0],
+            ),
+            (
+                mv_clay::id("TransformResetSlot", 1),
+                [213.0, 157.0, 24.0, 44.0],
+            ),
+            (
+                mv_clay::id("TransformResetSlot", 2),
+                [213.0, 201.0, 24.0, 44.0],
+            ),
         ] {
             let b = at(id);
             for (i, (got, want)) in [b.x, b.y, b.width, b.height]
@@ -343,8 +511,10 @@ mod tests {
                 );
             }
         }
-        // The chip and name stand row-relative: chip [8,9,26,26], name
-        // [46,13,179,18] in every row.
+        // The chip and name stand row-relative: chip [8,9,26,26]; the name
+        // fills what the row's buttons leave — 107 wide on the scale rows
+        // (five children, four gaps), 143 on the shift rows (four children,
+        // three gaps) — at y 13, 18 tall, in every row.
         for index in [0, 3, 1, 2] {
             let row = at(mv_clay::id("TransformRow", index));
             let chip = at(mv_clay::id("TransformChip", index));
@@ -353,9 +523,14 @@ mod tests {
             assert!((chip.width - 26.0).abs() <= 0.5, "chip w");
             assert!((chip.height - 26.0).abs() <= 0.5, "chip h");
             let name = at(mv_clay::id("TransformName", index));
+            let wide = if index == 0 || index == 1 {
+                107.0
+            } else {
+                143.0
+            };
             assert!((name.x - row.x - 46.0).abs() <= 0.5, "name x");
             assert!((name.y - row.y - 13.0).abs() <= 0.5, "name y");
-            assert!((name.width - 179.0).abs() <= 0.5, "name w");
+            assert!((name.width - wide).abs() <= 0.5, "name w");
             assert!((name.height - 18.0).abs() <= 0.5, "name h");
         }
         // The field's text runs right-aligned: its right edge meets the
@@ -367,5 +542,75 @@ mod tests {
             "field text right edge"
         );
         assert!((run.height - 22.0).abs() <= 0.5, "field text line");
+    }
+
+    /// Reset all and the reset button lay out with a value off its default:
+    /// with `a=2` the head keeps its 28 px line, Reset all stands top-right,
+    /// and a's slot holds the 24 px button.
+    #[test]
+    fn reset_buttons_lay_out_like_the_reference() {
+        use mv_sys::clay;
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.url = crate::url::Url::from_query("a=2");
+        init_params_from_url(&mut app);
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .set_layout_dimensions(clay::Dimensions {
+                width: 374.0,
+                height: 900.0,
+            });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .begin_layout();
+        let mut root = crate::ui::empty_decl();
+        root.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_fixed(374.0),
+            height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        };
+        crate::ui::ui_scope(&mut app, mv_clay::id("CardScope", 0), &root, |app| {
+            section(app);
+        });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .end_layout();
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let at = |id: clay::ElementId| {
+            let data = clay.get_element_data(id);
+            assert!(data.found, "element laid out");
+            data.boundingBox
+        };
+        // The head stays 28 px plus the 12 px gap with Reset all shown.
+        let head = at(mv_clay::id("TransformTitle", 0));
+        assert!((head.height - 40.0).abs() <= 0.5, "head height");
+        // Reset all: top-right of the head, 4 px under the title's top,
+        // 84.86×20 on the reference.
+        let all = at(mv_clay::id(RESET_ALL_ID, 0));
+        assert!((all.y - head.y - 4.0).abs() <= 0.5, "reset all y");
+        assert!((all.height - 20.0).abs() <= 0.5, "reset all h");
+        assert!(
+            ((all.x + all.width) - (head.x + head.width)).abs() <= 0.5,
+            "reset all right edge"
+        );
+        assert!((all.width - 84.86).abs() <= 0.5, "reset all w");
+        // a's slot holds the 24 px button; the flip stands where it stands
+        // at rest.
+        let slot = at(mv_clay::id("TransformResetSlot", 0));
+        assert!((slot.width - 24.0).abs() <= 0.5, "slot w");
+        let button = at(mv_clay::id("TransformReset", 0));
+        assert!((button.width - 24.0).abs() <= 0.5, "reset w");
+        assert!((button.height - 24.0).abs() <= 0.5, "reset h");
+        assert!(
+            (button.x - slot.x).abs() <= 0.5 && (button.y - slot.y - 10.0).abs() <= 0.5,
+            "reset centred in slot"
+        );
+        let flip = at(mv_clay::id("TransformFlip", 0));
+        assert!((flip.x - 177.0).abs() <= 0.5, "flip x with reset");
     }
 }

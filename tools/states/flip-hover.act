@@ -1,0 +1,12 @@
+# flip-hover (H5): the pointer on a's flip toggle (218, 450) — background
+# secondary, ink still row-ink, pressed false.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+move 218 450
+wait 300
+shot flip-hover

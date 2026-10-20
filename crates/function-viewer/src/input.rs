@@ -150,6 +150,14 @@ pub enum HitKind {
     /// A transform row's number field; `Hit.index` names the parameter
     /// (h4-rows; the row's focus stop).
     TransformField,
+    /// A scale row's flip toggle; `Hit.index` names the parameter in
+    /// `TransformParam` order (h5-buttons; a focus stop, in tab order).
+    TransformFlip,
+    /// A row's reset button; `Hit.index` names the parameter (h5-buttons;
+    /// never a focus stop: `tabIndex={-1}`).
+    TransformReset,
+    /// The Transform card's Reset all (h5-buttons; a focus stop, `index` 0).
+    TransformResetAll,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -514,6 +522,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 release(app);
                 crate::settings::click(app, down);
                 crate::selector::click(app, down);
+                // The transform buttons' click (h5-buttons: the press started
+                // and the release lands on the toggle, reset or Reset all).
+                crate::transform_row::click(app, down);
                 // The overlay button's click (the press started and the
                 // release lands on it, as the button's `onClick` needs both):
                 // the camera back to its defaults, flushed.
@@ -660,12 +671,14 @@ pub fn retarget(app: &mut App) {
         // The highlight follows the pointer across the transform rows (leave
         // then enter, as the DOM fires them); h4-rows owns this sync.
         crate::transform_row::sync_hover(app, before, hit);
+        // The highlight model follows the hover: terms and rows light (or
+        // drop) as the pointer moves across them (h4-readout; the row kinds
+        // map in `readout::hit_param` too). Only on a change: re-stamping
+        // the hover every frame would keep it ahead of the focus forever,
+        // and a Tabbed focus would never take the lead (h5-buttons).
+        crate::readout::sync_hover(app);
         app.dirty = true;
     }
-    // The highlight model follows the hover: terms and rows light (or drop)
-    // as the pointer moves across them (h4-readout; the row kinds map in
-    // `readout::hit_param` too).
-    crate::readout::sync_hover(app);
     update_cursor(app);
 }
 

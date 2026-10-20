@@ -32,6 +32,7 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - function-viewer (h2-p-url): the URL query codec is hand-rolled (no new dependency): `application/x-www-form-urlencoded` encode/decode as `URLSearchParams` does (space `+`, stray `%` literal, lossy UTF-8), pairs in a `Vec` so key order matches, then the literal-comma restore (`%2C`/`%2c` back to `,`) applied after the whole search string is built, exactly where the TS `replaceAll` sits; `trim_slashes` is split/filter/join (the regex's three alternatives remove exactly the empty segments — the 13 cases pin it); the debounce is one pending write per param armed in whole ms on the app's frame clock (callers pass `(now / MS) as u64`), fired by an explicit `step`, absorbed by an explicit `sync` with the `lastRaw` skip; test serialises print `to_fixed(v, N)` (exact JS `toFixed`, ASCII `-`; never `format_number`'s U+2212); the `hashchange` listener calls the `mv_hash_changed` export (on `EXPORTED_FUNCTIONS`; `replaceState` fires no `hashchange`, so our own writes never loop back), which pushes `UserCode::Hash` for the main thread to re-read.
 - function-viewer (h3-p-plot): the plot switch keeps the hook's shape as data (`Shown { func, old: Option, elapsed }`, `PlotCurve { func, alpha, draw_to }` — the TS field `fn` is renamed `func`, a keyword); graphed functions are plain `fn(f64) -> f64` pointers and identity is address comparison through `std::ptr::fn_addr_eq` (plain `==` on fn pointers is compiler-linted, including inside a derived `PartialEq`, so `PlotCurve` implements it by hand); the rAF loop is `switch_to` (the render-phase transition, `canAnimate()` in as a `bool` the coder wires) plus `step` (first frame carries `FIRST_FRAME_MS`, as `camera.rs`'s `first_frame`, but only on a rest-to-switch transition — a mid-switch change keeps the running clock, as the hook's loop is keyed on `switching`); `sample_curve` is `drawCurve`'s sampling without the paint (per-column points, `insideShare`, cumulative inside-length, interpolated stop), taking the canvas dims beside the grid, which stores none; vitest `toBeCloseTo(x, 2)` is `|diff| < 0.005`, and frame-driven tests accumulate time and diff it exactly like the hook's `now - last` so `elapsed` sums bit-identically.
 - function-viewer (h5-p-scrub): the scrub maths keep the TS shapes (`ScrubMode` enum, `scrub_mode`/`wheel_dx` plain args since h4's rows are unmerged); `quantize` is `mv-numfmt::quantize` exactly (the TS rounds `|v|` then re-applies the sign — including negative exact halves — which is what that helper does, so no local rounding); `shown` formats via `round_to` plus a plain print (the field shows the keyboard hyphen, never `format_number`'s U+2212), `-0` normalised to `0`; the tape is an enum (`Shift`/`Scale`, never a `kind` field), `multiples` keeps an f64 counter exactly like the TS loop (the `1e20` case falls out empty through identical float ops), and label text is `String(Number(toFixed))` including the ECMA-262 exponential rule outside `[1e-6, 1e21)` and the first-hyphen-only true-minus replace (`−5e-7` keeps its exponent hyphen).
+- function-viewer (h6-p-transform): the transform is `Transform { a, b, h, k }` (a struct — the fixed keys read as the TS literals do — with `get`/`with` for the two indexed uses, not an `EnumMap`); a transformed function is data (`TransformedFunction { base, transform }` with `value(x)`), never a closure, since a transformed curve cannot be a `fn` pointer; `transform_curves` returns `TransformedCurve { func, alpha, draw_to, dashed }` (the dashed flag rides the new curve type, `plot::PlotCurve` untouched) with the original untransformed under `Transform::IDENTITY`; the flip is `ShownTransform { jump, seen }` with `step(flip, transform, dt, can_animate)` (adoption split into pub `adopt`, which the press turn calls before any frame passes, plus `pub shown` for that turn's draw; the first-frame `FIRST_FRAME_MS`, the `durationMs` finish, the per-param `===` passthrough for typed-mid values; `Flip.seq` is the press identity behind the hook's `flip !== seenFlip`, set from a counter where the flip is created); the params type is `state::TransformParam` (h4's; this module's own copy deleted at the h6 merge); `plane_geometry` is pure canvas positions (`to_px`, `clamp_curve_y` with `OVERSHOOT_PX`, `handle_path`, `line_path` with `None` for zero length, `line_tick_halves` as the painter's single source) while widths, dashes and alphas stay the painters' (h6-handles); `PlotLine.label` is always `None` from `transform_lines` (the TS carries no label).
 
 ## Harness notes
 
@@ -134,7 +135,6 @@ One block per milestone, appended in merge order; empty until the first mileston
   scripts need no such guard while they hold states.
 
 ### h4-rows (the Transform card's rows)
-
 - The 9.5 px box side padding is fractional (Clay's padding and gaps are
   whole px): 3.5 px edge spacers plus the 6 px gap hold each side, as the
   picker's dividers hold its 1 px. Lay the card out and read every element's
@@ -161,6 +161,37 @@ One block per milestone, appended in merge order; empty until the first mileston
 - Eyeballing downscaled screenshots misleads (a correct pair once read
   swapped): md5 identity of reruns plus DOM reads settle it. Measure, don't
   eyeball.
+
+### h5-buttons (the reset and flip buttons, Reset all)
+
+- A kept slot beats a conditional element: the reset's 24 px slot stays in
+  every row whether or not the button shows, so the flip toggle and the box
+  never move (name 107 wide on scale rows, 143 on shift rows — five children
+  means four gaps, not three).
+- Mouse clicks blur, keyboard clicks don't: the flip and reset blur on
+  `detail > 0`, Reset all never blurs, and a keyboard Space/Enter keeps the
+  focus (and its ring). The blur is what lets the row go unlit once the
+  pointer moves off.
+- Tab must fall through to the milestones when the settings menu is closed:
+  `settings::key` consuming Tab broke every Tab state (focus moved, the
+  highlight never followed). The milestones walk their own stops and sync,
+  with a default arm that walks on from any other stop.
+- The hover must stamp on change only: re-stamping it every frame in
+  `retarget` keeps it ahead of the focus forever, so a Tabbed focus never
+  takes the lead. Move the unconditional sync inside the change.
+- WebKit skips buttons on Tab (no Full Keyboard Access in the launched
+  browser): a flip-focus state lands on the box in ref-webkit and on the
+  toggle everywhere else. The port implements the DOM order; webkit is the
+  recorded engine quirk, chromium/firefox the check.
+- Opaque-then-glyph, never glyph-then-opaque: a lit tint panel covers
+  whatever paints before it (the form's `+` prefix went missing). Compute
+  the term's outer box first, paint the tint, then draw.
+- An inset underline follows the radius: ink the full rounded panel, cover
+  all but the band with the tint (top corners rounded for the cover), and
+  the bar wraps the corner exactly.
+- The readout's 78 px moves everything below it 18 px: every absolute-y
+  script coordinate in later states goes stale (h4's row clicks missed their
+  fields and a Backspace navigated WebKit back). Re-probe, don't trust.
 
 ### h5-box (the scrub value box)
 

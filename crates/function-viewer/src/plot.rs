@@ -7,6 +7,13 @@
 //! - `src/components/views/CartesianPlane/drawCartesianPlane.ts`
 //!   (`drawCurve`): [`sample_curve`], the polyline the painter strokes
 //!   (paint itself stays with the h3 coder's `plane.rs`).
+//!
+//! Ported from math-viz2 at `5cef052` (h6-p-transform appends):
+//!
+//! - `src/components/views/CartesianPlane/drawCartesianPlane.ts`
+//!   (`PlotPoint`, `PlotHandle`, `PlotLine`): [`PlotPoint`],
+//!   [`HandleKind`], [`PlotHandle`], [`LineKind`], [`PlotLine`], the types
+//!   the transform's handles and lines and the handle/line painters share.
 
 use crate::grid::GridLayout;
 
@@ -45,6 +52,51 @@ impl PartialEq for PlotCurve {
             && self.alpha == other.alpha
             && self.draw_to == other.draw_to
     }
+}
+
+/// A point on the plane in plane units (`PlotPoint` in
+/// `drawCartesianPlane.ts`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlotPoint {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Which shape a transform handle draws (`PlotHandle["shape"]`): a diamond
+/// on the vertex for the shift, a square on the curve for the scale.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HandleKind {
+    Diamond,
+    Square,
+}
+
+/// A shift or scale handle (`PlotHandle`): what it is and where it sits, in
+/// plane units. The painter maps it through `plane_geometry::to_px`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlotHandle {
+    pub kind: HandleKind,
+    pub at: PlotPoint,
+}
+
+/// Which line a lit parameter draws (`PlotLine["look"]`): an arrow from an
+/// axis for a shift, a dashed box side, or a measured box side for a scale.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LineKind {
+    Arrow,
+    Dashed,
+    Measured,
+}
+
+/// An arrow, a dashed box side, or a measured side joining the handles
+/// (`PlotLine`), in plane units. `label` is the plan's surface for
+/// h6-handles (the TypeScript carries no label); `transform_lines` leaves
+/// it `None`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlotLine {
+    pub kind: LineKind,
+    pub from: PlotPoint,
+    pub to: PlotPoint,
+    pub label: Option<String>,
 }
 
 /// The function shown, and while it switches, the one before it and the ms

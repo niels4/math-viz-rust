@@ -1,0 +1,10 @@
+# reset-visible (H5): a=2 — a's reset shown ("Reset y scale to 1"), Reset all
+# shown in the card head; the flip toggle unmoved, the card 261 tall.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+shot reset-visible

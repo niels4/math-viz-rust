@@ -68,6 +68,15 @@ arrows_a = 'div[data-param="a"] div:has(> input[type="text"]) > svg'
 # present while resting or typing).
 box_a = 'div[data-param="a"] div:has(> input[type="text"])'
 tip_a = 'div[data-param="a"] div:has(> input[type="text"]) > div'
+# H5 at b8a0e1d: the reset and flip buttons. reset_a shows only while a is
+# off its default and Reset all only while any value is (both missing
+# otherwise); the flips stand on the two scale rows. Rows are the divs with
+# data-param (the readout's terms are spans), the flips are their only
+# aria-pressed descendants, the head div is the card's first child.
+reset_a = "div[data-param=\"a\"] [aria-label^=\"Reset\"]"
+reset_all = "#root > div > div:nth-child(2) > section > div:first-child > button"
+flip_a = "div[data-param=\"a\"] [aria-pressed]"
+flip_b = "div[data-param=\"b\"] [aria-pressed]"
 # H5 at b8a0e1d: the ruler card and the tape under a's dragged row (the
 # ruler-* states hold the drag at their shot). The ruler is the row's last
 # div child (the value box, then the ruler); aria-hidden tells it from the

@@ -560,8 +560,9 @@ mod tests {
             data.boundingBox
         };
         // x, y, w, h card-relative: card [29,109,374,255.5] on the reference
-        // at the h5 hash (the readout reserves 78 px since `2e6069e`; the
-        // buttons and cells above it stand where they did).
+        // at the h5 hash (the readout reserves 78 px since `2e6069e`, 18 over
+        // h4's 60 — h5-buttons's named change; the buttons and cells above it
+        // stand where they did).
         for (id, want) in [
             (mv_clay::id(CARD_ID, 0), [0.0, 0.0, 374.0, 255.5]),
             (mv_clay::id("FunctionTitle", 0), [12.0, 12.0, 350.0, 28.0]),
