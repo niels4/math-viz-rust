@@ -40,6 +40,7 @@ pub mod platform_web;
 pub mod platform_windows;
 pub mod prefs;
 pub mod scroll;
+pub mod settings;
 pub mod svgpath;
 pub mod typography;
 pub mod ui;

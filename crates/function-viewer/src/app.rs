@@ -58,6 +58,9 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub gl: Option<glow::Context>,
+    /// The settings menu's own state (open flag and keyboard focus); h1-settings
+    /// appends it here, h1-frame's `ThemeState` holds the theme picks.
+    pub settings: crate::settings::SettingsMenuState,
 }
 
 impl App {
@@ -181,6 +184,7 @@ impl App {
             // Uninitialised shaping fonts; `app_init` runs `mv_text::init`.
             fonts: mv_text::uninit(),
             url: String::new(),
+            settings: crate::settings::SettingsMenuState::closed(),
         }
     }
 }

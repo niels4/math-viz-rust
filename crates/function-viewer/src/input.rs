@@ -128,6 +128,12 @@ pub struct Hit {
 pub enum HitKind {
     #[default]
     None,
+    /// The settings menu's gear button in the top bar.
+    SettingsGear,
+    /// A light/dark/system cell; `Hit.index` names the cell (0 system, 1 dark, 2 light).
+    SettingsLightDark,
+    /// A theme row; `Hit.index` names the row in the shown list (0..3).
+    SettingsTheme,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
