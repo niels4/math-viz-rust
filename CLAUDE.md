@@ -64,6 +64,16 @@ h1-frame's fix-forward). `views.json`'s `url`-line contract (kept from t0-shell-
 holding only `url` is written whenever the page query changes (`--query` writes one at frame
 0); no line reads as the empty query, and behaviour checks compare the last `url` line with
 the reference's `location.hash` query.
+t1-hash's entries: `hash <query>` edits the page's hash mid-run on every surface (`act.py`
+sets `location.hash` on ref/web through the page's own hashchange path; `harness.rs`
+`sync_from_hash`es it plus a frame natively, since scripted frames bypass SDL's event queue
+and a pushed `UserCode::Hash` would sit unhandled); the web build opens a script's `query`
+at `#function-viewer?<query>` (a `?query` search was silently dropped: nothing reads it),
+`?panic-at-frame` inserted before any hash, and base `run_native` passes `--query` (the same
+4 lines as h2-input's branch: the merge keeps either); `hash` in a `--live` run fails naming
+`LiveWhat::Hash` (the loop milestone's); dev tools pinned `==` in `tools/pyproject.toml`
+(black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414: newest with a minimal canonical
+reflow — black 25.12 drifts 7 files, 25.1.0 23; bisect in scratch, never in the worktree).
 
 ## The references and the bar
 

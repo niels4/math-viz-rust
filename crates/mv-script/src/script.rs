@@ -3,7 +3,8 @@
 //! A line is a verb and its arguments, and '#' starts a comment. Lines before
 //! the first action say how the page opens (`size`, `density`, `scheme`, `mode`,
 //! `theme`, `reduced-motion`, `space` and `query`); after it, size, scheme and
-//! reduced-motion change it live. Positions are logical pixels, times
+//! reduced-motion change it live, and `hash` edits the page's hash query
+//! mid-run. Positions are logical pixels, times
 //! milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every
 //! surface: appended to the reference and web URLs, passed as --query natively.
 
@@ -81,7 +82,7 @@ pub enum Surface {
 /// A line's verb: an input, time passing, a capture, a live change, or the
 /// port's model set directly.
 ///
-/// Ported from `script.odin:63` (`Verb :: union { Move, Press, ... }`, 15 members).
+/// Ported from `script.odin:63` (`Verb :: union { Move, Press, ... }`, 16 members).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Verb {
     Move(Move),
@@ -93,6 +94,7 @@ pub enum Verb {
     Hold(Hold),
     Type(Type),
     Wait(Wait),
+    Hash(Hash),
     Shot(Shot),
     Frames(Frames),
     Video(Video),
@@ -179,6 +181,17 @@ pub struct Type {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Wait {
     pub ms: i64,
+}
+
+/// hash QUERY: the page's hash query edited mid-run (`hash center=3,1&scale=2`),
+/// route and query in at once on every surface.
+///
+/// Twin of `tools/src/script.py`'s `Hash`: change the two together. An action,
+/// never a start setting, and never on a `ref` or `port` line (it reaches the
+/// same state by the same means everywhere, as `wait` does).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hash {
+    pub query: String,
 }
 
 /// shot NAME: what the page shows now, as NAME.png.
@@ -690,6 +703,23 @@ fn parse_line(
             return (
                 Some(Verb::Wait(Wait {
                     ms: or_fail!(ms(fields[0])),
+                })),
+                None,
+            );
+        }
+        "hash" => {
+            if fields.len() != 1 {
+                return (
+                    None,
+                    Some(
+                        "hash takes the page's hash query, e.g. hash center=1,2&scale=2"
+                            .to_string(),
+                    ),
+                );
+            }
+            return (
+                Some(Verb::Hash(Hash {
+                    query: fields[0].to_string(),
                 })),
                 None,
             );

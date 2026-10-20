@@ -27,9 +27,7 @@ pub fn platform_signals() {
     let mut pipe = [-1; 2];
     // SAFETY: `pipe` points at two writable ints; on success both are open fds.
     if unsafe { libc::pipe(pipe.as_mut_ptr()) } != 0 {
-        eprintln!(
-            "function-viewer-rust: signals: no pipe; Ctrl-C waits for the window's next event"
-        );
+        eprintln!("math-viz2-rust: signals: no pipe; Ctrl-C waits for the window's next event");
         return;
     }
     QUIT_PIPE.with(|slot| *slot.borrow_mut() = pipe);
@@ -40,9 +38,7 @@ pub fn platform_signals() {
         .spawn(move || read_quit_pipe(read_fd))
         .is_err()
     {
-        eprintln!(
-            "function-viewer-rust: signals: no thread; Ctrl-C waits for the window's next event"
-        );
+        eprintln!("math-viz2-rust: signals: no thread; Ctrl-C waits for the window's next event");
         // SAFETY: both fds are open (the pipe call above succeeded).
         unsafe {
             libc::close(pipe[0]);
@@ -61,7 +57,7 @@ pub fn platform_signals() {
         libc::sigemptyset(&mut action.sa_mask);
         for signal in [libc::SIGINT, libc::SIGTERM] {
             if libc::sigaction(signal, &action, std::ptr::null_mut()) != 0 {
-                eprintln!("function-viewer-rust: signals: {signal} not taken");
+                eprintln!("math-viz2-rust: signals: {signal} not taken");
             }
         }
     }
@@ -99,7 +95,7 @@ fn read_quit_pipe(read_fd: std::os::raw::c_int) {
                     libc::SIGTERM => "SIGTERM",
                     _ => "signal",
                 };
-                eprintln!("function-viewer-rust: quit: {name}");
+                eprintln!("math-viz2-rust: quit: {name}");
                 push_quit_event();
             }
             // The write end stays open for the life of the process, so 0

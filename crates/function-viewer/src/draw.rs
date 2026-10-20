@@ -20,9 +20,10 @@ pub const SHELL_CLEAR: [f32; 4] = [
     1.0,
 ];
 
-/// Paints one frame: the backing store cleared to the shell colour.
-pub fn draw_frame(app: &mut App, _now: Time) {
+/// Paints one frame: the shell's clear, then the page over it.
+pub fn draw_frame(app: &mut App, now: Time) {
     gl_target(app, app.pixels, SHELL_CLEAR);
+    crate::page::draw_page(app, now);
 }
 
 /// Rounds a layout box out to whole backing pixels at the given density.

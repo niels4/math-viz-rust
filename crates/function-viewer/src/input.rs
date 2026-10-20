@@ -128,6 +128,8 @@ pub struct Hit {
 pub enum HitKind {
     #[default]
     None,
+    /// The top bar's settings gear.
+    Gear,
     /// The Cartesian plane's canvas (h2-input; h2-plane declares the region).
     Plane,
 }
@@ -479,6 +481,13 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             } else {
                 mv_theme::Scheme::Light
             };
+            // The theme state tracks the system, as `systemColorSchemeAtom`
+            // tracks matchMedia; stored picks are untouched.
+            app.theme.system = if event.dark {
+                crate::theme_state::SystemScheme::Dark
+            } else {
+                crate::theme_state::SystemScheme::Light
+            };
             if crate::trace() {
                 println!("scheme {:?}", app.system_scheme);
             }
@@ -708,9 +717,7 @@ pub fn input_watch_pinch() {
         unsafe { sdl3::sys::events::SDL_AddEventWatch(Some(pinch_watch), std::ptr::null_mut()) };
     if !added {
         REGISTERED.store(false, Ordering::Relaxed);
-        eprintln!(
-            "function-viewer-rust: input: no event watch: a trackpad pinch never becomes a fact"
-        );
+        eprintln!("math-viz2-rust: input: no event watch: a trackpad pinch never becomes a fact");
     }
 }
 

@@ -62,6 +62,15 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub gl: Option<glow::Context>,
+    /// The theme picks: the light/dark selector, one theme per scheme, and
+    /// the system's scheme. The page draws the resolved theme.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub theme: crate::theme_state::ThemeState,
+    /// The theme cross-fade in flight, with the last stable frame's pixels.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub transition: crate::transition::Transition,
     /// The Cartesian plane's camera: drag to pan, flick to glide, wheel to
     /// zoom (h2-input; `camera.rs` owns the state machine).
     pub camera: crate::camera::Camera,
@@ -196,6 +205,8 @@ impl App {
             // Uninitialised shaping fonts; `app_init` runs `mv_text::init`.
             fonts: mv_text::uninit(),
             url: Url::from_query(""),
+            theme: crate::theme_state::ThemeState::default(),
+            transition: crate::transition::Transition::default(),
             // The plane's camera at the URL defaults; each `build()` re-seeds
             // camera and params from the real page query
             // (`plane_input::init_camera_from_url`).

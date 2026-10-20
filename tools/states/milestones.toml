@@ -1,4 +1,7 @@
 # The states each milestone renders with `tools/run states <milestone>` (README: The harness):
 # the scripts in this directory, named without .act. Each milestone appends its group.
 H0 = ["default"]
+# H1 at adb0534: the page at rest in each theme, and the theme-switch frames (through the
+# settings menu; h1-settings appends its settings-* states to this line).
+H1 = ["default", "default-tron-cyan", "default-midnight-violet", "default-clean-teal", "default-educational-warm", "default-sage-editorial", "theme-switch-frames"]
 H2 = ["pan-drag", "pan-release-still", "pan-flick", "pan-twitch-release", "zoom-wheel-3", "zoom-trackpad-small", "zoom-then-drag", "url-roundtrip"]

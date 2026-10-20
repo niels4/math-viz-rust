@@ -62,6 +62,10 @@ pub static MODIFIER_MODS: EnumMap<mv_script::Modifier, sdl3::keyboard::Mod> =
         sdl3::keyboard::Mod::LGUIMOD,
     ]);
 
+/// The page's hash route (`#function-viewer?...`): math-viz2's route at `c409aad`,
+/// carried so a mid-run `hash` edit reads back with the route the web mirror writes.
+const HASH_ROUTE: &str = "function-viewer";
+
 /// One fact with when it happened.
 #[derive(Clone, Debug)]
 pub struct Stamped {
@@ -381,6 +385,31 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
         }
         mv_script::Verb::Model(m) => {
             queue(h, Input::Model(ModelEvent { change: m.clone() }));
+        }
+        mv_script::Verb::Hash(q) => {
+            if h.live.is_some() {
+                eprintln!(
+                    "[ERROR] --- [{}:{}] hash in a live run: the loop milestone's LiveWhat::Hash carries it (see live.rs)",
+                    file!(),
+                    line!()
+                );
+                return false;
+            }
+            // An edit of the page's hash while it runs (the address bar,
+            // back/forward): route and query in at once, the same transition
+            // the web build's `UserCode::Hash` arm performs (`main.rs` reads
+            // the hash there; here the harness hands it over directly, since
+            // scripted frames bypass SDL's event queue and a pushed event
+            // would sit unhandled). Param live values follow through each
+            // param's `sync` on the coming frames, once their owners wire it.
+            // The frame now records the changed query in views.json at the
+            // verb's time (a hash queues no fact, and `inputs_now` only
+            // frames on pending facts, so without it a hash-then-shot script
+            // would record no `url` line).
+            h.app
+                .url
+                .sync_from_hash(&format!("#{HASH_ROUTE}?{}", q.query));
+            harness_frame(h);
         }
     }
     true

@@ -215,7 +215,7 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
             dict[str, dict[str, object]],
             cast(dict[str, object], json.loads(OUT.read_text()))["themes"],
         )
-    except (FileNotFoundError, KeyError, ValueError):
+    except FileNotFoundError, KeyError, ValueError:
         sys.exit(f"{OUT} holds no themes to carry the values from")
     fixture_themes: dict[str, object] = {}
     spread: list[str] = []
