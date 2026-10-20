@@ -1,7 +1,6 @@
 # welcome-default (h10-page): the welcome page at rest at 1440 x 900, density
 # 2, on a dark system in Arctic Ice, reduced motion (the hero is the still).
-# Phase 1 starts on the welcome route by default (no `route` line yet);
-# phase 2 opens it with one (h10-t-route).
+route welcome
 size 1440 900
 density 2
 scheme dark

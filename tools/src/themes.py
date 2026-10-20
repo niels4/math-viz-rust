@@ -18,7 +18,8 @@ milestone that draws them re-sources them (h1-frame the page tokens). Tokens no 
 defines are dropped, not carried (the driver's condition on the copy): math-viz's page tokens
 (ParamA and friends, the chart points, the curve glow) are gone; the milestone that sources a
 token adds it to tokens.toml and regenerates (h4-readout the --param-* rows from
-SideBar.module.css's per-theme blocks, read by read_sidebar_params below).
+the shared param_colours module's per-theme blocks, read by read_sidebar_params below;
+since 4cc4490 the sidebar and the welcome page both carry that class).
 theme.rs's tests and testdata/tokens.json still name the dropped tokens:
 h1-frame regenerates them with tools/run tokens (named in the t0-harness return)."""
 
@@ -117,10 +118,12 @@ def read_themes(ref: Path) -> list[Theme]:
     sidebar = read_sidebar_params(ref)
     points = read_sidebar_points(ref)
     welcome = read_welcome_tokens(ref)
+    theme_points = read_sidebar_theme_points(ref)
     for theme in themes:
         params = sidebar[theme.slug]
-        # The per-theme point overrides ride with the base points below.
-        points_in_block = {k: params.pop(k) for k in ("--point-p", "--point-q") if k in params}
+        # The per-theme point overrides stayed in SideBar.module.css while the
+        # params moved (4cc4490); they ride with the base points below.
+        points_in_block = theme_points.get(theme.slug, {})
         if list(params) != ["--param-a", "--param-k", "--param-b", "--param-h"]:
             sys.exit(f"{theme.slug}: sidebar params out of order: {list(params)}")
         merged = dict(params)
@@ -137,18 +140,39 @@ SIDEBAR_THEME = re.compile(r'&\[data-theme="([a-z-]+)"\]\s*\{([^}]*)\}')
 
 
 def read_sidebar_params(ref: Path) -> dict[str, dict[str, str]]:
-    """The readout's per-parameter inks: `--param-a/k/b/h` from SideBar.module.css's
-    per-theme blocks (h4-readout sources them; the theme files never define them).
+    """The readout's per-parameter inks: `--param-a/k/b/h` from the shared
+    `src/style/param_colours.module.css`'s `.param_colours` per-theme blocks
+    (h4-readout sources them; the theme files never define them; since 4cc4490
+    the sidebar and the welcome page both carry that class, values unchanged).
     Values read as written (oklch colours), in the blocks' order."""
-    css = (
-        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
-    ).read_text()
+    css = (ref / "src" / "style" / "param_colours.module.css").read_text()
     out: dict[str, dict[str, str]] = {}
     for match in SIDEBAR_THEME.finditer(css):
         slug, block = match.group(1), match.group(2)
         out[slug] = {m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block)}
     if sorted(out) != sorted(SLUGS):
         sys.exit(f"sidebar params cover {sorted(out)}, want {sorted(SLUGS)}")
+    return out
+
+
+def read_sidebar_theme_points(ref: Path) -> dict[str, dict[str, str]]:
+    """P's and Q's per-theme overrides: `--point-p`/`--point-q` from
+    SideBar.module.css's per-theme blocks (4cc4490 moved only the `--param-*`
+    blocks to param_colours.module.css; these overrides stayed). Only themes
+    with an override appear; the rest inherit the base block's defaults."""
+    css = (
+        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
+    ).read_text()
+    out: dict[str, dict[str, str]] = {}
+    for match in SIDEBAR_THEME.finditer(css):
+        slug, block = match.group(1), match.group(2)
+        points = {
+            m[1]: " ".join(m[2].split())
+            for m in DECLARATION.finditer(block)
+            if m[1] in ("--point-p", "--point-q")
+        }
+        if points:
+            out[slug] = points
     return out
 
 

@@ -2,7 +2,7 @@
 //!
 //! A line is a verb and its arguments, and '#' starts a comment. Lines before
 //! the first action say how the page opens (`size`, `density`, `scheme`, `mode`,
-//! `theme`, `reduced-motion`, `space` and `query`); after it, size, scheme and
+//! `theme`, `reduced-motion`, `space`, `query` and `route`); after it, size, scheme and
 //! reduced-motion change it live, and `hash` edits the page's hash query
 //! mid-run. Positions are logical pixels, times
 //! milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every
@@ -23,12 +23,14 @@ pub struct Script {
 
 /// How the page opens: the window's logical size and pixel density, the
 /// system's colour scheme and motion preference, the stored appearance, the
-/// colour space the port draws in, and the page's hash query (?key=value&...)
-/// opening on every surface.
+/// colour space the port draws in, the page's hash query (?key=value&...)
+/// opening on every surface, and the page route it opens on (welcome or
+/// function-viewer, the viewer unless the script says welcome).
 ///
 /// Ported from `script.odin:25` (`Start :: struct { size, density, scheme,
 /// mode, dark_theme, light_theme, reduced_motion, space }`), with the query
-/// math-viz2 keeps in the hash (router-util.ts's createFullHash).
+/// math-viz2 keeps in the hash (router-util.ts's createFullHash) and the route
+/// it keeps there too (Router.tsx).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Start {
     pub size: [i64; 2],
@@ -40,6 +42,30 @@ pub struct Start {
     pub reduced_motion: bool,
     pub space: mv_theme::Space,
     pub query: String,
+    pub route: Route,
+}
+
+/// The page routes a script opens: the welcome page, or the Function Viewer.
+///
+/// The script default is the viewer, so every existing script is unchanged;
+/// the native binary's own default is the welcome page (its `--route`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+pub enum Route {
+    Welcome,
+    FunctionViewer,
+}
+
+/// The words a `route` line takes.
+pub static ROUTE_WORDS: EnumMap<Route, &str> = EnumMap::from_array(["welcome", "function-viewer"]);
+
+/// The hash route a word opens: welcome is the bare `#`, function-viewer its
+/// page. Twin of `tools/src/script.py`'s `hash_route`: change the two together.
+pub fn hash_route(word: &str) -> Option<&'static str> {
+    match word {
+        "welcome" => Some(""),
+        "function-viewer" => Some("function-viewer"),
+        _ => None,
+    }
 }
 
 /// math-viz2's defaults, on a dark system at the size the judgments use.
@@ -55,6 +81,7 @@ pub const DEFAULT_START: Start = Start {
     reduced_motion: false,
     space: mv_theme::Space::Srgb,
     query: String::new(),
+    route: Route::FunctionViewer,
 };
 
 /// An action: a verb, the line it came from, and the surfaces it runs on.
@@ -612,6 +639,12 @@ fn parse_line(
             }
             start.query = fields[0].to_string();
         }
+        "route" => {
+            if let Some(message) = before_actions(started, word) {
+                return (None, Some(message));
+            }
+            start.route = or_fail!(one_of(&fields, &ROUTE_WORDS, "route"));
+        }
         "move" => {
             if fields.len() != 2 && !(fields.len() == 4 && fields[2] == "over") {
                 return (None, Some("move takes X Y [over MS]".to_string()));
@@ -875,7 +908,7 @@ fn parse_type(text: &str) -> (Option<Verb>, Failure) {
     )
 }
 
-/// density, mode, theme, space and query come before the first action.
+/// density, mode, theme, space, query and route come before the first action.
 ///
 /// Ported from `script.odin:597` (`before_actions`, private).
 fn before_actions(started: bool, word: &str) -> Failure {

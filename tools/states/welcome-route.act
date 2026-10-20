@@ -1,0 +1,12 @@
+# welcome-route (h10-t-route): the welcome page at the root route at 1440 x 900, density 2,
+# on a dark system in Arctic Ice. Time 0 is the first frame; reduced motion holds the hero
+# still, so the shot waits 2 s.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+shot welcome-route

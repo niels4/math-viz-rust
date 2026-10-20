@@ -2,15 +2,14 @@
 # home; 1 s; the button back; 2 s; the shot: the viewer on x at a 1, h 0
 # with the hash bare and the menu closed. Behaviour: the route and url lines
 # at each step.
-# Phase 1 reaches the viewer with a mid-run hash edit (no `route` line yet);
-# phase 2 opens it with one (h10-t-route).
+route function-viewer
+query func=x2&a=2&h=1
 size 1440 900
 density 2
 scheme dark
 mode dark
 theme arctic-ice
 reduced-motion on
-hash func=x2&a=2&h=1
 wait 500
 click 104 48
 wait 1000

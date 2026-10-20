@@ -517,12 +517,18 @@ pub(crate) fn hero_content(border: &clay::BoundingBox) -> clay::BoundingBox {
     }
 }
 
-/// Paints the still into the hero frame: the `--background` fill, the grid,
-/// axes and labels, then the still's curves (the dashed original behind the
-/// solid one), the 1 px `--border` at radius 4, and the rounded cutouts — as
-/// `HeroPlane.tsx` draws them through `drawCartesianPlane` with no legend,
-/// no handles, no lines and no markers.
-pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::BoundingBox, density: f32) {
+/// Paints the still into the hero frame: the `--background` fill, the bare
+/// plane (the grid, axes and labels, then the still's curves — the dashed
+/// original behind the solid one — with no handles, no lines and no
+/// markers), the 1 px `--border` at radius 4, and the rounded cutouts — as
+/// `HeroPlane.tsx` draws them through `drawCartesianPlane` with empty extras
+/// and no legend.
+pub fn paint_hero(
+    app: &mut App,
+    theme: &mv_theme::Theme,
+    frame: &clay::BoundingBox,
+    density: f32,
+) {
     // The frame's background fill, under the ink (the DOM's canvas element
     // above its own background).
     app.vg.begin_path();
@@ -531,62 +537,35 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
         crate::draw::snap_box(*frame, density),
         crate::ui::corner_radius_all(WELCOME_RADIUS),
     );
-    app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
+    app.vg
+        .fill_color(theme.colors[mv_theme::Token::Background]);
     app.vg.fill();
     let content = hero_content(frame);
-    let width = f64::from(content.width);
-    let height = f64::from(content.height);
-    let grid = crate::grid::layout_grid(
-        crate::camera::DEFAULT_CENTER,
-        crate::camera::DEFAULT_SCALE,
-        width,
-        height,
-        crate::plane::LABEL_MARGIN,
-    );
+    // The bare plane (h10-seam's split): the still's curves through the
+    // transform, with empty extras.
     let colors = crate::plane::plane_colors(theme);
-    app.vg.save();
-    app.vg
-        .scissor(content.x, content.y, content.width, content.height);
-    app.vg.translate(content.x, content.y);
-    app.vg.line_cap(mv_nvg::LineCapType::BUTT);
-    crate::plane::paint_grid(&mut app.vg, content.width, content.height, &grid, &colors);
-    crate::plane::paint_axes(&mut app.vg, content.width, content.height, &grid, &colors);
-    let style = crate::plane::label_style();
-    let cell = std::cell::RefCell::new(&mut app.fonts);
-    let measure = |text: &str| {
-        let mut guard = cell.borrow_mut();
-        let fonts: &mut mv_text::Fonts = &mut guard;
-        f64::from(mv_text::measure(fonts, style, text))
-    };
-    let labels = crate::grid::layout_labels(&grid, crate::plane::PLANE_FONT_SIZE, &measure);
-    let fonts = cell.into_inner();
-    crate::plane::paint_labels(fonts, &mut app.vg, &labels, colors.label);
     let shown =
         crate::plot::Shown::new(crate::functions::base(crate::functions::FunctionSlug::SinX));
     let still =
         crate::transform_curves::transform_curves(&crate::plot::curves(&shown), WELCOME_STILL);
-    crate::plane::paint_curves(
+    let mcolors = crate::plane_markers::marker_colors(theme);
+    crate::plane::paint_plane(
+        &mut app.fonts,
         &mut app.vg,
-        content.width,
-        content.height,
-        &grid,
-        &still,
-        theme.colors[mv_theme::Token::ChartLine],
-        theme.colors[mv_theme::Token::ForegroundMuted],
+        &content,
+        crate::camera::DEFAULT_CENTER,
+        crate::camera::DEFAULT_SCALE,
+        &colors,
         true,
-    );
-    crate::plane::paint_curves(
-        &mut app.vg,
-        content.width,
-        content.height,
-        &grid,
         &still,
         theme.colors[mv_theme::Token::ChartLine],
         theme.colors[mv_theme::Token::ForegroundMuted],
-        false,
+        &[],
+        &[],
+        theme.colors[mv_theme::Token::Primary],
+        &[],
+        &mcolors,
     );
-    app.vg.reset_scissor();
-    crate::plane::paint_corner_cutouts(&mut app.vg, content.width, content.height, colors.page);
     // The 1 px `--border` at radius 4 over the ink (the DOM's border above
     // the canvas): the command walk's border shape, stroked in the translated
     // pass — the frame box inset half a px, corners shrunk the same.

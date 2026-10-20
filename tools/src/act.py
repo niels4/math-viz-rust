@@ -47,6 +47,7 @@ from script import (
     Video,
     Wait,
     Wheel,
+    hash_route,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -60,7 +61,8 @@ TARGETS = ("ref", "web", "native")
 # when set serves it from a server instead, for a person looking at a build.
 ROUTED_ORIGIN = "http://localhost:2"
 
-# The math-viz2 page the port copies.
+# The math-viz2 page the port copies, as a full hash (tokens.py and widths.py probe the viewer
+# explicitly; scripts open on their own `route` line through url_for below).
 REFERENCE_ROUTE = "#function-viewer"
 
 # The paused clock's wall time: 2026-10-12T00:00:00Z.
@@ -84,15 +86,17 @@ def port(name: str) -> int:
     return int(value)
 
 
-def url_for(target: str, query: str = "") -> str:
-    """The page's URL: the reference served on REACT_REF_PORT at the Function Viewer route (with
-    ?query appended when the script opens with a `query` line), or the web build on WEB_PORT (at
-    the same route: the build reads only the hash, so a `?query` search would be dropped)."""
+def url_for(target: str, route: str, query: str = "") -> str:
+    """The page's URL: the reference served on REACT_REF_PORT at the script's route (with ?query
+    appended when the script opens with a `query` line), or the web build on WEB_PORT at the same
+    route: the build reads only the hash, so a `?query` search would be dropped. `route` is the
+    hash route (script.hash_route: "" for welcome, "function-viewer" for the viewer); the hash is
+    always carried, including the empty route (`/#`) and the no-query case (a bare `/` would open
+    the welcome page once h10-page lands, and every existing web state still opens the viewer)."""
+    tail = f"?{query}" if query else ""
     if target == "ref":
-        tail = f"?{query}" if query else ""
-        return f"http://localhost:{port('REACT_REF_PORT')}/{REFERENCE_ROUTE}{tail}"
-    tail = f"{REFERENCE_ROUTE}?{query}" if query else ""
-    return f"http://localhost:{port('WEB_PORT')}/{tail}"
+        return f"http://localhost:{port('REACT_REF_PORT')}/#{route}{tail}"
+    return f"http://localhost:{port('WEB_PORT')}/#{route}{tail}"
 
 
 def is_web(target: str) -> bool:
@@ -321,8 +325,7 @@ def plane_point(page: Page) -> dict[str, object]:
     Points card's `.point` div without the x-of-P slider: its role span reads
     "point at the plane" at rest, "follows your pointer" under Q, and its
     readout the `f(x) = y` text (or the dashes at rest)."""
-    return page.evaluate(
-        """() => {
+    return page.evaluate("""() => {
           const slider = document.querySelector('[role="slider"][aria-label="x of P"]');
           const points = slider.parentElement.parentElement;
           const rows = [...points.children];
@@ -334,8 +337,39 @@ def plane_point(page: Page) -> dict[str, object]:
               : "point at the plane",
             readout: q.textContent.replace(/\\s+/g, " ").trim(),
           };
-        }"""
-    )
+        }""")
+
+
+def port_route(out: Path) -> str | None:
+    """The port's route at a run's end for the route behaviour check (h10-t-route): the last
+    `route` views line the native harness wrote (h10-page writes one at start and whenever the
+    route changes: "" on the welcome page, "function-viewer" on the viewer). None when the port
+    wrote no route line (until h10-page lands): a check that can't run, not a failure."""
+    file = out / "views.json"
+    if not file.exists():
+        return None
+    route: str | None = None
+    for line in file.read_text().splitlines():
+        try:
+            parsed: Any = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(parsed, dict):
+            continue
+        view = cast(dict[str, object], parsed)
+        if set(view) == {"route"} and isinstance(view.get("route"), str):
+            route = cast(str, view["route"])
+    return route
+
+
+def reference_route(page: Page) -> str:
+    """The reference's route for the same check: the hash before `?`, trimmed of slashes
+    (router-util's getRouteAndSearch), "" on the welcome page."""
+    return page.evaluate("""() => {
+          const mark = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+          const before = mark.split('?', 1)[0];
+          return before.replace(/^([/]*)|[/](?=[/])|([/]*)$/g, '');
+        }""")
 
 
 def init_script(start: Start, target: str, paused: bool) -> str:
@@ -415,14 +449,15 @@ def run_browser(
             page = context.new_page()
             log.watch(page)
             # The reference is the dev server, never a routed build; the web build is routed
-            # from disk unless WEB_PORT serves it. The script's `query` line opens on both.
+            # from disk unless WEB_PORT serves it. The script's `route` and `query` lines open on
+            # both.
+            route = hash_route(script.start.route)
             query = script.start.query
             if target == "ref" or os.environ.get("WEB_PORT"):
-                url = url_for(target, query)
+                url = url_for(target, route, query)
             else:
                 url = serve(context, web_dir(build))
-                if query:
-                    url += f"{REFERENCE_ROUTE}?{query}"
+                url += f"#{route}?{query}" if query else f"#{route}"
             if target == "web" and os.environ.get("MV_PANIC_AT_FRAME") == "1":
                 # The sweep's crash proof on the web build: the page reads
                 # `?panic-at-frame` through `mv_panic_at_frame` (web/library.js)
@@ -432,7 +467,7 @@ def run_browser(
                 url = head + mark + tail
             page.goto(url, wait_until="load")
             first_frame(page, target, paused)
-            actor = Actor(page, target, paused, out, result, on_shot)
+            actor = Actor(page, target, paused, out, result, on_shot, route)
             for action in script.actions:
                 if not action.runs_on(target):
                     continue
@@ -503,6 +538,7 @@ class Actor:
         out: Path,
         result: Run,
         on_shot: OnShot | None = None,
+        route: str = "function-viewer",
     ) -> None:
         self.page = page
         self.target = target
@@ -510,6 +546,7 @@ class Actor:
         self.out = out
         self.result = result
         self.on_shot = on_shot
+        self.route = route  # the script's hash route: a mid-run hash edit keeps it
         self.pointer = (0.0, 0.0)  # where Playwright's mouse starts
         self.time = 0  # ms since the first frame
         self.real_start = time.monotonic()
@@ -661,9 +698,9 @@ class Actor:
             case Hash(query):
                 # A mid-run edit of the page's hash: the page's own hashchange
                 # path runs on it (the reference's router, the port's shell
-                # listener), as an edit in the address bar would.
-                route = REFERENCE_ROUTE.lstrip("#")
-                self.page.evaluate("(hash) => { location.hash = hash; }", f"#{route}?{query}")
+                # listener), as an edit in the address bar would. The route is
+                # the script's, so a welcome script stays on the welcome page.
+                self.page.evaluate("(hash) => { location.hash = hash; }", f"#{self.route}?{query}")
                 self.inputs_now()
             case Shot(name):
                 self.shot(name)
@@ -770,6 +807,11 @@ def run_native(
         # The script's `query` line opens on every surface: --query natively
         # (main.rs seeds App.url from it), at the hash on ref and web.
         command += ["--query", script.start.query]
+    # The script's `route` line opens natively as --route (main.rs's parsed option; the binary
+    # run by hand defaults to welcome). The script default is function-viewer, so every existing
+    # script still opens the viewer.
+    command += ["--route", script.start.route]
+    result.detail["command"] = " ".join(command)
     if window:
         command.append("--window")
     began = time.monotonic()
@@ -828,7 +870,9 @@ def check_views(out: Path) -> list[str]:
     0), pan_x/pan_y (view units), origin_x/origin_y (plane px on the device grid), cursor (a CSS
     string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
-    frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
+    frame 0). A line holding only `route` (str) is the page's hash route ("" on the welcome page,
+    "function-viewer" on the viewer), written at start and whenever the route changes (h10-page;
+    until it lands no run writes one). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
     camera, written whenever it changes (h2-input). A line holding only `lit` (a list of
     "a"/"b"/"h"/"k", or null at rest) is the highlighted parameters in order, written whenever
     the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
@@ -858,6 +902,10 @@ def check_views(out: Path) -> list[str]:
             if not isinstance(view.get("url"), str):
                 problems.append(f"views.json line {number}: 'url' is not a string")
             continue
+        if set(view) == {"route"}:
+            if not isinstance(view.get("route"), str):
+                problems.append(f"views.json line {number}: 'route' is not a string")
+            continue
         if set(view) == {"camera"}:
             camera_raw: object = view.get("camera")
             if not isinstance(camera_raw, dict):
@@ -879,11 +927,15 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"lit"}:
             lit: object = view.get("lit")
             params: list[object] | None = (
-                [lit] if isinstance(lit, str) else (cast(list[object], lit) if isinstance(lit, list) else None)
+                [lit]
+                if isinstance(lit, str)
+                else (cast(list[object], lit) if isinstance(lit, list) else None)
             )
             if lit is not None and (
                 params is None
-                or not all(isinstance(param, str) and param in ("a", "b", "h", "k") for param in params)
+                or not all(
+                    isinstance(param, str) and param in ("a", "b", "h", "k") for param in params
+                )
             ):
                 problems.append(f"views.json line {number}: 'lit' is not a parameter list or null")
             continue

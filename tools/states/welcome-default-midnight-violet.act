@@ -1,4 +1,5 @@
 # welcome-default-midnight-violet (h10-page): the welcome page at rest in midnight-violet, reduced motion.
+route welcome
 size 1440 900
 density 2
 scheme dark

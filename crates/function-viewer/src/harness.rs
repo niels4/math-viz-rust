@@ -62,9 +62,16 @@ pub static MODIFIER_MODS: EnumMap<mv_script::Modifier, sdl3::keyboard::Mod> =
         sdl3::keyboard::Mod::LGUIMOD,
     ]);
 
-/// The page's hash route (`#function-viewer?...`): math-viz2's route at `c409aad`,
-/// carried so a mid-run `hash` edit reads back with the route the web mirror writes.
-const HASH_ROUTE: &str = "function-viewer";
+/// The page's hash route a mid-run `hash` edit keeps: the script's route on
+/// every surface (the README's harness contract; act.py's `self.route`).
+/// h10-page carries it so the edit reads back with the route the mirrors
+/// write.
+pub(crate) fn script_hash_route(run: &mv_script::Script) -> String {
+    match run.start.route {
+        mv_script::Route::Welcome => String::new(),
+        mv_script::Route::FunctionViewer => "function-viewer".to_string(),
+    }
+}
 
 /// One fact with when it happened.
 #[derive(Clone, Debug)]
@@ -131,6 +138,9 @@ pub struct Harness<'a> {
     /// `None` until the first frame records it, so the line is written at
     /// start and whenever the route changes.
     pub route: Option<String>,
+    /// The script's hash route: a mid-run `hash` edit keeps it on every
+    /// surface (the README's harness contract; act.py's `self.route`).
+    pub script_route: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -170,6 +180,7 @@ pub fn run_harness(
         q: String::new(),
         shown: String::new(),
         route: None,
+        script_route: script_hash_route(run),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -423,15 +434,18 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
             // scripted frames bypass SDL's event queue and a pushed event
             // would sit unhandled). Param live values follow through each
             // param's `sync` on the coming frames, once their owners wire it.
-            // A hash that changes the route enters it (a fresh mount, as the
-            // web `hashchange` path does). The frame now records the changed
+            // The edit keeps the script's route on every surface (the
+            // README's harness contract; act.py's `self.route`). A hash that
+            // changes the route enters it (a fresh mount, as the web
+            // `hashchange` path does). The frame now records the changed
             // query in views.json at the verb's time (a hash queues no fact,
             // and `inputs_now` only frames on pending facts, so without it a
             // hash-then-shot script would record no `url` line).
             let prev = h.app.url.route().to_string();
+            let kept = h.script_route.clone();
             h.app
                 .url
-                .sync_from_hash(&format!("#{HASH_ROUTE}?{}", q.query));
+                .sync_from_hash(&format!("#{kept}?{}", q.query));
             if prev != h.app.url.route() {
                 crate::welcome::enter_route(h.app);
             }

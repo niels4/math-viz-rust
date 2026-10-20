@@ -79,6 +79,16 @@ at `#function-viewer?<query>` (a `?query` search was silently dropped: nothing r
 `LiveWhat::Hash` (the loop milestone's); dev tools pinned `==` in `tools/pyproject.toml`
 (black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414: newest with a minimal canonical
 reflow — black 25.12 drifts 7 files, 25.1.0 23; bisect in scratch, never in the worktree).
+h10-t-route's entries: `route welcome|function-viewer` opens the page on its route (script
+default `function-viewer`, so every existing script is unchanged; the native binary's own
+default `welcome`, as the browser's `/`); `hash_route` in each reader gives the hash route
+(`welcome` → `""`, `function-viewer` → `"function-viewer"`); `act.py`'s `url_for` always
+carries the hash (`/#`, `/#function-viewer`), the `Hash` verb keeps the script's route, and
+`run_native` passes `--route` on every invocation (recorded in `report.json`'s `detail.command`);
+`loop.py`'s `--live` runs pass it from the live script (the idle/signals launches take the
+binary's default). The `route` views reader (`port_route`/`reference_route`) reads the last
+`route` line against `location.hash`'s route; until h10-page writes the line, "no route line"
+is a check that can't run, not a failure.
 
 ## The references and the bar
 
@@ -791,6 +801,96 @@ no new tokens (all eight tabled).
   inks shift vs CSS (primary ring (112,192,160) vs (122,190,216)) — the
   shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
   for the union `gamut all`, not a defect.
+
+### h9 (Arctic Ice Secondary recolor)
+
+- One CSS line (`--secondary` `oklch(0.2885 0.0208 248.55)` →
+  `oklch(0.34 0.05 242)`, Arctic Ice only): no Rust change; `tools/run
+  themes` + `tools/run tokens` + `tools/run dom --fixture` against ref-h9
+  touch exactly three files (themes.rs header hash + Secondary l/c/h;
+  tokens.json arctic-ice `--secondary` computed/oklch/rgb/engines;
+  page.json `"reference"` header). Consumers all resolve
+  `Token::Secondary` at run time (gear plate, hovered settings
+  row/swatch, hovered selector row, hovered value box, flip/reset
+  hovers, Reset-all hover, overlay button hover, tip key caps).
+- Measured draws, all engines agree: old plate rgb (35,44,53), new
+  (31,59,80) (tokens.json engines rows chromium+firefox identical;
+  sampled off the PNGs). Fail-pass on `default` vs ref-h9 WebKit: before
+  2847 flat px apart in the gear box (4636 changed), after 0 flat
+  (1107 changed, stroke/AA edges only). Base-vs-new native diff on
+  `default`: 4452 px changed, all inside the gear box, max 27.
+- Census vs union-h8 (the level's evidence): all 87 H1/H3/H4/H5/H6
+  states identical in chromium+firefox; webkit identical except
+  flip-focus +3546 and settings-focus-radio +3487 inside their
+  pre-existing focus-divergence clusters (same box/max) and
+  theme-switch-frames mids +0.5% (fade-timing family). Triangulation
+  (new port vs ref-h8 on 5198 + direct ref-h8-vs-ref-h9 diff) proves the
+  growth is ref-side: the reference paints its focused-box tip caps
+  Secondary (8140 px at CSS (54,485.5,310.5,503)), recolored h8→h9.
+- Finding (open, sibling-owned, not fixed here): in those two states the
+  port's focused-box key-help bar paints 0 px Secondary (section/muted
+  family in both builds; the typing-variant tip follows the token —
+  rows-typed paints 9164 px Secondary in the same box), so its cap
+  plates don't resolve `Token::Secondary` although `tip.rs key_cap`
+  sets it. Pre-existing at union-h8 (same shape), exposed by the
+  recolor. Owner: h8-points-field's tip/input code (wrap/field settles
+  the mechanism — suspect a second bar path beside `layout_tip`, since
+  `scrub_value::tip` early-returns unless typing/resting).
+### h10-seam (the legend out of the plane painter; param colours' new source)
+
+- `plane.rs`'s `paint_plane` is the bare plane (grid, axes, labels, curves,
+  lines, handles, markers in the source's order); `page.rs`'s `draw_plane`
+  paints the legend after it through `scale_legend::paint_legend` under one
+  shared `font_ready` gate (natively `true`), in the canvas's translated
+  and scissored space exactly as the painter did — the hero calls the bare
+  painter alone. `PlaneColors.legend` stays the colours' bundle (drawn by
+  the viewer now, never by `paint_plane`). Cutouts paint before the legend
+  now; they touch only 4 px corners, the plate sits 28/22 px off the edges,
+  no overlap. Proof: `states H2–H8 --targets native` (167 states, all ok)
+  plus `H2 H6 --targets web --engines webkit` (46, all ok) before vs after:
+  `same-run` 0 differences on both, exit 0.
+- `themes.py`'s `read_sidebar_params` reads the six per-theme `--param-a/k/b/h`
+  blocks from `src/style/param_colours.module.css`'s `.param_colours` block
+  (4cc4490; values unchanged; the sidebar and the welcome page both carry
+  the class, so `verify`'s sidebar selector still resolves). The per-theme
+  `--point-p`/`--point-q` overrides stayed in `SideBar.module.css`: the naive
+  move fails `verify` (arctic-ice `--point-q` computed `oklch(0.8276 0.1013
+  230.32)`, the file then saying the base default), so a new
+  `read_sidebar_theme_points` sources them from there and `read_themes`
+  merges them under the base defaults as before. Regen at 68e1c7b on the
+  h9-merged base: all three files headers only (themes.rs + tokens.json +
+  page.json reference lines), every value row equal — committed with the
+  generator change as (2).
+- Probe (`.local/probe_params.py`, report in `.local/shots/h10-seam/`):
+  welcome `/` vs viewer `/#function-viewer` `--param-a/k/b/h` in all six
+  themes equal, 24/24 in WebKit (seeding math-viz2's keys as `act.py` does).
+
+### h10-p-loop (the welcome loop and the fit-to-window scale)
+
+- `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
+  `STEPS` in source order, 451 frames) with `LOOP_MS` computed as the
+  source computes it (`total_frames * 1000 / FPS` via `const fn`, so a
+  step edit moves the constant). `LoopState` is flat (`func, a, b, h, k`),
+  not `{ func } & Transform`; `Easing` is a four-value struct evaluated
+  by `ease_drag` because a closure is neither const-buildable nor `Copy`
+  (clippy's `double_must_use` also bars `#[must_use]` on
+  `cubic_bezier`, whose `impl Fn` return is already must-use).
+  `dragged` delegates to `scrub::scrubbed` (no re-rounding; the −1.19 /
+  2.44 / 1.74 / 1.15 literals fall out of its `quantize`).
+- JS `%` on a non-negative float is Rust's `%` (both keep the dividend's
+  sign); `loop_at` keeps `%` as the source has it and documents the
+  negative-`ms` case rather than switching to `rem_euclid`.
+- `WelcomeClock` is the rAF accumulator as a step function in the same
+  file (first frame adds `plot::FIRST_FRAME_MS` regardless of the gap,
+  later frames `min(now - last, 50)`); `state(false)` is the still and
+  `is_animating(false)` is false, so the coder's frame loop schedules no
+  frames under reduced motion.
+- `fit_scale.rs`: `fit_scale` returns `1.0` on a non-positive side — the
+  hook instead keeps its previous value, so the caller retains its stored
+  fit and only calls this once laid out (said in the doc). `paper_fit`
+  is the `WelcomePage.tsx` line verbatim, `1e-9` included. Verified
+  against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
+  (53/100); at dpr 1 it is 0.52.
 
 ## Long runs
 
