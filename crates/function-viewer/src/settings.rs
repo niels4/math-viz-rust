@@ -898,7 +898,8 @@ pub fn click(app: &mut App, down: Hit) {
 }
 
 /// Routes a key. Tab walks the menu's stops while open (the DOM's one stop
-/// per radio group) and the generic stops otherwise; Esc closes the open
+/// per radio group) and falls through to the page milestones closed (they
+/// walk their own stops); Esc closes the open
 /// menu; the arrows move and check within the focused group; Space and Enter
 /// toggle on the gear and confirm in the menu (already picked, so no change).
 /// Returns whether the key was consumed.
@@ -953,10 +954,13 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                         true,
                     ),
                 }
+                true
             } else {
-                crate::input::move_focus(app, if shift { -1 } else { 1 });
+                // Closed: Tab falls through to the page milestones, which
+                // walk their own stops (the transform rows commit a focused
+                // draft and sync the highlight as blur-then-focus does).
+                false
             }
-            true
         }
         Keycode::Left | Keycode::Right | Keycode::Up | Keycode::Down if app.settings.open => {
             let arrow = match event.key {

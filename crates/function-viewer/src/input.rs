@@ -650,12 +650,14 @@ pub fn retarget(app: &mut App) {
         // The highlight follows the pointer across the transform rows (leave
         // then enter, as the DOM fires them); h4-rows owns this sync.
         crate::transform_row::sync_hover(app, before, hit);
+        // The highlight model follows the hover: terms and rows light (or
+        // drop) as the pointer moves across them (h4-readout; the row kinds
+        // map in `readout::hit_param` too). Only on a change: re-stamping
+        // the hover every frame would keep it ahead of the focus forever,
+        // and a Tabbed focus would never take the lead (h5-buttons).
+        crate::readout::sync_hover(app);
         app.dirty = true;
     }
-    // The highlight model follows the hover: terms and rows light (or drop)
-    // as the pointer moves across them (h4-readout; the row kinds map in
-    // `readout::hit_param` too).
-    crate::readout::sync_hover(app);
     update_cursor(app);
 }
 

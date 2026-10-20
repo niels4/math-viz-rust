@@ -794,6 +794,9 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
     }
     // Tab walks on from any transform stop (a toggle or Reset all moves
     // without committing; a field commits first, as blur-then-focus does).
+    // Any other stop walks on too (the browser's default when no milestone
+    // owns the key): the highlight follows, clearing the parameter when the
+    // focus leaves the rows.
     if event.key == Keycode::Tab {
         match app.input.focus.kind {
             HitKind::TransformField => {
@@ -804,7 +807,11 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                 }
             }
             HitKind::TransformFlip | HitKind::TransformResetAll => {}
-            _ => return false,
+            _ => {
+                if app.settings.open {
+                    return false;
+                }
+            }
         }
         let shift = event
             .mods
@@ -1010,8 +1017,7 @@ mod tests {
     }
 
     #[test]
-    fn clicking_a_button_blur_puts_the_rows_light_out() {
-        // The highlight-stuck fix (`b6457b7`): the reset and flip clicks blur
+    fn clicking_a_button_blur_puts_the_rows_light_out() {        // The highlight-stuck fix (`b6457b7`): the reset and flip clicks blur
         // the button, so once the pointer moves off, the row is unlit. The
         // click moves no touch itself; the blur drops the row's focus and the
         // pointer-off drops its hover.
@@ -1086,5 +1092,118 @@ mod tests {
         state.set_hover(Some(TransformParam::K));
         state.set_hover(None);
         assert!(state.is_lit(TransformParam::A));
+    }
+
+    #[test]
+    fn tab_walks_a_focused_field_onto_the_next_toggle() {
+        // flip-focus: k's field focused, Tab moves the focus to b's toggle
+        // with the highlight following (blur-then-focus).
+        use sdl3::keyboard::{Keycode, Mod};
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.url = crate::url::Url::from_query("a=2");
+        crate::transform_section::init_params_from_url(&mut app);
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .set_layout_dimensions(mv_sys::clay::Dimensions {
+                width: 374.0,
+                height: 900.0,
+            });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .begin_layout();
+        let mut root = crate::ui::empty_decl();
+        root.layout.sizing = mv_sys::clay::Sizing {
+            width: mv_clay::sizing_fixed(374.0),
+            height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        };
+        crate::ui::ui_scope(&mut app, mv_clay::id("CardScope", 0), &root, |app| {
+            crate::transform_section::section(app);
+        });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .end_layout();
+        crate::input::collect_regions(&mut app);
+
+        app.input.focus = field_hit(TransformParam::K);
+        app.input.focus_visible = true;
+        app.state.set_focus(Some(TransformParam::K));
+        let tab = crate::input::KeyEvent {
+            key: Keycode::Tab,
+            mods: Mod::empty(),
+            down: true,
+            repeat: false,
+        };
+        assert!(key(&mut app, &tab));
+        assert_eq!(app.input.focus, flip_hit(TransformParam::B));
+        assert_eq!(app.state.lit(), Some(TransformParam::B));
+    }
+
+    #[test]
+    fn clicking_then_tab_walks_from_the_clicked_field() {
+        // flip-focus through the real input path: a press on k's field
+        // focuses it, the release clicks through, and Tab walks to b's
+        // toggle with the highlight following.
+        use sdl3::keyboard::{Keycode, Mod};
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.url = crate::url::Url::from_query("a=2");
+        crate::transform_section::init_params_from_url(&mut app);
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .set_layout_dimensions(mv_sys::clay::Dimensions {
+                width: 374.0,
+                height: 900.0,
+            });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .begin_layout();
+        let mut root = crate::ui::empty_decl();
+        root.layout.sizing = mv_sys::clay::Sizing {
+            width: mv_clay::sizing_fixed(374.0),
+            height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        };
+        crate::ui::ui_scope(&mut app, mv_clay::id("CardScope", 0), &root, |app| {
+            crate::transform_section::section(app);
+        });
+        app.clay
+            .as_mut()
+            .expect("clay context initialised")
+            .end_layout();
+        crate::input::collect_regions(&mut app);
+
+        // The pointer on k's field (card-rel 271.5..333.5 × 107..129).
+        app.input.pointer = [300.0, 118.0];
+        app.input.over = true;
+        crate::input::retarget(&mut app);
+        assert_eq!(app.input.hover, field_hit(TransformParam::K));
+        // Down focuses the field; up clicks through without changing it.
+        app.input.pressed = app.input.hover;
+        press_down(&mut app);
+        assert_eq!(app.input.focus, field_hit(TransformParam::K));
+        app.input.pressed = crate::input::Hit::default();
+        click(&mut app, field_hit(TransformParam::K));
+        assert_eq!(app.input.focus, field_hit(TransformParam::K));
+        // Tab walks to b's toggle with the highlight following.
+        let tab = crate::input::KeyEvent {
+            key: Keycode::Tab,
+            mods: Mod::empty(),
+            down: true,
+            repeat: false,
+        };
+        assert!(key(&mut app, &tab));
+        assert_eq!(app.input.focus, flip_hit(TransformParam::B));
+        assert_eq!(app.state.lit(), Some(TransformParam::B));
     }
 }
