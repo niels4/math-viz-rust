@@ -12,3 +12,6 @@ H3 = ["sidebar-default", "select-x2", "select-sinx", "switch-frames", "switch-mi
 # equation, and with a lit by the pointer (h4-readout); then h4-rows' rows
 # and params states.
 H4 = ["readout-x1", "readout-x2", "readout-x3", "readout-sinx", "readout-values", "readout-narrow", "readout-hover-a", "rows-default", "rows-values", "rows-hover-a", "rows-focus-k", "rows-typed", "rows-enter", "rows-zero-scale", "rows-arrows", "url-params"]
+# H5 at b8a0e1d (h5-box owns the box-* states; h5-ruler and h5-buttons append
+# their ruler-*, reset-*, flip-* and readout-b-height states).
+H5 = ["box-drag-a-50", "box-drag-shift", "box-drag-ctrl", "box-drag-out", "box-release", "box-wheel", "box-click-open", "box-arrows-typing", "box-esc", "box-dblclick", "box-tip-rest", "box-tip-typing"]

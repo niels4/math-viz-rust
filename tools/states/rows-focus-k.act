@@ -1,10 +1,11 @@
-# rows-focus-k (H4): k's field focused by click (331, 476: field k's centre).
+# rows-focus-k (H4): k's field focused by click (331, 494: field k's centre
+# at b8a0e1d; was 331, 476 at 5714319).
 size 1440 900
 density 2
 scheme dark
 mode dark
 theme arctic-ice
 wait 2000
-click 331 476
+click 331 494
 wait 200
 shot rows-focus-k

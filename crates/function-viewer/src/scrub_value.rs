@@ -1202,10 +1202,12 @@ pub fn tip(app: &mut App, param: TransformParam, index: u32) {
         height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
     };
     decl.layout.padding = clay::Padding {
-        left: TIP_PAD_X as u16,
-        right: TIP_PAD_X as u16,
-        top: TIP_PAD_Y as u16,
-        bottom: TIP_PAD_Y as u16,
+        // The 1 px border takes no layout space, so it joins the padding
+        // (the menu's `bordered` rule).
+        left: TIP_PAD_X as u16 + 1,
+        right: TIP_PAD_X as u16 + 1,
+        top: TIP_PAD_Y as u16 + 1,
+        bottom: TIP_PAD_Y as u16 + 1,
     };
     decl.layout.childGap = TIP_GAP as u16;
     decl.layout.childAlignment = clay::ChildAlignment {
@@ -1272,37 +1274,47 @@ fn tip_part(app: &mut App, part: TipPart, id: u32) {
             );
         }
         TipPart::Key(label) => {
-            key_cap(app, id, ink);
-            crate::typography::text(
-                app,
-                mv_clay::id(TIP_TEXT_ID, id),
-                crate::typography::Type::KeyText,
-                &label,
-                ink(mv_theme::Token::Foreground),
-                false,
-            );
+            key_cap(app, id, &ink, |app| {
+                crate::typography::text(
+                    app,
+                    mv_clay::id(TIP_TEXT_ID, id),
+                    crate::typography::Type::KeyText,
+                    &label,
+                    ink(mv_theme::Token::Foreground),
+                    false,
+                );
+            });
         }
         TipPart::KeyIcon(_) => {
-            key_cap(app, id, ink);
-            let mut glyph = crate::ui::empty_decl();
-            glyph.layout.sizing = clay::Sizing {
-                width: mv_clay::sizing_fixed(TIP_ARROW_WIDTH),
-                height: mv_clay::sizing_fixed(TIP_ARROW_HEIGHT),
-            };
-            crate::ui::ui_scope(app, mv_clay::id(TIP_ARROW_ID, id), &glyph, |_| {});
+            key_cap(app, id, &ink, |app| {
+                let mut glyph = crate::ui::empty_decl();
+                glyph.layout.sizing = clay::Sizing {
+                    width: mv_clay::sizing_fixed(TIP_ARROW_WIDTH),
+                    height: mv_clay::sizing_fixed(TIP_ARROW_HEIGHT),
+                };
+                crate::ui::ui_scope(app, mv_clay::id(TIP_ARROW_ID, id), &glyph, |_| {});
+            });
         }
     }
 
     /// A key cap: the Secondary plate with a 1 px border under the label.
-    fn key_cap(app: &mut App, id: u32, ink: impl Fn(mv_theme::Token) -> clay::Color) {
+    fn key_cap(
+        app: &mut App,
+        id: u32,
+        ink: &impl Fn(mv_theme::Token) -> clay::Color,
+        child: impl FnOnce(&mut App),
+    ) {
         let mut cap = crate::ui::empty_decl();
         cap.layout.sizing = clay::Sizing {
             width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
             height: mv_clay::sizing_fixed(KEY_HEIGHT),
         };
         cap.layout.padding = clay::Padding {
-            left: KEY_PAD_X as u16,
-            right: KEY_PAD_X as u16,
+            // The 1 px side borders join the horizontal padding; the fixed
+            // 21 px height already holds the vertical ones, as CSS
+            // `box-sizing` does.
+            left: KEY_PAD_X as u16 + 1,
+            right: KEY_PAD_X as u16 + 1,
             top: 1,
             bottom: 2,
         };
@@ -1316,7 +1328,7 @@ fn tip_part(app: &mut App, part: TipPart, id: u32) {
             width: mv_clay::border_outside(1),
         };
         cap.cornerRadius = crate::ui::corner_radius_all(crate::transform_row::BOX_RADIUS);
-        crate::ui::ui_scope(app, mv_clay::id(TIP_KEY_ID, id), &cap, |_| {});
+        crate::ui::ui_scope(app, mv_clay::id(TIP_KEY_ID, id), &cap, child);
     }
 }
 
@@ -1904,6 +1916,65 @@ mod tests {
             y: 0.0,
             width: 0.0,
             height: 0.0,
+        }
+    }
+
+    /// The tip's box against the reference's (webkit `page.json` at b8a0e1d,
+    /// card-relative: the card stands at [29, 376.5]): the rest tip hangs 10
+    /// px under the box with its right edge flush, wider than the row; the
+    /// typing tip is narrower and a key-cap taller. Both are single lines.
+    #[test]
+    fn tip_lays_out_like_the_reference() {
+        for (typing, want) in [
+            (false, [-1.390_625, 100.0, 357.390_625, 31.0]),
+            (true, [13.078_125, 100.0, 342.921_875, 37.0]),
+        ] {
+            let _guard = mv_clay::tests_lock();
+            let mut app = crate::fixture::headless_app();
+            assert!(mv_text::init(&mut app.fonts));
+            crate::ui::init_clay(&mut app);
+            if typing {
+                app.drafts[TransformParam::A].typing_from = Some(1.0);
+            } else {
+                app.scrub_resting = Some(TransformParam::A);
+            }
+            app.clay
+                .as_mut()
+                .expect("clay context initialised")
+                .set_layout_dimensions(mv_sys::clay::Dimensions {
+                    width: 374.0,
+                    height: 900.0,
+                });
+            app.clay
+                .as_mut()
+                .expect("clay context initialised")
+                .begin_layout();
+            let mut root = crate::ui::empty_decl();
+            root.layout.sizing = mv_sys::clay::Sizing {
+                width: mv_clay::sizing_fixed(374.0),
+                height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+            };
+            crate::ui::ui_scope(&mut app, mv_clay::id("CardScope", 0), &root, |app| {
+                crate::transform_section::section(app);
+            });
+            app.clay
+                .as_mut()
+                .expect("clay context initialised")
+                .end_layout();
+            let clay = app.clay.as_ref().expect("clay context initialised");
+            let data = clay.get_element_data(mv_clay::id(TIP_ID, 0));
+            assert!(data.found, "tip laid out (typing {typing})");
+            let b = data.boundingBox;
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= 0.5,
+                    "tip [{i}] typing {typing}: laid out {got}, reference {want}"
+                );
+            }
         }
     }
 

@@ -165,6 +165,8 @@ FIXTURE_STATES = (
     "rows-enter",
     "rows-zero-scale",
     "rows-arrows",
+    "box-tip-rest",
+    "box-tip-typing",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"
