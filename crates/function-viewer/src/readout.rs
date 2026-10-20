@@ -54,11 +54,17 @@ pub const TERM_TINT: f32 = 0.18;
 /// The `h` letter's minus keeps its gap (`.minus { padding-left: 3px }`).
 pub const MINUS_PADDING_LEFT: f32 = 3.0;
 /// The stacked fraction (`.frac`): `gap: 2px`, `font-size: round(0.8em)` =
-/// 22 px at the line size, side padding `round(0.15em)` of its own 22 px
-/// font = 3 px, the text centred.
+/// 22 px at the line size, the text centred. The side padding is
+/// `round(0.15em)` of the fraction's own font: 3 px on the value line's
+/// 22 px, 2 px on the form line's 16 px.
 pub const FRAC_GAP: f32 = 2.0;
 pub const FRAC_FONT_SIZE: f32 = 22.0;
-pub const FRAC_PADDING_X: f32 = 3.0;
+
+/// The fraction's side padding for the line: `round(0.15em)` of the
+/// fraction's own font size, as the stylesheet rounds it.
+fn frac_pad_x(form: bool) -> f32 {
+    (0.15 * size_px(&RunSize::Frac, form)).round()
+}
 /// A fraction row's inner spans (`> span:not(.bar)`): `padding: 0 4px`.
 pub const FRAC_ROW_PAD_X: f32 = 4.0;
 /// The division bar (`.bar`): `height: max(1.5px, 0.06875em)`, currentcolor.
@@ -126,12 +132,15 @@ pub enum RunSize {
 
 /// Plain text: upright, or italic for a `var` letter. `hidden` is a
 /// screen-reader-only span (`Hidden`): painted as nothing, read aloud.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// `pad_left` is the span's own left padding (the form `h` minus's 3 px
+/// `.minus` span; everything else pads through its parent or not at all).
+#[derive(Clone, Debug, PartialEq)]
 pub struct TextRun {
     pub text: String,
     pub italic: bool,
     pub size: RunSize,
     pub hidden: bool,
+    pub pad_left: f32,
 }
 
 /// A parameter's run (`Term`): painted in its colour, hoverable, lit through
@@ -150,7 +159,7 @@ pub struct TermRun {
 /// One piece of a line: text, a parameter's run, a stacked fraction (top over
 /// the bar over bottom, read as `top/bottom`), or the exponent digit (read
 /// as its superscript).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Part {
     Text(TextRun),
     Term(TermRun),
@@ -159,7 +168,7 @@ pub enum Part {
 }
 
 /// One equation line: the value line's span, or the form line's paragraph.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Line {
     pub parts: Vec<Part>,
 }
@@ -189,13 +198,18 @@ pub struct EquationTerms {
     pub k: Option<Vec<Part>>,
 }
 
-fn text(content: &str, italic: bool, size: RunSize) -> Part {
-    Part::Text(TextRun {
+fn text_run(content: &str, italic: bool, size: RunSize) -> TextRun {
+    TextRun {
         text: content.to_owned(),
         italic,
         size,
         hidden: false,
-    })
+        pad_left: 0.0,
+    }
+}
+
+fn text(content: &str, italic: bool, size: RunSize) -> Part {
+    Part::Text(text_run(content, italic, size))
 }
 
 /// A screen-reader-only span (`Hidden`): the `Form: ` prefix, the numerator's
@@ -206,6 +220,16 @@ fn hidden_text(content: &str) -> Part {
         italic: false,
         size: RunSize::Line,
         hidden: true,
+        pad_left: 0.0,
+    })
+}
+
+/// The form `h` term's minus span (`.minus`): the true minus with the span's
+/// 3 px left padding, measured and painted as one run.
+fn minus_text() -> Part {
+    Part::Text(TextRun {
+        pad_left: MINUS_PADDING_LEFT,
+        ..text_run(MINUS_STR, false, RunSize::Line)
     })
 }
 
@@ -296,7 +320,7 @@ fn letter_terms() -> EquationTerms {
         a: Some(vec![term(TransformParam::A, "", "a", true, RunSize::Line)]),
         b: Some(vec![term(TransformParam::B, "", "b", true, RunSize::Line)]),
         h: Some(vec![
-            text(MINUS_STR, false, RunSize::Line),
+            minus_text(),
             text(" ", false, RunSize::Line),
             term(TransformParam::H, "", "h", true, RunSize::Line),
         ]),
@@ -889,7 +913,8 @@ fn runs_width(app: &mut App, parts: &[Part], form: bool) -> f32 {
         match part {
             Part::Text(run) if run.hidden => {}
             Part::Text(run) => {
-                width += run_advance(app, &run.text, size_px(&run.size, form), run.italic, !form);
+                width += run.pad_left
+                    + run_advance(app, &run.text, size_px(&run.size, form), run.italic, !form);
             }
             Part::Term(run) => {
                 width += run_advance(app, &run.prefix, size_px(&run.size, form), false, !form)
@@ -898,11 +923,11 @@ fn runs_width(app: &mut App, parts: &[Part], form: bool) -> f32 {
             }
             Part::Frac { top, bottom } => {
                 width += frac_row_width(app, top, form).max(frac_row_width(app, bottom, form))
-                    + 2.0 * FRAC_PADDING_X;
+                    + 2.0 * frac_pad_x(form);
             }
             Part::Sup { digit } => {
                 let sup = size_px(&RunSize::Sup, form);
-                width += run_advance(app, &digit.to_string(), sup, false, false);
+                width += SUP_MARGIN_LEFT + run_advance(app, &digit.to_string(), sup, false, false);
             }
         }
     }
@@ -1031,7 +1056,8 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
             Part::Text(run) if run.hidden => {}
             Part::Text(run) => {
                 let size = size_px(&run.size, form);
-                let width = run_advance(app, &run.text, size, run.italic, !form);
+                let width = run.pad_left
+                    + run_advance(app, &run.text, size, run.italic, !form);
                 run_spacer(app, width, run_box_height(&run.size, form), ids);
             }
             Part::Term(run) => {
@@ -1078,8 +1104,8 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
                     height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
                 };
                 col.layout.padding = clay::Padding {
-                    left: FRAC_PADDING_X as u16,
-                    right: FRAC_PADDING_X as u16,
+                    left: frac_pad_x(form) as u16,
+                    right: frac_pad_x(form) as u16,
                     top: 0,
                     bottom: 0,
                 };
@@ -1102,7 +1128,7 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
             }
             Part::Sup { digit } => {
                 let sup = size_px(&RunSize::Sup, form);
-                let width = run_advance(app, &digit.to_string(), sup, false, false);
+                let width = SUP_MARGIN_LEFT + run_advance(app, &digit.to_string(), sup, false, false);
                 run_spacer(app, width, line_h, ids);
             }
         }
@@ -1291,9 +1317,12 @@ fn paint_parts(
                     ctx.base
                 };
                 let adv = mv_text::measure(&mut app.fonts, style, &run.text);
-                mv_text::draw(&mut app.fonts, &mut app.vg, style, *x, at, &run.text, ink);
-                note_run(app, style, *x, at, adv);
-                *x += adv;
+                // The span's own left padding (the form `h` minus): drawn
+                // text starts past it, the cursor steps over both.
+                let at_x = *x + run.pad_left;
+                mv_text::draw(&mut app.fonts, &mut app.vg, style, at_x, at, &run.text, ink);
+                note_run(app, style, at_x, at, adv);
+                *x += run.pad_left + adv;
             }
             Part::Term(run) => {
                 let size = size_px(&run.size, form);
@@ -1304,7 +1333,10 @@ fn paint_parts(
                 // paints before either glyph (below): it is opaque, so
                 // drawing the prefix first would cover it whenever the term
                 // is lit.
-                let mut at = *x;
+                // The cursor is the padded box's left (the layout's term
+                // outer): the ink starts past the left padding, the plate
+                // spans the box, and the cursor leaves past the right one.
+                let mut at = *x + TERM_PADDING_X;
                 let prefix_adv = if !run.prefix.is_empty() {
                     let style = run_style(size, false, tabular);
                     mv_text::measure(&mut app.fonts, style, &run.prefix)
@@ -1314,9 +1346,9 @@ fn paint_parts(
                 let style = run_style(size, run.italic, tabular);
                 let adv = mv_text::measure(&mut app.fonts, style, &run.text);
                 let outer = clay::BoundingBox {
-                    x: *x - TERM_PADDING_X,
+                    x: *x,
                     y: ctx.top + ctx.strut_drop,
-                    width: at - *x + prefix_adv + adv + 2.0 * TERM_PADDING_X,
+                    width: prefix_adv + adv + 2.0 * TERM_PADDING_X,
                     height: strut_h(form) + TERM_PADDING_BOTTOM,
                 };
                 if app.state.is_lit(run.param) {
@@ -1344,7 +1376,7 @@ fn paint_parts(
                     &run.text,
                     param_ink,
                 );
-                *x = at + adv + 2.0 * TERM_PADDING_X;
+                *x = outer.x + outer.width;
             }
             Part::Frac { top, bottom } => {
                 paint_frac(app, theme, ink, top, bottom, form, x, ctx);
@@ -1354,10 +1386,13 @@ fn paint_parts(
                 let style = run_style(sup, false, false);
                 let text = digit.to_string();
                 let adv = mv_text::measure(&mut app.fonts, style, &text);
+                // The digit's `margin-left: 1px`: drawn text starts past
+                // it, the cursor steps over both.
+                let at_x = *x + SUP_MARGIN_LEFT;
                 let at = ctx.base - SUP_RAISE_EM * line_px(form);
-                mv_text::draw(&mut app.fonts, &mut app.vg, style, *x, at, &text, ink);
-                note_run(app, style, *x, at, adv);
-                *x += adv;
+                mv_text::draw(&mut app.fonts, &mut app.vg, style, at_x, at, &text, ink);
+                note_run(app, style, at_x, at, adv);
+                *x += SUP_MARGIN_LEFT + adv;
             }
         }
     }
@@ -1380,7 +1415,8 @@ fn paint_frac(
     let strut = strut_h(form);
     let top_h = strut + if row_has_term(top) { 1.0 } else { 0.0 };
     let bottom_h = strut + if row_has_term(bottom) { 1.0 } else { 0.0 };
-    let col_x = *x + FRAC_PADDING_X;
+    let pad_x = frac_pad_x(form);
+    let col_x = *x + pad_x;
     let top_w = frac_row_width(app, top, form);
     let bottom_w = frac_row_width(app, bottom, form);
     let content = top_w.max(bottom_w);
@@ -1413,7 +1449,7 @@ fn paint_frac(
         bar_y + BAR_HEIGHT + FRAC_GAP,
         bottom_h,
     );
-    *x += content + 2.0 * FRAC_PADDING_X;
+    *x += content + 2.0 * pad_x;
 }
 
 /// Paints one frac row's runs on the row's strut baseline, starting inside
@@ -1476,12 +1512,6 @@ fn paint_lit(
     );
     app.vg.fill_color(tint);
     app.vg.fill();
-    let bar = |app: &mut App, r: [f32; 4], colour| {
-        app.vg.begin_path();
-        app.vg.rect(r[0], r[1], r[2], r[3]);
-        app.vg.fill_color(colour);
-        app.vg.fill();
-    };
     if form {
         // The form's underline follows the panel's 4 px radius (an inset
         // shadow): ink the full rounded panel, then cover all but the bottom
@@ -1514,17 +1544,48 @@ fn paint_lit(
         app.vg.fill_color(tint);
         app.vg.fill();
     } else {
-        bar(app, [outer.x, outer.y - 1.0, outer.width, 1.0], tint);
-        bar(
-            app,
-            [outer.x, outer.y + outer.height, outer.width, 1.0],
-            ink,
+        // The value line's edge lines follow the panel's 4 px radius (three
+        // 1 px shadows: tint above, ink below and inside). Square bars would
+        // stick square ends past the rounded corners, so each strip is a
+        // panel of its own: the top strip repaints the plate's top row with
+        // the plate's own tint (a no-op there), the bottom strip merges the
+        // inset and outer ink lines, which sit contiguously.
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            clay::BoundingBox {
+                x: outer.x,
+                y: outer.y - 1.0,
+                width: outer.width,
+                height: 2.0,
+            },
+            clay::CornerRadius {
+                topLeft: TERM_RADIUS,
+                topRight: TERM_RADIUS,
+                bottomLeft: 0.0,
+                bottomRight: 0.0,
+            },
         );
-        bar(
-            app,
-            [outer.x, outer.y + outer.height - 1.0, outer.width, 1.0],
-            ink,
+        app.vg.fill_color(tint);
+        app.vg.fill();
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            clay::BoundingBox {
+                x: outer.x,
+                y: outer.y + outer.height - 1.0,
+                width: outer.width,
+                height: 2.0,
+            },
+            clay::CornerRadius {
+                topLeft: 0.0,
+                topRight: 0.0,
+                bottomLeft: TERM_RADIUS,
+                bottomRight: TERM_RADIUS,
+            },
         );
+        app.vg.fill_color(ink);
+        app.vg.fill();
     }
 }
 
