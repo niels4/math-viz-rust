@@ -1,11 +1,12 @@
-"""The settings panel's motion on the real clock, frame by frame (tools/run raf, M12): what a recording
-at 25 frames a second can't show (AGENTS.md: values sampled every animation frame, timed with
-performance.now() inside the callback). On the reference, the panel's computed opacity and scale
-each frame from the gear's click (its opening), and the new content's opacity each frame from a
-pick of Light (the list's swap); on the web build, whether each animation frame from the click (or
-the pick) drew a frame (Module.frames), and until when. The web build's frames are the same
-functions of time as React's (the paused clock's states show them frame by frame), so a frame on
-every animation frame means the same motion at real speed."""
+"""The settings panel's motion on the real clock, frame by frame (tools/run raf, h1-settings):
+what a recording at 25 frames a second can't show (AGENTS.md: values sampled every animation
+frame, timed with performance.now() inside the callback). On the reference, the panel's computed
+opacity and scale each frame from the gear's click (its opening), and the new content's opacity
+each frame from a pick of Light (the list's swap); on the web build, whether each animation frame
+from the click (or the pick) drew a frame (Module.frames), and until when. The web build's frames
+are the same functions of time as the reference's (the paused clock's states show them frame by
+frame), so a frame on every animation frame means the same motion at real speed. The coordinates
+and test ids name the settings panel; h1-settings keeps them with the page."""
 
 import json
 from dataclasses import asdict, dataclass
@@ -25,9 +26,14 @@ GEAR = (1383, 48)
 MODE_LIGHT = (1251, 129)
 GAP = (1250, 181)
 
-INIT = """localStorage.setItem('mathviz-fv-tour', 'true');
-localStorage.setItem('mathviz-appearance',
-  JSON.stringify({mode: 'system', dark: 'arctic-ice', light: 'clean-teal'}));"""
+INIT = """localStorage.setItem('mathviz-theme',
+  JSON.stringify("arctic-ice"));
+localStorage.setItem('mathviz-light-dark',
+  JSON.stringify("system"));
+localStorage.setItem('mathviz-dark-theme',
+  JSON.stringify("arctic-ice"));
+localStorage.setItem('mathviz-light-theme',
+  JSON.stringify("clean-teal"));"""
 
 # Each animation frame for `ms`: performance.now() since the first, and what `read` reads then.
 SAMPLER = """([ms, read]) => {
@@ -72,13 +78,15 @@ class Sampled:
 
 def open_page(page: Page, target: str) -> None:
     url = (
-        f"http://localhost:{port('REACT_REF_PORT')}/#demos/function-viewer-v2"
+        f"http://localhost:{port('REACT_REF_PORT')}/#function-viewer"
         if target == "ref"
         else f"http://localhost:{port('WEB_PORT')}/"
     )
     page.goto(url, wait_until="load")
     if target == "ref":
-        page.wait_for_selector("canvas")
+        # React has mounted once the theme class is on the body (h1-settings's plane adds a
+        # canvas to wait for instead).
+        page.wait_for_function("() => document.body.className.length > 0")
     else:
         page.wait_for_function("() => window.Module?.started === true && Module.frames >= 1")
     page.wait_for_timeout(3000)  # the first paint is over

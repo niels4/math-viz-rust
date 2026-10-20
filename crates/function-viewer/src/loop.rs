@@ -91,6 +91,9 @@ pub enum UserCode {
     Model,
     /// Another tab stored the prefs: data1 the packed prefs word.
     Prefs,
+    /// The page's hash changed under the app (the web `hashchange`
+    /// subscription): re-read on the main thread. Appended by h2-p-url.
+    Hash,
 }
 
 /// Builds an SDL user event and pushes it. Callable from any thread (the SDL

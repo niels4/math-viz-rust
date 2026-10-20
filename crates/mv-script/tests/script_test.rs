@@ -67,6 +67,7 @@ reduced-motion off
             light_theme: Slug::SageEditorial,
             reduced_motion: true,
             space: Space::DisplayP3,
+            query: String::new(),
         }
     );
     let expected = vec![
@@ -287,6 +288,24 @@ wait 16
 }
 
 #[test]
+fn query_opens_the_page_with_the_hash_query() {
+    let (script, err) = parse("query center=1,2&scale=2\nwait 16\nshot rest\n");
+    assert!(err.is_none(), "unexpected error: {err:?}");
+    assert_eq!(script.start.query, "center=1,2&scale=2");
+    assert_eq!(script.actions.len(), 2);
+
+    for text in [
+        "query\nwait 1\n",
+        "query a=1 b=2\nwait 1\n",
+        "wait 1\nquery a=1\n",
+        "ref query a=1\nwait 1\n",
+    ] {
+        let (_, err) = parse(text);
+        assert!(err.is_some(), "no error for {text:?}");
+    }
+}
+
+#[test]
 // One case (`ref theme tron-cyan`) reaches `mv_theme::slug_scheme`.
 fn errors_name_their_line() {
     struct Case {
@@ -460,17 +479,23 @@ fn errors_name_their_line() {
 
 // Every script in tools/states and tools/live parses, so a mistake shows
 // here before a run. Reaches `mv_theme::slug_scheme` through the scripts'
-// `theme` lines.
+// `theme` lines. tools/live is empty until the loop milestone reseeds it;
+// tools/states always holds its milestone's states.
 #[test]
 fn state_scripts_parse() {
-    expect_parse("tools/states");
-    expect_parse("tools/live");
+    expect_parse("tools/states", 1);
+    expect_parse("tools/live", 0);
 }
 
-fn expect_parse(dir: &str) {
+fn expect_parse(dir: &str, minimum: usize) {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
     let mut scripts = 0;
-    let entries = std::fs::read_dir(format!("{root}/{dir}")).unwrap();
+    // `tools/live` is empty until the loop milestone reseeds it, so the
+    // directory may not exist; anything else missing is a failure.
+    let Ok(entries) = std::fs::read_dir(format!("{root}/{dir}")) else {
+        assert_eq!(minimum, 0, "{dir} missing with minimum {minimum}");
+        return;
+    };
     for entry in entries {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -488,5 +513,5 @@ fn expect_parse(dir: &str) {
             err.map(|e| (e.line, e.message)),
         );
     }
-    assert!(scripts > 0, "no scripts in {dir}");
+    assert!(scripts >= minimum, "fewer than {minimum} scripts in {dir}");
 }

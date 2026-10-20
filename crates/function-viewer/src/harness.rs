@@ -450,8 +450,8 @@ fn harness_frame(h: &mut Harness<'_>) {
     }
     // The page query, whenever it changed: `--query` at start, then whatever
     // the page milestones route through `App.url`.
-    if h.app.url != h.url {
-        h.url = h.app.url.clone();
+    if h.app.url.query() != h.url {
+        h.url = h.app.url.query().to_string();
         h.views.extend_from_slice(url_line(&h.url).as_bytes());
     }
 }

@@ -1,0 +1,145 @@
+# The (selector, token) pairs the port draws with (tools/run themes, tools/run tokens):
+# the CSS selector of the element carrying the token, and the token's CSS name, in the order
+# the theme files define them. Each milestone appends the pairs it newly draws with.
+#
+# H0: the 35 theme tokens on the theme element. main.tsx sets
+# `document.body.className = themeClass style_vars`, so the theme class is on <body>.
+[[pair]]
+selector = "body"
+token = "--background"
+
+[[pair]]
+selector = "body"
+token = "--background-muted"
+
+[[pair]]
+selector = "body"
+token = "--card"
+
+[[pair]]
+selector = "body"
+token = "--section"
+
+[[pair]]
+selector = "body"
+token = "--foreground"
+
+[[pair]]
+selector = "body"
+token = "--foreground-muted"
+
+[[pair]]
+selector = "body"
+token = "--primary"
+
+[[pair]]
+selector = "body"
+token = "--primary-foreground"
+
+[[pair]]
+selector = "body"
+token = "--secondary"
+
+[[pair]]
+selector = "body"
+token = "--secondary-foreground"
+
+[[pair]]
+selector = "body"
+token = "--border"
+
+[[pair]]
+selector = "body"
+token = "--accent"
+
+[[pair]]
+selector = "body"
+token = "--accent-foreground"
+
+[[pair]]
+selector = "body"
+token = "--success"
+
+[[pair]]
+selector = "body"
+token = "--warning"
+
+[[pair]]
+selector = "body"
+token = "--destructive"
+
+[[pair]]
+selector = "body"
+token = "--chart-grid"
+
+[[pair]]
+selector = "body"
+token = "--chart-line"
+
+[[pair]]
+selector = "body"
+token = "--chart-accent"
+
+[[pair]]
+selector = "body"
+token = "--chart-glow"
+
+[[pair]]
+selector = "body"
+token = "--chart-axis"
+
+[[pair]]
+selector = "body"
+token = "--chart-grid-major"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-01"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-02"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-03"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-04"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-05"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-06"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-07"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-08"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-09"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-10"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-11"
+
+[[pair]]
+selector = "body"
+token = "--ordinal-12"
+
+[[pair]]
+selector = "body"
+token = "--shadow-color"

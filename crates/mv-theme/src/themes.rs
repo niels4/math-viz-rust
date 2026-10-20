@@ -1,8 +1,9 @@
-// The six themes as math-viz writes them at 0f4bdab (src/style/themes/mathviz_*.module.css),
-// written from those files by `tools/run themes`: run it again rather than editing this file.
-// Token is every colour token the files define, in their order, the gradients left out (the
-// page reads none); each theme gives each token as its CSS does: an oklch colour, another
-// token's value, or a mix of two in oklch. resolve (theme.rs) turns them into colours.
+// The six themes as math-viz2 writes them at af434dc (src/style/themes/mathviz_*.module.css),
+// written from those files and the reference by `tools/run themes`: run it again rather than
+// editing this file.
+// Token is every colour token the files define, in their order; each theme gives each token as
+// its CSS does: an oklch colour, another token's value, or a mix of two in oklch. resolve
+// (theme.rs) turns them into colours.
 // generated, do not edit
 
 use enum_map::Enum;
@@ -29,15 +30,6 @@ pub enum Token {
     ChartLine,
     ChartAccent,
     ChartGlow,
-    ParamA,
-    ParamK,
-    ParamB,
-    ParamH,
-    ParamA18,
-    ParamK18,
-    ParamB18,
-    ParamH18,
-    Section,
     Ordinal01,
     Ordinal02,
     Ordinal03,
@@ -50,11 +42,6 @@ pub enum Token {
     Ordinal10,
     Ordinal11,
     Ordinal12,
-    ChartPoint1,
-    ChartPoint2,
-    ChartAxis,
-    ChartGridMajor,
-    SigCurveGlow,
 }
 
 /// An oklch colour as a theme file writes it.
@@ -297,64 +284,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
-                    Token::ParamA,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal06,
-                        p: 70.0,
-                        b: Some(Token::Ordinal07),
-                    }),
-                ),
-                (Token::ParamK, Value::Ref(Token::Ordinal07)),
-                (Token::ParamB, Value::Ref(Token::Ordinal04)),
-                (
-                    Token::ParamH,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal10,
-                        p: 85.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::Section,
-                    Value::Mix(Mix {
-                        a: Token::Foreground,
-                        p: 10.0,
-                        b: Some(Token::BackgroundMuted),
-                    }),
-                ),
-                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.7472,
@@ -460,33 +389,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0034,
                         h: 247.86,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal05)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal03)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Oklch(Oklch {
-                        l: 0.0,
-                        c: 0.0,
-                        h: 0.0,
-                        alpha: 0.0,
                     }),
                 ),
             ],
@@ -674,50 +576,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 0.4,
                     }),
                 ),
-                (Token::ParamA, Value::Ref(Token::Ordinal03)),
-                (Token::ParamK, Value::Ref(Token::Ordinal07)),
-                (Token::ParamB, Value::Ref(Token::Ordinal06)),
-                (Token::ParamH, Value::Ref(Token::Ordinal08)),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::Section,
-                    Value::Mix(Mix {
-                        a: Token::Foreground,
-                        p: 10.0,
-                        b: Some(Token::BackgroundMuted),
-                    }),
-                ),
                 (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
@@ -824,33 +682,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0069,
                         h: 247.9,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal05)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal02)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Oklch(Oklch {
-                        l: 0.0,
-                        c: 0.0,
-                        h: 0.0,
-                        alpha: 0.0,
                     }),
                 ),
             ],
@@ -1038,50 +869,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         alpha: 0.4,
                     }),
                 ),
-                (Token::ParamA, Value::Ref(Token::Ordinal09)),
-                (Token::ParamK, Value::Ref(Token::Ordinal12)),
-                (Token::ParamB, Value::Ref(Token::Ordinal05)),
-                (Token::ParamH, Value::Ref(Token::Ordinal07)),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::Section,
-                    Value::Mix(Mix {
-                        a: Token::Foreground,
-                        p: 10.0,
-                        b: Some(Token::BackgroundMuted),
-                    }),
-                ),
                 (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
@@ -1188,32 +975,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.1757,
                         h: 98.54,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal03)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal02)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Mix(Mix {
-                        a: Token::Primary,
-                        p: 60.0,
-                        b: None,
                     }),
                 ),
             ],
@@ -1402,57 +1163,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
-                    Token::ParamA,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal08,
-                        p: 85.0,
-                        b: Some(Token::Foreground),
-                    }),
-                ),
-                (
-                    Token::ParamK,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal11,
-                        p: 65.0,
-                        b: Some(Token::Foreground),
-                    }),
-                ),
-                (Token::ParamB, Value::Ref(Token::Ordinal06)),
-                (Token::ParamH, Value::Ref(Token::Ordinal09)),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (Token::Section, Value::Ref(Token::Card)),
-                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.5262,
@@ -1558,33 +1268,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.2258,
                         h: 323.95,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal05)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal04)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Oklch(Oklch {
-                        l: 0.0,
-                        c: 0.0,
-                        h: 0.0,
-                        alpha: 0.0,
                     }),
                 ),
             ],
@@ -1773,57 +1456,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
-                    Token::ParamA,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal09,
-                        p: 92.0,
-                        b: Some(Token::Foreground),
-                    }),
-                ),
-                (Token::ParamK, Value::Ref(Token::Ordinal10)),
-                (Token::ParamB, Value::Ref(Token::Ordinal12)),
-                (
-                    Token::ParamH,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal08,
-                        p: 50.0,
-                        b: Some(Token::Foreground),
-                    }),
-                ),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (Token::Section, Value::Ref(Token::Card)),
-                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.5106,
@@ -1929,33 +1561,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.2258,
                         h: 323.95,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal05)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal11)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Oklch(Oklch {
-                        l: 0.0,
-                        c: 0.0,
-                        h: 0.0,
-                        alpha: 0.0,
                     }),
                 ),
             ],
@@ -2152,64 +1757,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
-                    Token::ParamA,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal04,
-                        p: 50.0,
-                        b: Some(Token::Ordinal06),
-                    }),
-                ),
-                (
-                    Token::ParamK,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal11,
-                        p: 85.0,
-                        b: Some(Token::Foreground),
-                    }),
-                ),
-                (Token::ParamB, Value::Ref(Token::Ordinal03)),
-                (
-                    Token::ParamH,
-                    Value::Mix(Mix {
-                        a: Token::Ordinal06,
-                        p: 92.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ParamA18,
-                    Value::Mix(Mix {
-                        a: Token::ParamA,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamK18,
-                    Value::Mix(Mix {
-                        a: Token::ParamK,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamB18,
-                    Value::Mix(Mix {
-                        a: Token::ParamB,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (
-                    Token::ParamH18,
-                    Value::Mix(Mix {
-                        a: Token::ParamH,
-                        p: 18.0,
-                        b: None,
-                    }),
-                ),
-                (Token::Section, Value::Ref(Token::Card)),
-                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.4352,
@@ -2315,33 +1862,6 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0374,
                         h: 257.28,
                         alpha: 1.0,
-                    }),
-                ),
-                (Token::ChartPoint1, Value::Ref(Token::Ordinal05)),
-                (Token::ChartPoint2, Value::Ref(Token::Ordinal02)),
-                (
-                    Token::ChartAxis,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 75.0,
-                        b: Some(Token::Background),
-                    }),
-                ),
-                (
-                    Token::ChartGridMajor,
-                    Value::Mix(Mix {
-                        a: Token::ForegroundMuted,
-                        p: 35.0,
-                        b: Some(Token::ChartGrid),
-                    }),
-                ),
-                (
-                    Token::SigCurveGlow,
-                    Value::Oklch(Oklch {
-                        l: 0.0,
-                        c: 0.0,
-                        h: 0.0,
-                        alpha: 0.0,
                     }),
                 ),
             ],

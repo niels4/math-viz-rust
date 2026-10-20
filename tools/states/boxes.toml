@@ -1,0 +1,10 @@
+# The page's boxes by name (tools/run dom --fixture): the CSS selector each name reads at a
+# shot. Each milestone appends the boxes its layouts lay out. Missing selectors are left out
+# of page.json and reported.
+#
+# H0: no canvas and no header exist at af434dc (the template page), so the fixture records the
+# root's box as the stand-in; h1 adds the canvas and the top bar's boxes once the reference
+# moves to adb0534.
+canvas = "canvas"
+header = "header"
+root = "#root"

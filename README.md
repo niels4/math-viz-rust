@@ -53,4 +53,46 @@ export REACT_REF_PORT=5190   # math-viz2 serves #function-viewer here
 
 ## The harness
 
-t0-harness writes this section with `tools/`. One script puts the math-viz2 reference, the web build and the native build in the same state; output goes to `.local/shots/`.
+One script puts the math-viz2 reference, the web build and the native build in the same state;
+output goes to `.local/shots/`. The reference is math-viz2 itself at the milestone's hash,
+served by Vite in tmux session `math-viz2-rust-ref` (port 5190, page `#function-viewer`); each
+history milestone has its own fixed reference worktree and port (h1's on 5191, h2's on 5192,
+and so on). Nothing in `tools/` hard-codes a port or a checkout path beyond a default: every
+command reads the reference from the environment, `REACT_REF` (the checkout) and
+`REACT_REF_PORT` (its port), and the web build's server from `WEB_PORT` where one is needed.
+
+- **Targets:** `ref`, `web`, `native` (`tools/run act --target ...`). The web build needs no
+  server (`act`, `states`, `release` and `keys` route `build/web/` from disk at an origin no
+  server listens on); `web`, `tabs`, `raf` and `loop` on the web target need one on `WEB_PORT`,
+  which a milestone starts in its own tmux window on a free port from 5200 and stops after.
+- **Scripts** (`tools/states/*.act`): lines before the first action say how the page opens
+  (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`, `query`); after it,
+  `size`, `scheme` and `reduced-motion` change it live. Positions are logical pixels, times
+  milliseconds (the paused clock: time 0 is the first animation frame, `wait` runs the clock
+  forward, animation frames fall every 16 ms). `query center=1,2&scale=2` is the page's hash
+  query: appended to the reference and web URLs, passed as `--query` natively (mv-script's
+  twin parses it too: change `tools/src/script.py` and `crates/mv-script/src/script.rs`
+  together).
+- **Storage keys:** the reference is seeded with math-viz2's keys (`mathviz-light-dark`,
+  `mathviz-dark-theme`, `mathviz-light-theme`, one JSON string each, and `mathviz-theme`, the
+  single key the reference reads before h1's three-key model: each reference reads its own);
+  the web build with the port's own (`math-viz2-rust-light-dark`, `math-viz2-rust-dark-theme`,
+  `math-viz2-rust-light-theme`). The port never shares runtime state with math-viz2.
+- **The three toml files** (`tools/states/`): `milestones.toml` groups states by milestone
+  (`H0 = ["default"]`); `tokens.toml` lists the (selector, token) pairs the port draws with
+  (the 35 theme tokens on `body` to start); `boxes.toml` lists the named boxes
+  `tools/run dom --fixture` writes to `crates/function-viewer/testdata/page.json`. Every
+  milestone appends its states, tokens and boxes.
+- **Writes:** each run writes its shots, any video and `report.json` (`views.json`,
+  `motion.json`, `time.json` and `live.json` are checked against their shapes, a mismatch
+  counting as a problem). `views.json` holds one object per shot with the exact 10 keys
+  (`shot,time,zoom,pan_x,pan_y,origin_x,origin_y,cursor,theme,scaled`); a line holding only
+  `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0;
+  runs without one write none, which reads as the empty query). Behaviour checks compare the
+  last `url` line with the reference's `location.hash` query after every scripted input.
+  `tools/run states` lays the surfaces' shots on a contact sheet and compares every pair at
+  threshold 0; `tools/run judge` counts the native shot's pixels apart from the reference per
+  engine (flat and more than 2 levels apart, clustered); `tools/run themes` regenerates
+  `crates/mv-theme/src/themes.rs` through the reference; `tools/run font` instances math-viz2's
+  variable woff2 into `assets/fonts/`; `tools/run gamut` checks Display P3 (its allowances
+  start empty).
