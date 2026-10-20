@@ -8,12 +8,14 @@
 //! texts come from [`crate::ruler_marks`] (h5-p-scrub); this module owns the
 //! card's geometry, the mode's rim, and the tape's paint.
 //!
-//! Layout is explicit, as the source's hooks are: [`layout_ruler`] declares
-//! the floating card (called while the drag holds it open), and [`paint_ruler`]
-//! paints the tape's contents in a post-pass from the laid-out content box,
-//! the live value and the mode (this repo's settings swatch precedent: no
-//! custom payload type). The index paints over the labels, as the source
-//! draws it (math-viz2's divergences note).
+//! Layout is explicit, as the source's hooks are: [`layout_open_drag`]
+//! declares the floating card while a drag holds it open, and
+//! [`paint_open_drag`] paints the whole card in a post-pass after the rows —
+//! the card first (opaque over the rows beneath, whose chrome paints earlier
+//! and would show through the tape's translucent wash), then the tape's
+//! contents (this repo's settings swatch precedent: no custom payload type).
+//! The index paints over the labels, as the source draws it (math-viz2's
+//! divergences note).
 
 use mv_sys::clay;
 use mv_text::{Face, Features, Style};
@@ -243,16 +245,10 @@ pub fn ruler_colors(
     }
 }
 
-/// A Clay colour (0 to 255 per channel) for a computed colour (the tint, the
-/// row's ink) that no token names: the generic walk composites its alpha as
-/// CSS does (`draw::css_background`).
-fn clay_of(color: [f32; 4]) -> clay::Color {
-    [
-        color[0] * 255.0,
-        color[1] * 255.0,
-        color[2] * 255.0,
-        color[3] * 255.0,
-    ]
+/// The tape border box's Clay id, one per parameter: the foundation's key.
+#[must_use]
+pub fn tape_box_id(param: TransformParam) -> clay::ElementId {
+    mv_clay::id("RulerTapeInner", param as u32)
 }
 
 /// The card's Clay id, one per parameter.
@@ -278,17 +274,14 @@ pub fn row_parent(param: TransformParam) -> clay::ElementId {
 }
 
 /// Lays the ruler card out under its row: full row width, 4 px down, the tape
-/// inside with the card's padding, both with their borders and radii. Called
-/// while the drag holds the ruler open, with the row's element id as the
-/// float's parent. `pointer-events: none`: no region is declared, so the
-/// pointer falls through to the rows under the card.
-pub fn layout_ruler(
-    app: &mut App,
-    parent: clay::ElementId,
-    param: TransformParam,
-    row_width: f32,
-    colors: &RulerColors,
-) {
+/// inside with the card's padding. The elements carry no paint of their own:
+/// the post-pass paints the whole card over the rows beneath (their chrome
+/// paints earlier and would show through the tape's translucent wash), so the
+/// declarations only fix geometry and ids. Called while the drag holds the
+/// ruler open, with the row's element id as the float's parent.
+/// `pointer-events: none`: no region is declared, so the pointer falls
+/// through to the rows under the card.
+pub fn layout_ruler(app: &mut App, parent: clay::ElementId, param: TransformParam, row_width: f32) {
     // Clay's paddings join the CSS padding with the rim (borders take no
     // layout space, the h1-frame rule): 8 + 1 on the card, 0 + 2 on the tape.
     let mut card = crate::ui::empty_decl();
@@ -304,12 +297,6 @@ pub fn layout_ruler(
     };
     card.layout.childGap = 0;
     card.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
-    card.backgroundColor = clay_of(colors.card);
-    card.border = clay::BorderElementConfig {
-        color: clay_of(colors.rim),
-        width: mv_clay::border_outside(1),
-    };
-    card.cornerRadius = crate::ui::corner_radius_all(RULER_RADIUS);
     card.floating = clay::FloatingElementConfig {
         offset: [0.0, RULER_GAP],
         expand: clay::Dimensions {
@@ -338,25 +325,14 @@ pub fn layout_ruler(
             top: 2,
             bottom: 2,
         };
-        tape.backgroundColor = clay_of(colors.fill);
-        tape.border = clay::BorderElementConfig {
-            color: clay_of(colors.stroke),
-            width: mv_clay::border_outside(2),
-        };
-        tape.cornerRadius = crate::ui::corner_radius_all(TAPE_RADIUS);
-        crate::ui::ui_scope(
-            app,
-            mv_clay::id("RulerTapeInner", param as u32),
-            &tape,
-            |app| {
-                let mut content = crate::ui::empty_decl();
-                content.layout.sizing = clay::Sizing {
-                    width: mv_clay::sizing_fixed(tape_width(row_width) - 2.0 * TAPE_BORDER),
-                    height: mv_clay::sizing_fixed(tape_content_height()),
-                };
-                crate::ui::ui_scope(app, tape_id(param), &content, |_| {});
-            },
-        );
+        crate::ui::ui_scope(app, tape_box_id(param), &tape, |app| {
+            let mut content = crate::ui::empty_decl();
+            content.layout.sizing = clay::Sizing {
+                width: mv_clay::sizing_fixed(tape_width(row_width) - 2.0 * TAPE_BORDER),
+                height: mv_clay::sizing_fixed(tape_content_height()),
+            };
+            crate::ui::ui_scope(app, tape_id(param), &content, |_| {});
+        });
     });
 }
 
@@ -393,48 +369,85 @@ pub fn layout_open_drag(app: &mut App) {
     let Some(drag) = open_drag(app) else {
         return;
     };
-    let theme = crate::ui::current_theme(app).clone();
-    let colors = ruler_colors(&theme, drag.param, drag.mode);
-    layout_ruler(
-        app,
-        row_parent(drag.param),
-        drag.param,
-        drag.row_box.width,
-        &colors,
-    );
+    layout_ruler(app, row_parent(drag.param), drag.param, drag.row_box.width);
 }
 
-/// Paints the open drag's ruler: the tape's contents at the live value.
-/// Called from the post-pass after the rows.
+/// Paints the open drag's ruler over the rows beneath: the card and the tape
+/// first (their chrome paints earlier and would show through the tape's
+/// translucent wash), then the tape's contents at the live value. Called from
+/// the post-pass after the rows.
 pub fn paint_open_drag(app: &mut App) {
     let Some(drag) = open_drag(app) else {
         return;
     };
+    let (card, tape, content) = {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let card = clay.get_element_data(ruler_id(drag.param));
+        let tape = clay.get_element_data(tape_box_id(drag.param));
+        let content = clay.get_element_data(tape_id(drag.param));
+        if !card.found || !tape.found || !content.found {
+            return;
+        }
+        (card.boundingBox, tape.boundingBox, content.boundingBox)
+    };
+    let theme = crate::ui::current_theme(app).clone();
+    let colors = ruler_colors(&theme, drag.param, drag.mode);
+    paint_foundation(&mut app.vg, &card, &tape, &colors);
     let value = crate::scrub::scrubbed(
         drag.start_value,
         drag.dx,
         drag.kind == ScrubKind::Scale,
         drag.mode,
     );
-    paint_ruler(app, drag.param, value, drag.mode);
+    let marks = ruler_marks(value, f64::from(content.width), is_scale(drag.param));
+    paint_tape(&mut app.fonts, &mut app.vg, &content, &marks, &colors);
 }
 
-/// Paints an open ruler: the tape's contents at its laid-out content box for
-/// the live `value` in `mode`. Reads nothing but the content box, the theme
-/// and the arguments, so a missing box (the drag just ended) paints nothing.
-pub fn paint_ruler(app: &mut App, param: TransformParam, value: f64, mode: ScrubMode) {
-    let content = {
-        let clay = app.clay.as_ref().expect("clay context initialised");
-        let data = clay.get_element_data(tape_id(param));
-        if !data.found {
-            return;
-        }
-        data.boundingBox
-    };
-    let theme = crate::ui::current_theme(app).clone();
-    let colors = ruler_colors(&theme, param, mode);
-    let marks = ruler_marks(value, f64::from(content.width), is_scale(param));
-    paint_tape(&mut app.fonts, &mut app.vg, &content, &marks, &colors);
+/// Paints the card and the tape under the contents: the opaque card over
+/// whatever the rows beneath left behind, its 1 px rim, the tape's wash and
+/// its 2 px mode rim — the generic walk would paint these under the rows'
+/// chrome, as `draw_commands` runs first.
+fn paint_foundation(
+    vg: &mut mv_nvg::Context,
+    card: &clay::BoundingBox,
+    tape: &clay::BoundingBox,
+    colors: &RulerColors,
+) {
+    vg.begin_path();
+    crate::draw::rounded_rect(vg, *card, crate::ui::corner_radius_all(RULER_RADIUS));
+    vg.fill_color(colors.card);
+    vg.fill();
+    stroke_inset(vg, card, RULER_BORDER, RULER_RADIUS, colors.rim);
+    vg.begin_path();
+    crate::draw::rounded_rect(vg, *tape, crate::ui::corner_radius_all(TAPE_RADIUS));
+    vg.fill_color(colors.fill);
+    vg.fill();
+    stroke_inset(vg, tape, TAPE_BORDER, TAPE_RADIUS, colors.stroke);
+}
+
+/// Strokes a `width` rim inside a box, as the walk's Border arm does: the
+/// path sits half the width inside, the radii shrink by the same.
+fn stroke_inset(
+    vg: &mut mv_nvg::Context,
+    r#box: &clay::BoundingBox,
+    width: f32,
+    radius: f32,
+    ink: [f32; 4],
+) {
+    vg.begin_path();
+    crate::draw::rounded_rect(
+        vg,
+        clay::BoundingBox {
+            x: r#box.x + width / 2.0,
+            y: r#box.y + width / 2.0,
+            width: (r#box.width - width).max(0.0),
+            height: (r#box.height - width).max(0.0),
+        },
+        crate::ui::corner_radius_all((radius - width / 2.0).max(0.0)),
+    );
+    vg.stroke_color(ink);
+    vg.stroke_width(width);
+    vg.stroke();
 }
 
 /// Paints the tape's contents in its content box: the three tick batches, the
