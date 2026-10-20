@@ -1,0 +1,15 @@
+# q-hover-pan (h8-plane): a press and move on the plane pans it: no Q shows
+# while panning. The shot holds the drag.
+# Behaviour: url line (empty query, still debouncing); no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1000 490
+down
+move 1040 490 over 80
+shot q-hover-pan
+up
+wait 1200

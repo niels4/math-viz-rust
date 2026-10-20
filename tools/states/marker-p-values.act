@@ -1,0 +1,11 @@
+# marker-p-values (h8-plane): x2 at a=2, h=1, k=-3, so P sits at (2, -1)
+# with the coords reading (2.00, -1.00).
+# Behaviour: url line func=x2&a=2&h=1&k=-3; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 2000
+shot marker-p-values

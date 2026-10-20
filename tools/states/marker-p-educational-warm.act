@@ -1,0 +1,9 @@
+# marker-p-educational-warm (h8-plane): P at (2, 2) on x1 at rest in educational-warm, in its theme ink.
+# Behaviour: url line (empty query); no q line.
+size 1440 900
+density 2
+scheme light
+mode light
+theme educational-warm
+wait 2000
+shot marker-p-themes

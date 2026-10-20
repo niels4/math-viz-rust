@@ -1,0 +1,11 @@
+# marker-label-clamp-top (h8-plane): the camera at center=0,-4.66 puts P at
+# (2, 2) 60 px below the top edge, so the label clamps 12 px inside it.
+# Behaviour: url line center=0,-4.66&p=2; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=0,-4.66&p=2
+wait 2000
+shot marker-label-clamp-top
