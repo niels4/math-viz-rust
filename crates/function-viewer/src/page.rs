@@ -384,14 +384,6 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         1.0
     };
     let theme = crate::ui::current_theme(app).clone();
-    if matches!(
-        crate::welcome::Route::of(&app.url),
-        crate::welcome::Route::Welcome
-    ) {
-        // The hero's bitmap renders before the frame begins (a frame cannot
-        // nest inside the page's); the main frame samples it scaled.
-        crate::welcome::render_hero_plane(app, &theme, density);
-    }
     app.vg.begin_frame(size[0], size[1], density);
     // The body's background, over the shell's clear.
     let bg = crate::ui::ink(&theme, mv_theme::Token::Background);

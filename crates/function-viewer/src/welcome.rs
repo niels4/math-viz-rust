@@ -562,12 +562,14 @@ fn hero_inputs(
 }
 
 /// Renders the hero's plane into the cached offscreen bitmap, before the
-/// frame begins (a frame cannot nest inside the page's): the bitmap-sized
-/// framebuffer bound, a bitmap-sized NanoVG frame begun, the background fill
-/// and the bare plane painted in design units at the device ratio, the frame
-/// ended and the default target rebound. Skipped unless `HERO_FBO`.
+/// frame begins (a frame cannot nest inside the page's) and before any
+/// target binds: the bitmap-sized framebuffer bound, a bitmap-sized NanoVG
+/// frame begun, the background fill and the bare plane painted in design
+/// units at the device ratio, the frame ended and the default target
+/// rebound — the caller binds its own target after. Skipped unless `HERO_FBO`
+/// on the welcome route.
 pub fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
-    if !HERO_FBO {
+    if !HERO_FBO || !matches!(Route::of(&app.url), Route::Welcome) {
         return;
     }
     // `as` at the f32 boundary: the bitmap is whole device pixels.
@@ -594,11 +596,11 @@ pub fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
     };
     cache.fb.bind();
     let (colors, looping, mcolors) = hero_inputs(app, theme);
-    app.vg.begin_frame(
-        HERO_WIDTH - 2.0 * crate::plane::CANVAS_BORDER,
-        HERO_HEIGHT - 2.0 * crate::plane::CANVAS_BORDER,
-        density,
-    );
+    // The FBO is device pixels (838*dpr x 518*dpr); the bare plane paints
+    // in design units (838 x 518), so begin the frame at the device size and
+    // scale the context by dpr before painting — the browser's own bitmap.
+    app.vg
+        .begin_frame(cache.width as f32, cache.height as f32, 1.0);
     let content = clay::BoundingBox {
         x: 0.0,
         y: 0.0,
@@ -607,10 +609,14 @@ pub fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
     };
     app.vg.begin_path();
     app.vg
-        .rect(content.x, content.y, content.width, content.height);
+        .rect(0.0, 0.0, cache.width as f32, cache.height as f32);
     app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
     app.vg.fill();
+    app.vg.save();
+    let s = (cache.width as f32) / (HERO_WIDTH - 2.0 * crate::plane::CANVAS_BORDER);
+    app.vg.scale(s, s);
     paint_plane_direct(app, theme, &content, &colors, &looping, &mcolors);
+    app.vg.restore();
     app.vg.end_frame();
     mv_nvg::Framebuffer::bind_default();
 }
