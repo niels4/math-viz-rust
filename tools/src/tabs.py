@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 from playwright.sync_api import Page, sync_playwright
 
-from act import REPO, port
+from act import REPO, web_origin
 from browser import PageLog, engine_type
 from images import load_rgb
 
@@ -54,7 +54,7 @@ def background(page: Page, out: Path, name: str) -> tuple[int, int, int]:
 
 def run_engine(engine: str, out: Path) -> list[Step]:
     out.mkdir(parents=True, exist_ok=True)
-    url = f"http://localhost:{port('WEB_PORT')}/?trace"
+    url = f"{web_origin()}?trace"
     steps: list[Step] = []
     with sync_playwright() as playwright:
         browser = engine_type(playwright, engine).launch()

@@ -19,7 +19,7 @@ from typing import cast
 
 from playwright.sync_api import Page, sync_playwright
 
-from act import NATIVE, REPO, port, shown
+from act import NATIVE, REPO, shown, web_origin
 from browser import PageLog, engine_type
 from script import load as load_script
 
@@ -858,7 +858,7 @@ def native_signals(out: Path, prefs: Path) -> Check:
 
 
 def web_url() -> str:
-    return f"http://localhost:{port('WEB_PORT')}/?trace"
+    return f"{web_origin()}?trace"
 
 
 def open_page(page: Page) -> None:
