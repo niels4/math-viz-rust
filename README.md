@@ -1,8 +1,48 @@
-# math-viz2-rust
+# math-viz-rust
 
-**Live app:** https://niels4.github.io/math-viz-rust/
+The [MathViz](https://github.com/niels4/math-viz) Function Viewer ported to Rust: one codebase that runs as a native desktop app on macOS, Windows and Linux (SDL3, OpenGL 3.3) and in the browser as WebAssembly (WebGL2). A high-fidelity port of the original design and implementation, built almost entirely by AI agents.
 
-A port of the Function Viewer from [math-viz](https://github.com/niels4/math-viz) (React, TypeScript, Canvas 2D) to Rust: one codebase that builds a native desktop app on SDL3 and, compiled to WebAssembly, the browser app linked above. The port follows the original's development history commit by commit; the original app at each milestone's commit is the reference the harness compares against.
+### [Open the live app →](https://niels4.github.io/math-viz-rust/)
+
+<a href="https://niels4.github.io/math-viz-rust/#function-viewer">
+  <img alt="The Function Viewer: the function selector, the formula, the Transform card with a, k, b and h, the Points card, and the plane with a stretched parabola, its handles and the P marker" src=".github/readme/function-viewer-light.png">
+</a>
+
+**[Function Viewer](https://niels4.github.io/math-viz-rust/#function-viewer):** pick a function, then drag its handles or scrub a, b, h and k to stretch and shift the curve. Pan and zoom the plane. Move P along the curve and read its value. The same `#function-viewer?…` URL state as the original.
+
+## Why Clay and SDL, and why Rust
+
+I had been playing around with [Odin](https://odin-lang.org/), building native apps with [Clay](https://github.com/nicbarker/clay) for layout and [SDL3](https://libsdl.org/) for the window, input and GPU context, and liked how little stood between the code and the screen. Rust seems to be the popular language for automated app building, so I combined the two ideas: the Odin-style native stack, written and wired by AI agents in Rust. The result is this app, a port that keeps the original's design and behaviour rather than a reinterpretation of it.
+
+The stack is small and all of it ships in the repository: SDL3 for the platform, Clay for layout, [NanoVG](https://github.com/memononen/nanovg) for vector drawing, [kb_text_shape](https://github.com/JimmyLefevre/kb) for text shaping, each a vendored C library behind a thin Rust binding (`crates/mv-sys`, `mv-clay`, `mv-nvg`), and Emscripten for the web build. The app itself is plain Rust on top: the state, the layout, the painters, the input.
+
+## How it was built
+
+The original is a React and TypeScript app, developed commit by commit with its own design process. The port followed that history instead of a spec: an orchestrating agent read the original repository's git log, cut it into milestones (the page shell and themes, the plane and camera, the sidebar and plotted function, the readout and transform rows, the scrub boxes and ruler, the transforms and handles, the points, the welcome screen), and built them in the same order, so the Rust app passed through the same states the original did. When the original gained new commits during the run, they became the next milestones.
+
+The agents, all Claude Code sessions and subagents:
+
+| Role | Model | Did |
+|---|---|---|
+| Driver | Claude Opus | Ran the whole thing: opened the run, called the planner, cut branches, spawned every agent, merged in order, kept the run record, asked the two or three questions that needed a human |
+| Planner | a larger Claude model | Read the original's history and the previous Rust port, wrote the plan, the milestone briefs and the agent definitions, and re-planned as the original moved |
+| Porters | a cheaper model, many at once | Each ported one pure module and its tests, test for test and value for value, with a drift scan comparing the Rust to the TypeScript function by function |
+| Coders | a cheaper model, several at once | Each wired one milestone into the running app, judged by pixels and behaviour against the original |
+| Reviewers | a cheaper model, three per milestone | Three lenses on every merged milestone: a pixel recount at threshold 0, a code and idiom read, and a trial merge against the sibling branches |
+| Operators and scanners | a cheaper model | Worktrees, reference servers, merges, union runs; long logs condensed |
+
+What made it fast, and what kept it honest:
+
+- **Everything in parallel that could be.** Every milestone ran on its own branch in its own git worktree, against its own pinned build of the original (a detached worktree of the TypeScript app at that milestone's commit, served on its own port). A milestone's porters, and the reading and layout work of its coders, started before the previous milestone had merged; only the wiring waited. Merges went back in history order, so the integration branch always matched a state of the original.
+- **The original as the oracle.** A harness puts the original, the WebAssembly build and the native build in the same state from one script, in WebKit, Chromium and Firefox, and compares the screenshots pixel for pixel. The port against itself (native against web, engine by engine) had to be identical; the port against the original was measured region by region, with browser engine quirks recorded once and never counted twice. Behaviour was checked the same way: after every scripted input, the page's URL state had to equal the original's.
+- **Tests as the anchor of intent.** The original's unit tests were ported one for one, with their names and expected values, and a drift scan compared every ported function with its source, literal by literal. The Rust was allowed to change shape (enums for tagged unions, iterators for index loops, messages for callbacks) but never behaviour.
+- **Reviews beside the merge, not before it.** A merge never waited for a review; findings became fix-forward work on the next branch. Each review recounted the milestone's own evidence rather than rerunning it.
+- **A union after every level, a sweep at the end.** After each milestone level, the whole catalogue of states ran on the integration branch to catch anything a merge broke; motion and input ran a sweep at timings off the 16 ms grid to catch what on-grid checks miss.
+- **A human in the loop, lightly.** I answered a handful of questions (what to do when the original moved, which cursor to show, where the port should stop), reported two things I saw, and merged to main when I wanted to deploy. The run took care of the rest.
+
+The numbers, for this port: the Function Viewer reached feature parity with the original in under nine hours of wall-clock time, the welcome screen landed the same morning, and the result is about 230 commits, 600 unit tests and 190 scripted states over three browser engines and the native build. The first attempt at the stack, a port of an Odin version of the same app, had taken 28 hours a day earlier; this run reused its libraries, harness and lessons.
+
+Where the port deliberately differs from the original is listed in `decisions.md`. The native build was built and verified on macOS and the web build in all three browser engines; the Windows and Linux builds come from the same sources and are untested as of this writing.
 
 ## Toolchain
 
@@ -12,7 +52,7 @@ A port of the Function Viewer from [math-viz](https://github.com/niels4/math-viz
 | SDL3 | 3.4.18 (Homebrew `sdl3` natively for dev/check builds; compiled from source for the release and always on the web) | window, input, GL context, main callbacks |
 | Emscripten | 6.0.12 through emsdk in `~/emsdk` | linking the web build |
 
-Clay (`e6cc369`), NanoVG, Fontstash, stb_truetype, kb_text_shape (2.21) are vendored in `vendor/` (t0c), which says where each came from and what changed; emsdk is the one toolchain fetched outside it.
+Clay (`e6cc369`), NanoVG, Fontstash, stb_truetype and kb_text_shape (2.21) are vendored in `vendor/`, which says where each came from and what changed; emsdk is the one toolchain fetched outside it.
 
 ## Setup
 
@@ -24,13 +64,7 @@ git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
 ~/emsdk/emsdk activate 6.0.12
 ```
 
-`build.sh` sources `~/emsdk/emsdk_env.sh` itself (set `EMSDK` for another place; source it under `bash`: `zsh` mangles the script) and stops if `emcc` isn't 6.0.12. Native dev builds link Homebrew's SDL3 (`brew install sdl3`; needs an admin account) with no other setup.
-
-The harness compares against the math-viz2 reference: it needs the reference server's port:
-
-```sh
-export REACT_REF_PORT=5190   # math-viz2 serves #function-viewer here
-```
+`build.sh` sources `~/emsdk/emsdk_env.sh` itself (set `EMSDK` for another place; it runs under `bash`) and stops if `emcc` isn't 6.0.12. Native dev builds link Homebrew's SDL3 (`brew install sdl3`) with no other setup.
 
 ## Build and run
 
@@ -40,80 +74,30 @@ export REACT_REF_PORT=5190   # math-viz2 serves #function-viewer here
 ./build.sh               # both
 ./build.sh test          # cargo test for the workspace
 ./build.sh check         # fmt, clippy for both targets, tests, both builds; exits non-zero on any failure
-./build.sh release       # build/release/: native/function-viewer and web/, optimised (Release)
+./build.sh release       # build/release/: native/function-viewer and web/, optimised, no paths of the build machine
+./build.sh pages         # docs/: the web app for GitHub Pages (release build, relative URLs, .nojekyll)
 ```
 
-- **Native window:** `build/native/function-viewer`. The page at 1440x900 logical (density 2): the top bar, the sidebar cards, the plane, drawn in Display P3 on macOS (the window is tagged with it before its GL context). `--space srgb` draws sRGB instead. It draws only when something changed or moves; idle, SDL's loop waits on events. `--route function-viewer` opens the viewer (welcome by default, as the browser's `/`). The appearance prefs live in `prefs.json` under SDL's preference path (on macOS `~/Library/Application Support/mathviz/function-viewer-rust/`), the port's own key, never another app's; `--prefs DIR` keeps them in DIR instead. Quit with ⌘Q, the window's close button, or Ctrl-C (SIGTERM) in its terminal, idle or not.
-- **Native frame to PNG:** `build/native/function-viewer --png out.png --size 1440x900 --density 2` draws the page into a hidden window's offscreen framebuffer at that size, writes it, and quits. In Display P3 (the default on macOS) the PNG carries the Display P3 profile; `--space srgb` writes the sRGB frame the harness compares with the browsers.
-- **Theme, mode and space:** `--theme clean-teal`, `--mode light`, `--space srgb` override the stored prefs for one run (a script sets all three itself).
-- **Harness runs:** `--script tools/states/default.act --out DIR` plays a state script and writes shots, `views.json`, `motion.json` and `time.json`; `--window` draws to the visible window instead of the offscreen buffer; `--time 300` redraws the script's last state 300 more times and reports median, 95th percentile and slowest; `--trace` logs each input and timer. The harness passes the script's `route` line as `--route` on every run.
-- **GitHub Pages:** `./build.sh pages` builds the web app with the release flags (no path of this machine in the bundle, checked) and writes it into `docs/` at the repo root (with `.nojekyll`), committed, so the repository hosts it from Pages (Settings › Pages › main, `/docs`); every URL in the bundle is relative, so it serves from the repository subpath, at `/` (the root route) and `/#function-viewer`. Proved by `tools/run pages [--port P] [--base /math-viz2-rust/] [--engines ...]`: it serves `docs/` from the subpath on a local port and runs the web smoke plus the `welcome-route`, `default` and `url-roundtrip` states in each engine, every report at zero problems and the path unmoved. Rebuilt only by `./build.sh pages`, as wrap's last step and by hand before a deploy — never by `./build.sh check` or a milestone branch (a stale `docs/` in between is expected).
-- **Browser:** serve `build/web/` as static files and open it, for example `python3 -m http.server 8000 --directory build/web` and `http://localhost:8000/`. A browser won't load wasm from `file://`. The main loop pauses while nothing moves and any input resumes it; `Module.iterations` and `Module.frames` count its turns and its frames. The prefs are `localStorage['mathviz-function-viewer-rust']`, the port's own key. `?trace` in the address logs each input and timer to the console; `?space=p3` or `?space=srgb` overrides the colour space, and the console says which it took.
-- **Panic switch:** `MV_PANIC_AT_FRAME=1` (or `--panic-at-frame`, the web's way in through `Module.arguments`) panics in the first frame, so the sweep can prove it sees a crash on each build. Natively the process exits non-zero with `panicked at <file>:<line>` on stderr (101 through the SDL loop: the first panic poisons the loop's lock and the quit path panics unwrapping it); on the web the same lines reach the console as errors.
-- **Smoke:** `tools/setup && tools/run states H0 --targets ref,web,native` runs the first state group on every target (needs the export in Setup); the report's identity columns read identical at threshold 0.
+- **Native window:** `build/native/function-viewer`. The page at 1440×900 logical pixels (density 2), drawn in Display P3 on macOS; `--space srgb` draws sRGB instead. It draws only when something changed or moves.
+- **Native frame to PNG:** `build/native/function-viewer --png out.png --size 1440x900 --density 2` draws the page into an offscreen framebuffer, writes it and quits.
+- **Theme, mode, space and route:** `--theme clean-teal`, `--mode light`, `--space srgb`, `--route function-viewer` override the stored preferences for one run; `--query 'func=x2&a=2'` opens a viewer state, the same query the web app carries in its hash.
+- **Browser:** serve `build/web/` as static files, for example `python3 -m http.server 8000 --directory build/web`, and open `http://localhost:8000/`. A browser won't load wasm from `file://`.
+- **GitHub Pages:** `./build.sh pages` writes the release web build into `docs/` at the repository root; the repository hosts it from there (Settings › Pages › `main`, `/docs`). Every URL in the bundle is relative, so it serves from the repository subpath, at `/` and at `/#function-viewer`.
 
 ## The harness
 
-One script puts the math-viz2 reference, the web build and the native build in the same state;
-output goes to `.local/shots/`. The reference is math-viz2 itself at the milestone's hash,
-served by Vite in tmux session `math-viz2-rust-ref` (port 5190, page `#function-viewer`); each
-history milestone has its own fixed reference worktree and port (h1's on 5191, h2's on 5192,
-and so on). Nothing in `tools/` hard-codes a port or a checkout path beyond a default: every
-command reads the reference from the environment, `REACT_REF` (the checkout) and
-`REACT_REF_PORT` (its port), and the web build's server from `WEB_PORT` where one is needed,
-served from the subpath in `WEB_BASE` (default `/`) where one is served from it.
+`tools/` is a small Python project (`tools/setup` makes its venv) that drives the original, the web build and the native build from one state script and compares them.
 
-- **Targets:** `ref`, `web`, `native` (`tools/run act --target ...`). The web build needs no
-  server (`act`, `states`, `release` and `keys` route `build/web/` from disk at an origin no
-  server listens on); `web`, `tabs`, `raf` and `loop` on the web target need one on `WEB_PORT`,
-  which a milestone starts in its own tmux window on a free port from 5200 and stops after;
-  `pages` serves `docs/` from a subpath on a server it starts and stops itself (t-pages).
-- **Scripts** (`tools/states/*.act`): lines before the first action say how the page opens
-  (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`, `query`, `route`); after it,
-  `size`, `scheme` and `reduced-motion` change it live. Positions are logical pixels, times
-  milliseconds (the paused clock: time 0 is the first animation frame, `wait` runs the clock
-  forward, animation frames fall every 16 ms). `query center=1,2&scale=2` is the page's hash
-  query: appended to the reference and web URLs, passed as `--query` natively (mv-script's
-  twin parses it too: change `tools/src/script.py` and `crates/mv-script/src/script.rs`
-  together). `route welcome|function-viewer` is the page route it opens on (function-viewer
-  unless the script says welcome: the web URL always carries the hash, including the empty
-  route; natively it rides as `--route`, welcome by hand). `hash center=3,1&scale=2` edits that
-  query mid-run on every surface, keeping the script's route, through
-  the page's own hashchange path, as an address-bar edit while it runs (t1-hash; h2-input's
-  `url-edit` state drives it).
-- **Storage keys:** the reference is seeded with math-viz2's keys (`mathviz-light-dark`,
-  `mathviz-dark-theme`, `mathviz-light-theme`, one JSON string each, and `mathviz-theme`, the
-  single key the reference reads before h1's three-key model: each reference reads its own);
-  the web build with the port's own (`math-viz2-rust-light-dark`, `math-viz2-rust-dark-theme`,
-  `math-viz2-rust-light-theme`). The port never shares runtime state with math-viz2.
-- **The three toml files** (`tools/states/`): `milestones.toml` groups states by milestone
-  (`H0 = ["default"]`); `tokens.toml` lists the (selector, token) pairs the port draws with
-  (the 35 theme tokens on `body` to start); `boxes.toml` lists the named boxes
-  `tools/run dom --fixture` writes to `crates/function-viewer/testdata/page.json`. Every
-  milestone appends its states, tokens and boxes.
-- **Writes:** each run writes its shots, any video and `report.json` (`views.json`,
-  `motion.json`, `time.json` and `live.json` are checked against their shapes, a mismatch
-  counting as a problem). `views.json` holds one object per shot with the exact 10 keys
-  (`shot,time,zoom,pan_x,pan_y,origin_x,origin_y,cursor,theme,scaled`); a line holding only
-  `url` is the page's hash query, written whenever it changes (`--query` writes one at frame 0,
-  `hash` whenever it changes it; runs without one write none, which reads as the empty query). A line
-  holding only `route` is the page's hash route (`""` on the welcome page, `"function-viewer"` on the
-  viewer), written at start and whenever the route changes (h10-page; until it lands no run writes one,
-  and the route reader reports that as a check that can't run, not a failure). Behaviour checks compare the
-  last `url` line with the reference's `location.hash` query after every scripted input, and the last
-  `route` line with its hash route the same way.
-  `tools/run states` lays the surfaces' shots on a contact sheet and compares every pair at
-  threshold 0; `tools/run judge` counts the native shot's pixels apart from the reference per
-  engine (flat and more than 2 levels apart, clustered); `tools/run themes` regenerates
-  `crates/mv-theme/src/themes.rs` through the reference; `tools/run font` instances math-viz2's
-  variable woff2 into `assets/fonts/`; `tools/run gamut` checks Display P3 (its allowances
-  start empty).
-- **Parallelism:** `tools/run states --jobs N` runs N state-surface pairs at once
-  (default 8: the smallest level within 10 % of the best wall time with zero
-  differences, t1-jobs on 24 cores / 128 GB, H1 H2 natively and in WebKit):
+```sh
+export REACT_REF=/path/to/math-viz REACT_REF_PORT=5190   # the original, served by Vite
+tools/run states H1 --targets ref,web,native             # one state group on every target
+tools/run states all --jobs 8                            # the whole catalogue, 8 at once
+tools/run judge .local/shots/H1                          # pixels apart from the original, per engine and region
+tools/run sweep                                          # motion and input at off-grid timings
+tools/run gamut                                          # Display P3 against sRGB
+tools/run themes                                         # regenerate the theme tokens from the original's CSS
+```
 
-  | jobs | wall | load (1 min, at end) | `same-run` differences |
-  |---|---|---|---|
-  | 1 | 80 s | 6.75 | — (first) |
-  | 8 | 50 s | 20.07 | 0 vs jobs 1 |
-  | 24 | 50 s | 12.71 | 0 vs jobs 8 |
+A state script (`tools/states/*.act`) says how the page opens (size, density, theme, mode, reduced motion, colour space, query, route) and then what happens to it (pointer and keyboard input, waits on a paused clock where animation frames fall every 16 ms, hash edits). Each run writes its screenshots and a `report.json`, with the page's view state, URL and route after every step, and `tools/run states` lays the surfaces side by side on a contact sheet and compares every pair at threshold 0. The port keeps its own preferences and browser storage keys (`math-viz2-rust-*`) and never shares runtime state with the original.
+
+MIT licensed.
