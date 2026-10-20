@@ -655,6 +655,28 @@ no new tokens (all eight tabled).
   (13–17 px slivers, port == webkit); firefox rounds sage's canvas-top
   background a level (port == webkit).
 
+### h8-fix-values (WebKit dash-length drift; no app-code change)
+
+- WebKit's Canvas drifts dash phase on long paths: on the ~9900 px dashed
+  original (2 px `[6,6]` from 3), WebKit renders every dash ~+2.5 CSS px
+  down-path of the spec position at along-path ~4550 (tangent-ray profiles
+  at dash [4557,4563]; 90 canvas flat>2 px in 58 1–4 px micro-clusters, max
+  117, all on the steep runs), while the port, Blink and Gecko agree to
+  ≤1 px (native-vs-ref-chromium blob ends identical 10/10; rc-vs-rf 0
+  flat). Same JS in all engines, yet ref-webkit-vs-ref-chromium is 347
+  flat px apart (max 221): the engines differ on identical content, so the
+  residual is category (e), recorded here with the measurement. Short-path
+  dashes (drop lines `[5,4]`) match everywhere, so offsets are honored and
+  the drift is length-dependent (~6e-4 relative), not an ignored offset;
+  f32-vs-f64 accumulation was measured at 0.006 px and ruled out. Matching
+  WebKit would break the spec/Blink/Gecko match, so the port keeps the
+  spec math. h6-curve's 27 px dash-phase cluster at CSS (788.5,102.5) is
+  the top of this same strip.
+- SwiftShader AA at curve-stroke edges peaks at 41 on isolated pixels
+  (marker-p-values: exactly 2 px >15 whole-frame — (1599,331) at 41,
+  (1730,817) at 40, both single AA pixels on drifted dash ends, 0 flat),
+  the h7-plane-recorded (d) family (their 2 px at 41; h6 accepted to 33).
+
 ### h8-points-row (the Points card's rows)
 
 - The readout's x slot is the closed field's input, not a span: the input
@@ -685,6 +707,51 @@ no new tokens (all eight tabled).
   an arrow-function wrapper silently never runs (two probe rounds kept
   Arctic Ice). Seed each theme in its own slot; the three-key model reads
   `dark-theme` in dark mode.
+
+### h8-points-slider (the x-of-P slider)
+
+- The track is a grow-wide 20 px Clay scope with the region and tab stop;
+  thumb and tip are post-pass paint from the laid-out track (no Clay scopes,
+  like the overlay button): thumb centre = track.x + px-rounded left,
+  tip = measured width centred on the thumb and clamped inside. The layout
+  test asserts the arithmetic boxes against the fixture (track, thumb, full
+  tip box with real fonts); the dom fixture runs slider-default (track,
+  thumb) and slider-hover (tip, `display:none` at rest).
+- Focus entries are click-h's-box + one Tab (the flip-focus pattern):
+  absolute Tab×5 differs per engine (WebKit skips radios/buttons without
+  Full Keyboard Access; chromium/firefox do not), while h-box → slider is
+  next-stop in every engine (the h toggle precedes the h box in DOM order).
+  A click on the track would jump P, so scripts never click it for focus.
+- A left-button press focuses the track without the ring
+  (`set_focus(hit, false)`: DOM focus, no `:focus-visible`), then starts the
+  drag only with a live range and laid-out track. Moves route by a
+  `slider_hold` capture predicate beside the scrub's (the shell's
+  `captures()` stays plane-only); release/up/blur flush `p` and clear
+  `p_dragging`. SDL has no buttons field, cancel or capture-loss events, so
+  the buttons==0/cancel/lost-capture arms are accepted gaps. Enter sets
+  `App.slider_edit` for h8-points-field (which merges later); the readout
+  field merges its own focus stop past the slider.
+- P rides the shared param plumbing (`params_step` steps and syncs it;
+  the loop's separate `p_step` was deleted as a duplicate at the row
+  merge). The `p` views line (`fmt_g17`) is validated in `act.py` beside
+  the `q` line.
+- The hover thumb scales 1.12 (radii × 1.12 about the centre — the fixture
+  thumb boxes 20.16 px on hover); the parked thumb is a dashed ring
+  (circle sampled to 72 segments, cut with the plane's `dash_pieces` at
+  `[3,2]` offset 0) with no core. Halo is `theme::plate(primary)` (26%),
+  the focus ring `theme::ring` (32%), both plain-alpha strokes like the
+  rows' rings. Tip text baselines hang from a centred content strut
+  (readout shape): `x` Stix400Italic 14/18, value RobotoMono500 13 tabular
+  on a 17 px line offset 0.5 px.
+- Fractions floor in WebKit mouse input (press at 249.54 reads clientX 249):
+  scripts use whole px and the unit tests pin the integer-coord values
+  (press 250 → 2.03, +30 → 3.82, click 100 → −6.92).
+- `mv_theme`'s `ring`/`plate`/`band`/`badge` return 0..1 theme colors;
+  `draw::nvg_color` takes 0..255 Clay colors (divides by 255). Wrap with
+  `ui::ink` first, as every other `nvg_color` call site does — passing a
+  helper's output straight in paints at alpha ~0.001 (an invisible halo and
+  focus ring, found by judging slider-focus at 6x and proved by a radial
+  profile against the reference).
 
 ## Long runs
 

@@ -836,8 +836,9 @@ def check_views(out: Path) -> list[str]:
     (pan / grab-hover / grab-active) is the canvas's cursor, written whenever it changes between
     the plane's three (h7-plane). A line holding only `shown` ({a, b, h, k,
     animating}) is the transform the plane draws, written whenever it changes (h6-curve).
-    A line holding only `q` (a number or null) is Q's quantized x, written whenever
-    the pointer names or clears a point (h8-plane)."""
+    A line holding only `p` (P's live value) is the x-of-P slider's, written whenever
+    it changes (h8-points-slider). A line holding only `q` (a number or null) is Q's
+    quantized x, written whenever the pointer names or clears a point (h8-plane)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -889,6 +890,10 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"cursor"}:
             if view.get("cursor") not in ("pan", "grab-hover", "grab-active"):
                 problems.append(f"views.json line {number}: 'cursor' is not a plane cursor")
+            continue
+        if set(view) == {"p"}:
+            if not _is_num(view.get("p")):
+                problems.append(f"views.json line {number}: 'p' is not a number")
             continue
         if set(view) == {"q"}:
             q: object = view.get("q")

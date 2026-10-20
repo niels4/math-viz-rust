@@ -1,0 +1,12 @@
+# slider-hover (h8-points-slider): the pointer on the thumb (250, 748, on the
+# 18 px mark centred at 249.5). The tip "x = 2.00" shows, the thumb scales
+# 1.12. Behaviour: aria-valuenow stays 2, no drag.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 250 748
+wait 200
+shot slider-hover

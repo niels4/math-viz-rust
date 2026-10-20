@@ -852,7 +852,7 @@ pub fn press_down(app: &mut App) {
         | HitKind::TransformResetAll
         | HitKind::Wordmark
         | HitKind::PointsField
-        | HitKind::PointsSlider => {
+        | HitKind::PointSlider => {
             close_menu(app);
         }
     }

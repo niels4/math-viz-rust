@@ -49,11 +49,6 @@ pub const HEAD_GAP: f32 = 8.0;
 /// The point block: head over the slider, 6 px apart (`.point`).
 pub const POINT_GAP: f32 = 6.0;
 
-/// The slider's stand-in: an empty 20 px track under P's head until
-/// h8-points-slider merges (its `point_slider.rs` replaces this scope
-/// through [`SLIDER_ID`]).
-pub const SLIDER_STAND_IN_HEIGHT: f32 = 20.0;
-
 /// The mark: an 18 px svg (`.mark`, `SIZE`).
 pub const MARK_SIZE: f32 = 18.0;
 
@@ -123,9 +118,8 @@ pub const Q_LETTER_ID: &str = "QLetter";
 pub const Q_ROLE_SLOT_ID: &str = "QRoleSlot";
 pub const Q_ROLE_ID: &str = "QRole";
 pub const Q_READOUT_ID: &str = "QReadout";
-/// The slider's scope (h8-points-slider's call line) and the readout x
-/// slot's scope (h8-points-field's call line).
-pub const SLIDER_ID: &str = "PointSlider";
+/// The readout x slot's scope (h8-points-field's call line; the slider's
+/// scope is h8-points-slider's `TRACK_ID`, the same "PointSlider").
 pub const X_SLOT_ID: &str = "PXSlot";
 
 /// The side P lies furthest past, as the plane's label points (`OffSide`).
@@ -492,24 +486,13 @@ fn p_point(app: &mut App) {
     point.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
     crate::ui::ui_scope(app, mv_clay::id(P_POINT_ID, 0), &point, |app| {
         p_head(app);
-        // h8-points-slider swaps its `point_slider::slider(app)` call in
-        // for this stand-in at its merge (the track stays 20 px).
-        slider_stand_in(app);
+        // The x-of-P slider under the head (h8-points-slider's call line):
+        // the 20 px track with the thumb and tip.
+        crate::point_slider::slider(app);
         // The P edit tip (h8-points-field): floating under the head while
         // the field edits.
         crate::x_field::edit_tip(app);
     });
-}
-
-/// The slider's stand-in: an empty 20 px track under P's head
-/// (`SLIDER_ID` marks the anchor for h8-points-slider's call line).
-fn slider_stand_in(app: &mut App) {
-    let mut track = crate::ui::empty_decl();
-    track.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
-        height: mv_clay::sizing_fixed(SLIDER_STAND_IN_HEIGHT),
-    };
-    crate::ui::ui_scope(app, mv_clay::id(SLIDER_ID, 0), &track, |_| {});
 }
 
 /// P's head row (`.head`): the mark, P, the off triangle, the role slot

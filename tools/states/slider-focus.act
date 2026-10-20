@@ -1,0 +1,16 @@
+# slider-focus (h8-points-slider): the track focused — reached by clicking
+# h's box (331.5, 599.5: opens the field, focuses it) and a single Tab to the
+# next stop, the slider (the flip-focus pattern: counting Tabs from the body
+# is flaky, and a click on the track would jump P). The 3 px primary-32% ring
+# shows with the tip. Behaviour: the DOM's activeElement is the slider.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 331.5 599.5
+wait 200
+key Tab
+wait 200
+shot slider-focus

@@ -118,6 +118,8 @@ pub struct Harness<'a> {
     pub camera: String,
     /// The lit parameter as last written to `views.json`.
     pub lit: String,
+    /// P as last written to `views.json` (h8-points-slider).
+    pub p: String,
     /// The cursor as last written to `views.json`.
     pub cursor: String,
     /// Q's quantized x as last written to `views.json`.
@@ -158,6 +160,7 @@ pub fn run_harness(
         url: String::new(),
         camera: String::new(),
         lit: String::new(),
+        p: String::new(),
         cursor: String::new(),
         q: String::new(),
         shown: String::new(),
@@ -514,6 +517,13 @@ fn harness_frame(h: &mut Harness<'_>) {
     if lit != h.lit {
         h.lit = lit;
         h.views.extend_from_slice(h.lit.as_bytes());
+    }
+    // P, whenever the live value changed (h8-points-slider; the behaviour
+    // checks read it against the slider's `aria-valuenow`).
+    let p = p_line(*h.app.p_param.get());
+    if p != h.p {
+        h.p = p;
+        h.views.extend_from_slice(h.p.as_bytes());
     }
     // The cursor, whenever it changed between the plane's three
     // (`CartesianPlane.tsx`'s `data-cursor`, read by `act.py`'s
@@ -901,6 +911,12 @@ fn camera_line(center: [f64; 2], scale: f64, animating: bool) -> String {
         fmt_g17(center[1]),
         fmt_g17(scale),
     )
+}
+
+/// One `p` line: P's live value. Pure, so the shape is testable without
+/// the app.
+fn p_line(p: f64) -> String {
+    format!("{{\"p\": {}}}\n", fmt_g17(p))
 }
 
 /// One `lit` line: the highlighted parameters in order, or null at rest.
@@ -1327,6 +1343,12 @@ mod tests {
     }
 
     #[test]
+    fn p_line_has_its_shape() {
+        assert_eq!(p_line(2.0), "{\"p\": 2}\n");
+        assert_eq!(p_line(3.82), "{\"p\": 3.8199999999999998}\n");
+        assert_eq!(p_line(-5.0), "{\"p\": -5}\n");
+    }
+
     fn url_line_has_its_shape() {
         assert_eq!(
             url_line("center=1,2&scale=2"),

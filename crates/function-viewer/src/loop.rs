@@ -189,6 +189,8 @@ pub fn iterate(app: &mut App) -> bool {
     // draw, so the frame draws what the values moved to. A fired write
     // repaints: the readout reads the URL, so without this it would keep
     // showing the pre-debounce values on a quiet page.
+    // `params_step` also steps `p` (h8-plane; P rides the shared param
+    // plumbing with the transform params).
     if crate::transform_section::params_step(app, (now / MS) as u64) {
         app.dirty = true;
         #[cfg(target_os = "emscripten")]

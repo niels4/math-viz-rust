@@ -52,6 +52,7 @@ pub mod platform_web;
 pub mod platform_windows;
 pub mod plot;
 pub mod point_format;
+pub mod point_slider;
 pub mod points_section;
 pub mod prefs;
 pub mod readout;

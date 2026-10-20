@@ -47,6 +47,7 @@ pub fn live(app: &crate::app::App) -> Option<VisibleRange> {
         app.camera.scale,
     )
 }
+
 #[must_use]
 pub fn visible_range(
     width: f64,

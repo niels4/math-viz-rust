@@ -177,6 +177,12 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub x_field: crate::x_field::XField,
+    /// An x-of-P slider drag in flight (h8-points-slider;
+    /// `point_slider.rs` owns the machine; `state.p_dragging` mirrors it).
+    pub slider_hold: Option<crate::point_slider::SliderDrag>,
+    /// The x field was asked open from the slider's Enter (h8-points-field
+    /// consumes it in its wiring, opening the field and clearing the flag).
+    pub slider_edit: bool,
 }
 
 impl App {
@@ -350,6 +356,8 @@ impl App {
             moved_by: crate::moved_by::MovedBy::new(),
             visible_range: None,
             x_field: crate::x_field::XField::new(),
+            slider_hold: None,
+            slider_edit: false,
         }
     }
 }

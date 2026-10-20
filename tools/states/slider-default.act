@@ -1,0 +1,10 @@
+# slider-default (h8-points-slider): the x-of-P slider at rest, P=2 on the
+# plane's visible range (±9.9 at 1440x900, default camera; the prompt's -5..5
+# is the 500x400-fixture equivalent). Thumb at left 208.54px, no tip.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+shot slider-default

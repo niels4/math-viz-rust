@@ -323,15 +323,6 @@ pub fn field_hit() -> crate::input::Hit {
     }
 }
 
-/// The slider's hit, for the focus the edit's end returns (h8-points-slider
-/// owns the stop; until it merges nothing holds it and the focus clears).
-fn slider_hit() -> crate::input::Hit {
-    crate::input::Hit {
-        kind: crate::input::HitKind::PointsSlider,
-        index: 0,
-    }
-}
-
 /// P's live value.
 #[must_use]
 pub fn p_value(app: &App) -> f64 {
@@ -374,6 +365,13 @@ fn field_width(app: &mut App) -> (f32, f32) {
 /// the tip), attached to its top-left. Called from the P readout's layout
 /// ([`X_SLOT_ID`] stays the paint and hit anchor).
 pub fn slot(app: &mut App, readout: mv_sys::clay::ElementId) {
+    // The slider's Enter asks for the field (h8-points-slider sets
+    // `App::slider_edit`): open on set and clear the flag, in the same
+    // frame the track's key turn drew.
+    if app.slider_edit {
+        app.slider_edit = false;
+        open_field(app, true);
+    }
     let (text, n) = display_chars(app);
     let (x_slot, _) = crate::points_section::x_slot(app, &text, n, true);
     let (field_w, _) = field_width(app);
@@ -685,7 +683,7 @@ pub fn open_field(app: &mut App, visible: bool) {
 /// row's `onEditEnd`: every end but a blur). Until h8-points-slider merges
 /// nothing holds the stop and the focus clears.
 fn focus_slider(app: &mut App) {
-    let slider = slider_hit();
+    let slider = crate::point_slider::slider_hit();
     let target = if app.input.stops.contains(&slider) {
         slider
     } else {
@@ -805,7 +803,7 @@ fn tab_out(app: &mut App, shift: bool) {
     let value = p_value(app);
     let fx = app.x_field.blur_out(value);
     apply(app, fx);
-    let slider = slider_hit();
+    let slider = crate::point_slider::slider_hit();
     let target = if shift {
         crate::input::stop_beside(app, slider, -1)
     } else if app.input.stops.contains(&slider) {
