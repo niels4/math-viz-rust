@@ -72,15 +72,13 @@ pub const MINUS_STR: &str = "\u{2212}";
 /// A value with two decimals and true minus signs.
 ///
 /// Ported from `FunctionReadout.tsx` (`formatValue`: `v.toFixed(2)` with `-`
-/// → U+2212). Runs through `mv_numfmt::format_number(v, 2)`, which rounds
-/// the decimal digits half away from zero; JavaScript's `toFixed` rounds the
-/// binary value, so a binary tie like 2.675 prints "2.68" here and "2.67"
-/// there. No H4 state or test hits one (every value is exactly
-/// representable), so the pixels agree and the difference is recorded, not
-/// carried.
+/// → U+2212). Runs through `mv_numfmt::to_fixed(v, 2)`, the exact binary
+/// `toFixed` (halves up on the binary value, as JavaScript rounds them: a
+/// binary tie like 2.675 prints "2.67" on both sides), with the ASCII minus
+/// swapped for the true minus the readout prints.
 #[must_use]
 pub fn format_value(v: f64) -> String {
-    mv_numfmt::format_number(v, 2)
+    mv_numfmt::to_fixed(v, 2).replace('-', MINUS_STR)
 }
 
 /// A signed run: `positive`/`negative` then the magnitude with two decimals.

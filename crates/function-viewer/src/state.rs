@@ -31,8 +31,11 @@ pub enum TransformParam {
 
 impl TransformParam {
     /// The letter as the URL, the equation and the rows spell it.
+    ///
+    /// Named as  and h4-rows' stub spell it, so the
+    /// three transform-parameter definitions share the spelling.
     #[must_use]
-    pub fn wire(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::A => "a",
             Self::B => "b",
@@ -162,11 +165,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wire_letters_spell_a_b_h_k() {
-        assert_eq!(TransformParam::A.wire(), "a");
-        assert_eq!(TransformParam::B.wire(), "b");
-        assert_eq!(TransformParam::H.wire(), "h");
-        assert_eq!(TransformParam::K.wire(), "k");
+    fn letters_spell_a_b_h_k() {
+        assert_eq!(TransformParam::A.as_str(), "a");
+        assert_eq!(TransformParam::B.as_str(), "b");
+        assert_eq!(TransformParam::H.as_str(), "h");
+        assert_eq!(TransformParam::K.as_str(), "k");
     }
 
     #[test]
