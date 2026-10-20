@@ -1,0 +1,11 @@
+# settings-open (H1): the gear's menu open at rest, Arctic Ice on a dark system.
+# Menu (1099, 76, 304, 253); gear centre (1383, 48).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+shot settings-open

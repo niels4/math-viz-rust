@@ -9,40 +9,50 @@
 
 use std::fmt;
 
+// The stub section: h1-frame's `theme_state` items mirrored exactly (commit
+// 1fda916 on claude-port-h1-frame, read-only). When h1-frame merges into
+// `claude-port`, this section is deleted and the `use` below it takes over.
+// Every name, default, word, slug, label and routing rule matches.
+
 // stub until h1-frame: replaced by `crate::theme_state::SystemScheme`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SystemScheme {
+    #[default]
     Dark,
     Light,
 }
 
 // stub until h1-frame: replaced by `crate::theme_state::LightDark`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LightDark {
+    #[default]
     System,
     Dark,
     Light,
 }
 
 // stub until h1-frame: replaced by `crate::theme_state::DarkTheme`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DarkTheme {
+    #[default]
     ArcticIce,
     TronCyan,
     MidnightViolet,
 }
 
 // stub until h1-frame: replaced by `crate::theme_state::LightTheme`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LightTheme {
+    #[default]
     CleanTeal,
     EducationalWarm,
     SageEditorial,
 }
 
 // stub until h1-frame: replaced by `crate::theme_state::ThemeSlug`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ThemeSlug {
+    #[default]
     ArcticIce,
     TronCyan,
     MidnightViolet,
@@ -51,9 +61,93 @@ pub enum ThemeSlug {
     SageEditorial,
 }
 
-impl ThemeSlug {
+// stub until h1-frame: replaced by `crate::theme_state::ALL_SLUGS`.
+pub const ALL_SLUGS: [ThemeSlug; 6] = [
+    ThemeSlug::ArcticIce,
+    ThemeSlug::TronCyan,
+    ThemeSlug::MidnightViolet,
+    ThemeSlug::CleanTeal,
+    ThemeSlug::EducationalWarm,
+    ThemeSlug::SageEditorial,
+];
+
+impl LightDark {
+    // stub until h1-frame.
+    pub fn word(self) -> &'static str {
+        match self {
+            LightDark::System => "system",
+            LightDark::Dark => "dark",
+            LightDark::Light => "light",
+        }
+    }
+
     // stub until h1-frame.
     pub fn name(self) -> &'static str {
+        match self {
+            LightDark::System => "System",
+            LightDark::Dark => "Dark",
+            LightDark::Light => "Light",
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn parse(text: &str) -> Option<LightDark> {
+        match text {
+            "system" => Some(LightDark::System),
+            "dark" => Some(LightDark::Dark),
+            "light" => Some(LightDark::Light),
+            _ => None,
+        }
+    }
+}
+
+impl DarkTheme {
+    // stub until h1-frame.
+    pub fn slug(self) -> &'static str {
+        ThemeSlug::from(self).slug()
+    }
+
+    // stub until h1-frame.
+    pub fn name(self) -> &'static str {
+        ThemeSlug::from(self).name()
+    }
+
+    // stub until h1-frame.
+    pub fn parse(text: &str) -> Option<DarkTheme> {
+        match text {
+            "arctic-ice" => Some(DarkTheme::ArcticIce),
+            "tron-cyan" => Some(DarkTheme::TronCyan),
+            "midnight-violet" => Some(DarkTheme::MidnightViolet),
+            _ => None,
+        }
+    }
+}
+
+impl LightTheme {
+    // stub until h1-frame.
+    pub fn slug(self) -> &'static str {
+        ThemeSlug::from(self).slug()
+    }
+
+    // stub until h1-frame.
+    pub fn name(self) -> &'static str {
+        ThemeSlug::from(self).name()
+    }
+
+    // stub until h1-frame.
+    pub fn parse(text: &str) -> Option<LightTheme> {
+        match text {
+            "clean-teal" => Some(LightTheme::CleanTeal),
+            "educational-warm" => Some(LightTheme::EducationalWarm),
+            "sage-editorial" => Some(LightTheme::SageEditorial),
+            _ => None,
+        }
+    }
+}
+
+impl ThemeSlug {
+    // stub until h1-frame.
+    pub fn slug(self) -> &'static str {
         match self {
             ThemeSlug::ArcticIce => "arctic-ice",
             ThemeSlug::TronCyan => "tron-cyan",
@@ -61,6 +155,63 @@ impl ThemeSlug {
             ThemeSlug::CleanTeal => "clean-teal",
             ThemeSlug::EducationalWarm => "educational-warm",
             ThemeSlug::SageEditorial => "sage-editorial",
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn name(self) -> &'static str {
+        match self {
+            ThemeSlug::ArcticIce => "Arctic Ice",
+            ThemeSlug::TronCyan => "Tron Cyan",
+            ThemeSlug::MidnightViolet => "Midnight Violet",
+            ThemeSlug::CleanTeal => "Clean Teal",
+            ThemeSlug::EducationalWarm => "Educational Warm",
+            ThemeSlug::SageEditorial => "Sage Editorial",
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn parse(text: &str) -> Option<ThemeSlug> {
+        match text {
+            "arctic-ice" => Some(ThemeSlug::ArcticIce),
+            "tron-cyan" => Some(ThemeSlug::TronCyan),
+            "midnight-violet" => Some(ThemeSlug::MidnightViolet),
+            "clean-teal" => Some(ThemeSlug::CleanTeal),
+            "educational-warm" => Some(ThemeSlug::EducationalWarm),
+            "sage-editorial" => Some(ThemeSlug::SageEditorial),
+            _ => None,
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn scheme(self) -> SystemScheme {
+        match self {
+            ThemeSlug::ArcticIce | ThemeSlug::TronCyan | ThemeSlug::MidnightViolet => {
+                SystemScheme::Dark
+            }
+            ThemeSlug::CleanTeal | ThemeSlug::EducationalWarm | ThemeSlug::SageEditorial => {
+                SystemScheme::Light
+            }
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn dark(self) -> Option<DarkTheme> {
+        match self {
+            ThemeSlug::ArcticIce => Some(DarkTheme::ArcticIce),
+            ThemeSlug::TronCyan => Some(DarkTheme::TronCyan),
+            ThemeSlug::MidnightViolet => Some(DarkTheme::MidnightViolet),
+            ThemeSlug::CleanTeal | ThemeSlug::EducationalWarm | ThemeSlug::SageEditorial => None,
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn light(self) -> Option<LightTheme> {
+        match self {
+            ThemeSlug::ArcticIce | ThemeSlug::TronCyan | ThemeSlug::MidnightViolet => None,
+            ThemeSlug::CleanTeal => Some(LightTheme::CleanTeal),
+            ThemeSlug::EducationalWarm => Some(LightTheme::EducationalWarm),
+            ThemeSlug::SageEditorial => Some(LightTheme::SageEditorial),
         }
     }
 
@@ -82,8 +233,30 @@ impl ThemeSlug {
     }
 }
 
+impl From<DarkTheme> for ThemeSlug {
+    // stub until h1-frame.
+    fn from(dark: DarkTheme) -> ThemeSlug {
+        match dark {
+            DarkTheme::ArcticIce => ThemeSlug::ArcticIce,
+            DarkTheme::TronCyan => ThemeSlug::TronCyan,
+            DarkTheme::MidnightViolet => ThemeSlug::MidnightViolet,
+        }
+    }
+}
+
+impl From<LightTheme> for ThemeSlug {
+    // stub until h1-frame.
+    fn from(light: LightTheme) -> ThemeSlug {
+        match light {
+            LightTheme::CleanTeal => ThemeSlug::CleanTeal,
+            LightTheme::EducationalWarm => ThemeSlug::EducationalWarm,
+            LightTheme::SageEditorial => ThemeSlug::SageEditorial,
+        }
+    }
+}
+
 // stub until h1-frame: replaced by `crate::theme_state::ThemeState`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ThemeState {
     pub light_dark: LightDark,
     pub dark_theme: DarkTheme,
@@ -91,9 +264,21 @@ pub struct ThemeState {
     pub system: SystemScheme,
 }
 
+impl Default for ThemeState {
+    // stub until h1-frame.
+    fn default() -> ThemeState {
+        ThemeState {
+            light_dark: LightDark::System,
+            dark_theme: DarkTheme::ArcticIce,
+            light_theme: LightTheme::CleanTeal,
+            system: SystemScheme::Dark,
+        }
+    }
+}
+
 impl ThemeState {
-    // stub until h1-frame: the resolved scheme (`appThemeAtom`'s first step).
-    pub fn resolved_scheme(self) -> SystemScheme {
+    // stub until h1-frame.
+    pub fn resolved_scheme(&self) -> SystemScheme {
         match self.light_dark {
             LightDark::System => self.system,
             LightDark::Dark => SystemScheme::Dark,
@@ -101,19 +286,23 @@ impl ThemeState {
         }
     }
 
-    // stub until h1-frame: `appThemeAtom`'s resolved theme.
-    pub fn resolved(self) -> ThemeSlug {
-        match self.resolved_scheme() {
-            SystemScheme::Dark => match self.dark_theme {
-                DarkTheme::ArcticIce => ThemeSlug::ArcticIce,
-                DarkTheme::TronCyan => ThemeSlug::TronCyan,
-                DarkTheme::MidnightViolet => ThemeSlug::MidnightViolet,
-            },
-            SystemScheme::Light => match self.light_theme {
-                LightTheme::CleanTeal => ThemeSlug::CleanTeal,
-                LightTheme::EducationalWarm => ThemeSlug::EducationalWarm,
-                LightTheme::SageEditorial => ThemeSlug::SageEditorial,
-            },
+    // stub until h1-frame.
+    pub fn resolved(&self) -> ThemeSlug {
+        if self.resolved_scheme() == SystemScheme::Dark {
+            ThemeSlug::from(self.dark_theme)
+        } else {
+            ThemeSlug::from(self.light_theme)
+        }
+    }
+
+    // stub until h1-frame.
+    pub fn set_theme_slug(&mut self, slug: ThemeSlug) {
+        if self.resolved_scheme() == SystemScheme::Dark {
+            if let Some(dark) = slug.dark() {
+                self.dark_theme = dark;
+            }
+        } else if let Some(light) = slug.light() {
+            self.light_theme = light;
         }
     }
 
@@ -131,53 +320,18 @@ impl ThemeState {
     pub fn set_light_theme(&mut self, value: LightTheme) {
         self.light_theme = value;
     }
-
-    /// `setThemeSlug`: the picked slug is written to the dark or the light slot
-    /// according to the *resolved* scheme, never both.
-    // stub until h1-frame (kept here: the routing is the menu's own rule).
-    pub fn set_theme_slug(&mut self, slug: ThemeSlug) {
-        match self.resolved_scheme() {
-            SystemScheme::Dark => match slug {
-                ThemeSlug::ArcticIce => self.dark_theme = DarkTheme::ArcticIce,
-                ThemeSlug::TronCyan => self.dark_theme = DarkTheme::TronCyan,
-                ThemeSlug::MidnightViolet => self.dark_theme = DarkTheme::MidnightViolet,
-                ThemeSlug::CleanTeal | ThemeSlug::EducationalWarm | ThemeSlug::SageEditorial => {}
-            },
-            SystemScheme::Light => match slug {
-                ThemeSlug::CleanTeal => self.light_theme = LightTheme::CleanTeal,
-                ThemeSlug::EducationalWarm => {
-                    self.light_theme = LightTheme::EducationalWarm;
-                }
-                ThemeSlug::SageEditorial => self.light_theme = LightTheme::SageEditorial,
-                ThemeSlug::ArcticIce | ThemeSlug::TronCyan | ThemeSlug::MidnightViolet => {}
-            },
-        }
-    }
 }
 
-/// `slugToLabel` (`format.ts`): `"arctic-ice"` maps to `"Arctic Ice"`.
-pub fn slug_to_label(slug: &str) -> String {
-    slug.split('-')
-        .filter(|word| !word.is_empty())
-        .map(|word| {
-            let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
+/// The three colours the menu's swatch shows for a theme: its background,
+/// its curve ink, its point ink.
+// stub until h1-frame: replaced by `crate::theme_state::swatch_colours`.
+pub fn swatch_colours(_slug: ThemeSlug) -> [mv_theme::Token; 3] {
+    use mv_theme::Token::{Background, ChartAccent, ChartLine};
+    [Background, ChartLine, ChartAccent]
 }
 
-fn light_dark_slug(light_dark: LightDark) -> &'static str {
-    match light_dark {
-        LightDark::System => "system",
-        LightDark::Dark => "dark",
-        LightDark::Light => "light",
-    }
-}
-
+/// `slugToLabel` (`format.ts`) lives on h1-frame's `name()` methods
+/// (`LightDark::name`, `ThemeSlug::name`); this module spells labels through them.
 /// `getLightDarkSelectionMessage`: with `system`, `"Your system is {dark|light}
 /// right now."`, otherwise `"Always {dark|light}."`.
 pub fn light_dark_message(light_dark: LightDark, system: SystemScheme) -> String {
@@ -189,7 +343,7 @@ pub fn light_dark_message(light_dark: LightDark, system: SystemScheme) -> String
                 SystemScheme::Light => "light",
             }
         ),
-        option => format!("Always {}.", light_dark_slug(option)),
+        option => format!("Always {}.", option.word()),
     }
 }
 
@@ -218,7 +372,7 @@ pub enum FocusSlot {
 impl fmt::Display for FocusSlot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FocusSlot::LightDark(option) => write!(f, "light-dark:{}", light_dark_slug(*option)),
+            FocusSlot::LightDark(option) => write!(f, "light-dark:{}", option.word()),
             FocusSlot::Theme(index) => write!(f, "theme:{index}"),
         }
     }
@@ -299,12 +453,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn slug_to_label_capitalises_each_word() {
-        assert_eq!(slug_to_label("arctic-ice"), "Arctic Ice");
-        assert_eq!(slug_to_label("midnight-violet"), "Midnight Violet");
-        assert_eq!(slug_to_label("clean-teal"), "Clean Teal");
-        assert_eq!(slug_to_label("system"), "System");
-        assert_eq!(slug_to_label("dark"), "Dark");
+    fn labels_spell_like_slug_to_label() {
+        assert_eq!(ThemeSlug::ArcticIce.name(), "Arctic Ice");
+        assert_eq!(ThemeSlug::MidnightViolet.name(), "Midnight Violet");
+        assert_eq!(ThemeSlug::CleanTeal.name(), "Clean Teal");
+        assert_eq!(LightDark::System.name(), "System");
+        assert_eq!(LightDark::Dark.name(), "Dark");
+        assert_eq!(ThemeSlug::ArcticIce.slug(), "arctic-ice");
+        assert_eq!(LightDark::System.word(), "system");
     }
 
     #[test]
@@ -352,11 +508,11 @@ mod tests {
     #[test]
     fn theme_lists_match_use_app_theme() {
         assert_eq!(
-            ThemeSlug::slugs_for(SystemScheme::Dark).map(ThemeSlug::name),
+            ThemeSlug::slugs_for(SystemScheme::Dark).map(ThemeSlug::slug),
             ["arctic-ice", "tron-cyan", "midnight-violet"]
         );
         assert_eq!(
-            ThemeSlug::slugs_for(SystemScheme::Light).map(ThemeSlug::name),
+            ThemeSlug::slugs_for(SystemScheme::Light).map(ThemeSlug::slug),
             ["clean-teal", "educational-warm", "sage-editorial"]
         );
     }
