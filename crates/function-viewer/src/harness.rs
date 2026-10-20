@@ -443,9 +443,7 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
             // hash-then-shot script would record no `url` line).
             let prev = h.app.url.route().to_string();
             let kept = h.script_route.clone();
-            h.app
-                .url
-                .sync_from_hash(&format!("#{kept}?{}", q.query));
+            h.app.url.sync_from_hash(&format!("#{kept}?{}", q.query));
             if prev != h.app.url.route() {
                 crate::welcome::enter_route(h.app);
             }

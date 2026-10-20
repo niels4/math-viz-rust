@@ -241,7 +241,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -479,7 +488,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -763,7 +781,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -1041,7 +1068,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -1320,7 +1356,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -1593,7 +1638,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -1847,7 +1901,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -2095,7 +2158,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -2339,7 +2411,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -2577,7 +2658,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -2821,7 +2911,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -3059,7 +3158,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -3303,7 +3411,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -3541,7 +3658,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -3790,7 +3916,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -4033,7 +4168,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -4292,7 +4436,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -4545,7 +4698,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -4799,7 +4961,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -5047,7 +5218,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -5296,7 +5476,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -5539,7 +5728,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -5788,7 +5986,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -6031,7 +6238,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -6280,7 +6496,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -6523,7 +6748,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -6782,7 +7016,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -7035,7 +7278,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -7289,7 +7541,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -7537,7 +7798,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -7791,7 +8061,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -8039,7 +8318,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -8293,7 +8581,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -8541,7 +8838,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -8800,7 +9106,16 @@
      "ruler_a",
      "tape_a",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -9053,7 +9368,16 @@
      "ruler_a",
      "tape_a",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -9297,7 +9621,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -9535,7 +9868,16 @@
      "ruler_h",
      "ruler_k",
      "slider_tip_p",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -9784,7 +10126,16 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -10027,7 +10378,16 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "tip_p"
+     "tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -10276,7 +10636,16 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "slider_tip_p"
+     "slider_tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -10519,7 +10888,16 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "slider_tip_p"
+     "slider_tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    }
   },
@@ -10768,7 +11146,16 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "slider_tip_p"
+     "slider_tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
     ]
    },
    "chromium": {
@@ -11011,7 +11398,616 @@
      "tape_a",
      "ruler_h",
      "ruler_k",
-     "slider_tip_p"
+     "slider_tip_p",
+     "mark",
+     "description",
+     "cta",
+     "hint",
+     "welcome_chip_a",
+     "welcome_chip_k",
+     "welcome_chip_b",
+     "welcome_chip_h",
+     "hero_plane"
+    ]
+   }
+  },
+  "welcome-route": {
+   "size": [
+    1440,
+    900
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      520,
+      190,
+      840,
+      520
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      32,
+      24,
+      1376,
+      40
+     ],
+     "title": [
+      80,
+      276,
+      380,
+      96
+     ],
+     "gear": [
+      1368,
+      24,
+      40,
+      40
+     ],
+     "sidebar": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "mark": [
+      32,
+      30,
+      28,
+      28
+     ],
+     "description": [
+      80,
+      400,
+      380,
+      99
+     ],
+     "cta": [
+      80,
+      527,
+      306.71875,
+      53
+     ],
+     "hint": [
+      80,
+      598,
+      337.609375,
+      26
+     ],
+     "welcome_chip_a": [
+      289.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_k": [
+      323.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_b": [
+      357.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_h": [
+      391.609375,
+      598,
+      26,
+      26
+     ],
+     "hero_plane": [
+      520,
+      190,
+      840,
+      520
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      520,
+      190,
+      840,
+      520
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      32,
+      24,
+      1376,
+      40
+     ],
+     "title": [
+      80,
+      276,
+      380,
+      96
+     ],
+     "gear": [
+      1368,
+      24,
+      40,
+      40
+     ],
+     "sidebar": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "mark": [
+      32,
+      30,
+      28,
+      28
+     ],
+     "description": [
+      80,
+      400,
+      380,
+      99
+     ],
+     "cta": [
+      80,
+      527,
+      305.953125,
+      53
+     ],
+     "hint": [
+      80,
+      598,
+      336.984375,
+      26
+     ],
+     "welcome_chip_a": [
+      288.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_k": [
+      322.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_b": [
+      356.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_h": [
+      390.984375,
+      598,
+      26,
+      26
+     ],
+     "hero_plane": [
+      520,
+      190,
+      840,
+      520
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p"
+    ]
+   }
+  },
+  "welcome-default": {
+   "size": [
+    1440,
+    900
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      520,
+      190,
+      840,
+      520
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      32,
+      24,
+      1376,
+      40
+     ],
+     "title": [
+      80,
+      276,
+      380,
+      96
+     ],
+     "gear": [
+      1368,
+      24,
+      40,
+      40
+     ],
+     "sidebar": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "mark": [
+      32,
+      30,
+      28,
+      28
+     ],
+     "description": [
+      80,
+      400,
+      380,
+      99
+     ],
+     "cta": [
+      80,
+      527,
+      306.71875,
+      53
+     ],
+     "hint": [
+      80,
+      598,
+      337.609375,
+      26
+     ],
+     "welcome_chip_a": [
+      289.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_k": [
+      323.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_b": [
+      357.609375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_h": [
+      391.609375,
+      598,
+      26,
+      26
+     ],
+     "hero_plane": [
+      520,
+      190,
+      840,
+      520
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      520,
+      190,
+      840,
+      520
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      32,
+      24,
+      1376,
+      40
+     ],
+     "title": [
+      80,
+      276,
+      380,
+      96
+     ],
+     "gear": [
+      1368,
+      24,
+      40,
+      40
+     ],
+     "sidebar": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "mark": [
+      32,
+      30,
+      28,
+      28
+     ],
+     "description": [
+      80,
+      400,
+      380,
+      99
+     ],
+     "cta": [
+      80,
+      527,
+      305.953125,
+      53
+     ],
+     "hint": [
+      80,
+      598,
+      336.984375,
+      26
+     ],
+     "welcome_chip_a": [
+      288.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_k": [
+      322.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_b": [
+      356.984375,
+      598,
+      26,
+      26
+     ],
+     "welcome_chip_h": [
+      390.984375,
+      598,
+      26,
+      26
+     ],
+     "hero_plane": [
+      520,
+      190,
+      840,
+      520
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p"
     ]
    }
   }

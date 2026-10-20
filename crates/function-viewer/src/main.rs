@@ -1082,7 +1082,8 @@ impl Main {
         // it in; the hand-run binary defaults to welcome, as the browser's
         // `/` does). h10-page wires it into the URL the route reads.
         if options.route == "function-viewer" {
-            app.url.sync_from_hash(&format!("#function-viewer?{}", options.query));
+            app.url
+                .sync_from_hash(&format!("#function-viewer?{}", options.query));
         }
         // The camera and its params start from that query (h2-input); the
         // picked function and its shown curve start there too (h3); the

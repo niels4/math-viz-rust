@@ -523,12 +523,7 @@ pub(crate) fn hero_content(border: &clay::BoundingBox) -> clay::BoundingBox {
 /// markers), the 1 px `--border` at radius 4, and the rounded cutouts — as
 /// `HeroPlane.tsx` draws them through `drawCartesianPlane` with empty extras
 /// and no legend.
-pub fn paint_hero(
-    app: &mut App,
-    theme: &mv_theme::Theme,
-    frame: &clay::BoundingBox,
-    density: f32,
-) {
+pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::BoundingBox, density: f32) {
     // The frame's background fill, under the ink (the DOM's canvas element
     // above its own background).
     app.vg.begin_path();
@@ -537,8 +532,7 @@ pub fn paint_hero(
         crate::draw::snap_box(*frame, density),
         crate::ui::corner_radius_all(WELCOME_RADIUS),
     );
-    app.vg
-        .fill_color(theme.colors[mv_theme::Token::Background]);
+    app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
     app.vg.fill();
     let content = hero_content(frame);
     // The bare plane (h10-seam's split): the still's curves through the
@@ -885,5 +879,59 @@ mod tests {
         navigate(&mut app, "", "");
         assert_eq!(app.url.route(), "");
         assert_eq!(app.url.query(), "");
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    /// The layout slack: boxes within half a CSS pixel of the reference's.
+    const SLACK: f32 = 0.5;
+
+    /// The welcome page's boxes match the reference's, in CSS pixels: the
+    /// top row, the intro column and the hero's plane at the design size.
+    #[test]
+    fn boxes_match_fixture() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [DESIGN_WIDTH, DESIGN_HEIGHT];
+        app.pixels = [2880, 1800];
+        let size = app.size;
+        let _commands = layout_welcome(&mut app, size, 1.0);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot = crate::fixture::fixture_shot(&fixture, "welcome-default")
+            .expect("welcome-default shot in fixture");
+        for (id, name) in [
+            (mv_clay::id("WelcomeMark", 0), "mark"),
+            (mv_clay::id(crate::top_bar::GEAR_ID, 0), "gear"),
+            (mv_clay::id("WelcomeTitle", 0), "title"),
+            (mv_clay::id("WelcomeDescription", 0), "description"),
+            (mv_clay::id("WelcomeCta", 0), "cta"),
+            (mv_clay::id("WelcomeHint", 0), "hint"),
+            (mv_clay::id("WelcomeChipA", 0), "welcome_chip_a"),
+            (mv_clay::id("WelcomeChipK", 0), "welcome_chip_k"),
+            (mv_clay::id("WelcomeChipB", 0), "welcome_chip_b"),
+            (mv_clay::id("WelcomeChipH", 0), "welcome_chip_h"),
+            (mv_clay::id("WelcomeHeroPlane", 0), "hero_plane"),
+        ] {
+            let data = clay.get_element_data(id);
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{name}[{i}]: the port lays out {got}, the reference {want}"
+                );
+            }
+        }
     }
 }
