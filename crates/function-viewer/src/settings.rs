@@ -371,6 +371,14 @@ fn bordered(pad: f32) -> clay::Padding {
 /// `top: anchor(bottom); right: anchor(right)`. Skipped while closed: the
 /// hidden popover takes no part in the layout.
 pub fn menu(app: &mut App) {
+    menu_below(app, layout::MENU_OFFSET_Y);
+}
+
+/// Lays out the open menu with `dy` under the gear's box instead of the
+/// usual 8 px: on the welcome page the menu keeps its natural size under the
+/// zoomed gear (h10-fit: the popover's `zoom: calc(1 / var(--fit))`), so its
+/// 8 screen px gap lays out as 8 / fit design px.
+pub fn menu_below(app: &mut App, dy: f32) {
     if !app.settings.open {
         return;
     }
@@ -394,7 +402,7 @@ pub fn menu(app: &mut App) {
     decl.layout.childGap = layout::TITLE_GAP as u16;
     decl.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
     decl.floating = clay::FloatingElementConfig {
-        offset: [0.0, layout::MENU_OFFSET_Y],
+        offset: [0.0, dy],
         expand: clay::Dimensions {
             width: 0.0,
             height: 0.0,

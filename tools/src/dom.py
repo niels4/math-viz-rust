@@ -196,6 +196,12 @@ FIXTURE_STATES = (
     # h10-page: the welcome page's layout at rest (reduced motion, so the
     # hero is the still), read on the welcome route.
     "welcome-default",
+    # h10-fit: the shrunk page's boxes at three window sizes, read on the
+    # welcome route at density 2 (CSS px either way); the layout tests pin
+    # the vitest fit cases against them.
+    "welcome-fit-1024x640",
+    "welcome-fit-1280x1000",
+    "welcome-fit-1280x800",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

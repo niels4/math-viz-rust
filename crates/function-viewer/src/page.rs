@@ -384,6 +384,14 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         1.0
     };
     let theme = crate::ui::current_theme(app).clone();
+    if matches!(
+        crate::welcome::Route::of(&app.url),
+        crate::welcome::Route::Welcome
+    ) {
+        // The hero's bitmap renders before the frame begins (a frame cannot
+        // nest inside the page's); the main frame samples it scaled.
+        crate::welcome::render_hero_plane(app, &theme, density);
+    }
     app.vg.begin_frame(size[0], size[1], density);
     // The body's background, over the shell's clear.
     let bg = crate::ui::ink(&theme, mv_theme::Token::Background);
@@ -414,46 +422,81 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
 
 /// Paints the welcome page's frame: the backdrop h10-hero fills in, the
 /// still in its frame, the layout's boxes, the menu's chrome and the button's
-/// focus ring. The pass keeps the port's premultiplied blend (h10-page's
-/// finding: NanoVG's GL backend premultiplies the paint's rgb by its alpha
-/// when uploading the uniforms, so straight theme inks composite exactly as
-/// the browser does — including the title's alpha ink; only a CPU-side
-/// `css_background` would apply twice, and the welcome pass paints no
-/// translucent Clay rect).
+/// focus ring. The layout runs in design units at window / fit and paints
+/// under a NanoVG scale of fit from the origin (`transform: scale(fit)`,
+/// `transform-origin: 0 0`); the menu paints at its natural size under the
+/// zoomed gear (`[popover] { zoom: calc(1 / var(--fit)) }`), mapped from its
+/// design box onto the anchor h10-fit's `menu_anchor` predicts. Design-space
+/// snaps use density · fit, the backing pixels per design unit; the menu
+/// section snaps at the density. The pass keeps the port's premultiplied
+/// blend (h10-page's finding: NanoVG's GL backend premultiplies the paint's
+/// rgb by its alpha when uploading the uniforms, so straight theme inks
+/// composite exactly as the browser does — including the title's alpha ink;
+/// only a CPU-side `css_background` would apply twice, and the welcome pass
+/// paints no translucent Clay rect).
 fn draw_welcome(app: &mut App, theme: &mv_theme::Theme, density: f32) {
-    let commands = crate::welcome::layout_welcome(app, app.size, 1.0);
+    // `as` at the f64/f32 boundary: the layout is f32 throughout.
+    let fit = crate::fit::current_fit(app.size, app.pixels) as f32;
+    let fit_f64 = f64::from(fit);
+    let commands = crate::welcome::layout_welcome(app, app.size, fit);
     // After the layout: the backdrop reads the hero's laid-out box for its
     // cache (h10-hero fills the slot here, before the frame's content).
-    crate::welcome::paint_backdrop(app, theme, density);
+    crate::welcome::paint_backdrop(app, theme, density, fit_f64);
     crate::input::collect_regions(app);
+    // The menu's plate holds its own plate and border exactly; its caps and
+    // words sit strictly inside (the tip's partition precedent).
+    let plate = element_box(app, mv_clay::id(crate::settings::layout::MENU_ID, 0));
+    let mut main: Vec<clay::RenderCommand> = Vec::new();
+    let mut menu: Vec<clay::RenderCommand> = Vec::new();
+    for command in &commands {
+        if plate.is_some_and(|plate| contains_box(plate, &command.boundingBox)) {
+            menu.push(*command);
+        } else {
+            main.push(*command);
+        }
+    }
+    let scaled = density * fit;
+    app.vg.save();
+    app.vg.scale(fit, fit);
     // The still in its frame first: the frame's opaque fill sits under the
     // ink in the same pass, so the menu's background (in the commands after)
     // covers the still where the popover overlaps it.
     if let Some(b) = element_box(app, mv_clay::id("WelcomeHeroPlane", 0)) {
-        crate::welcome::paint_hero(app, theme, &b, density);
+        crate::welcome::paint_hero(app, theme, &b, scaled);
     }
-    paint_menu_shadow(app, theme);
-    draw_commands(app, density, &commands);
-    // The menu's swatches, then the gear's hover border and focus ring.
-    crate::settings::paint_swatches(app);
+    draw_commands(app, scaled, &main);
+    // The gear's hover border and focus ring, on the zoomed row.
     crate::settings::paint_chrome(app);
-    paint_cta_ring(app);
+    paint_cta_ring(app, scaled);
+    app.vg.restore();
+    if let Some(plate) = plate {
+        // The menu at natural size: its design box onto the anchor, as the
+        // popover's inverse zoom maps it.
+        let (right, top) = crate::fit::menu_anchor(f64::from(app.size[0]), fit_f64);
+        // `as` at the f64/f32 boundary: the layout is f32 throughout.
+        let dx = right as f32 - crate::fit::MENU_WIDTH as f32 - plate.x;
+        let dy = top as f32 - plate.y;
+        app.vg.save();
+        app.vg.reset_transform();
+        app.vg.translate(dx, dy);
+        paint_menu_shadow(app, theme);
+        draw_commands(app, density, &menu);
+        // The menu's swatches, inside the natural-size menu.
+        crate::settings::paint_swatches(app);
+        app.vg.restore();
+    }
 }
 
 /// Paints the welcome button's focus ring: the UA ring on an anchor,
 /// measured on ref-h10 (1 px at a 1 px offset), while the link holds
-/// keyboard focus.
-fn paint_cta_ring(app: &mut App) {
+/// keyboard focus. Runs under the root scale, so the density is the
+/// design-space one.
+fn paint_cta_ring(app: &mut App, density: f32) {
     if app.input.focus.kind != HitKind::WelcomeCta || !app.input.focus_visible {
         return;
     }
     let Some(b) = element_box(app, mv_clay::id("WelcomeCta", 0)) else {
         return;
-    };
-    let density = if app.size[0] > 0.0 {
-        app.pixels[0] as f32 / app.size[0]
-    } else {
-        1.0
     };
     // The 1 px outline band from the offset outward: a centred stroke on the
     // box grown by offset plus half the width.

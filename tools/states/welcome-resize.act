@@ -1,0 +1,15 @@
+# welcome-resize (h10-fit): a live resize. The page at 1440 x 900, then
+# `size 1024 640` mid-run: the fit re-measures and re-lays out on the next
+# frame. Dark Arctic Ice, reduced motion.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+shot welcome-resize
+size 1024 640
+wait 500
+shot welcome-resize-small

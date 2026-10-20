@@ -6,10 +6,12 @@
 //! `WelcomePage.module.css` (`.frame`, `.top_bar`) and `useFitScale.ts` at
 //! `68e1c7b`. The fit value itself (`fit_scale` + `paper_fit`, the 1440 × 900
 //! design size and the 50 px paper step, including the whole-device-pixel
-//! rounding) is h10-p-loop's: this module takes `fit` as an input and never
-//! computes it. Wiring (the NanoVG scale at the root, the re-layout on
-//! resize, the menu anchor) lands with h10-page's `welcome.rs`; the three
-//! vitest fit cases become layout tests there.
+//! rounding) is h10-p-loop's `fit_scale.rs`; the geometry here takes `fit` as
+//! an input, and `current_fit` below is the one call that reads it from the
+//! window (re-measured every frame, as the `ResizeObserver` re-measures at
+//! every resize).
+
+use crate::app::App;
 
 /// The top row's offsets and sizes in design px (`.top_bar`).
 pub const TOP_OFFSET: f64 = 24.0;
@@ -60,11 +62,54 @@ pub fn menu_anchor(window_width: f64, fit: f64) -> (f64, f64) {
     )
 }
 
+/// The page's fit from the window's logical size and backing pixels
+/// (`useFitScale`'s measure through `WelcomePage.tsx`'s paper rounding):
+/// `paper_fit(fit_scale(size, DESIGN), PAPER_STEP, dpr)` with the device
+/// ratio off the window. Re-measured every frame, so a resize re-lays out on
+/// its next frame, as the `ResizeObserver` re-measures at every resize.
+#[must_use]
+pub fn current_fit(size: [f32; 2], pixels: [i32; 2]) -> f64 {
+    let dpr = if size[0] > 0.0 {
+        f64::from(pixels[0]) / f64::from(size[0])
+    } else {
+        1.0
+    };
+    crate::fit_scale::paper_fit(
+        crate::fit_scale::fit_scale(
+            [f64::from(size[0]), f64::from(size[1])],
+            crate::fit_scale::DESIGN,
+        ),
+        crate::fit_scale::PAPER_STEP,
+        dpr,
+    )
+}
+
+/// Maps a screen pointer into the design units the welcome page lays out in:
+/// on the welcome route the pointer hits (x / fit, y / fit), the inverse of
+/// the root scale; any other route keeps screen pixels, as its regions do.
+#[must_use]
+pub fn design_pos(app: &App, pos: [f32; 2]) -> [f32; 2] {
+    if !matches!(
+        crate::welcome::Route::of(&app.url),
+        crate::welcome::Route::Welcome
+    ) {
+        return pos;
+    }
+    let fit = current_fit(app.size, app.pixels);
+    if fit > 0.0 {
+        // `as` at the f64/f32 boundary: the layout is f32 throughout.
+        let fit = fit as f32;
+        [pos[0] / fit, pos[1] / fit]
+    } else {
+        pos
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        MENU_GAP, MENU_WIDTH, TOP_OFFSET, TOP_SIDE, frame_size, menu_anchor, screen_to_design,
-        zoomed,
+        MENU_GAP, MENU_WIDTH, TOP_OFFSET, TOP_SIDE, current_fit, design_pos, frame_size,
+        menu_anchor, screen_to_design, zoomed,
     };
 
     const EPS: f64 = 1e-9;
@@ -141,5 +186,35 @@ mod tests {
         // zoomed width that feeds it.
         let per_unit = zoomed(50.0, 0.88);
         assert!((per_unit - per_unit.round()).abs() <= 0.005 + EPS);
+    }
+
+    #[test]
+    fn current_fit_matches_the_probed_reference() {
+        // The P1 probe values on ref-h10 (density 2): 1024 × 640 → 0.71,
+        // 1280 × 1000 and 1280 × 800 → 0.88, 768 × 1024 → 0.53, the design
+        // size → 1.
+        assert_eq!(current_fit([1024.0, 640.0], [2048, 1280]), 0.71);
+        assert_eq!(current_fit([1280.0, 1000.0], [2560, 2000]), 0.88);
+        assert_eq!(current_fit([1280.0, 800.0], [2560, 1600]), 0.88);
+        assert_eq!(current_fit([768.0, 1024.0], [1536, 2048]), 0.53);
+        assert_eq!(current_fit([1440.0, 900.0], [2880, 1800]), 1.0);
+        // The dpr-1 vitest literals fall out of the same call.
+        assert_eq!(current_fit([1024.0, 640.0], [1024, 640]), 0.70);
+        assert_eq!(current_fit([1280.0, 800.0], [1280, 800]), 0.88);
+    }
+
+    #[test]
+    fn design_pos_inverts_the_pointer_on_the_welcome_route() {
+        let mut app = crate::fixture::headless_app();
+        app.url = crate::url::Url::new("#");
+        app.size = [1024.0, 640.0];
+        app.pixels = [2048, 1280];
+        // Fit 0.71: the gear's screen centre hits its design box.
+        let at = design_pos(&app, [987.1, 31.2]);
+        assert!((at[0] - 987.1 / 0.71).abs() <= 1e-4);
+        assert!((at[1] - 31.2 / 0.71).abs() <= 1e-4);
+        // Any other route keeps screen pixels.
+        app.url = crate::url::Url::new("#function-viewer");
+        assert_eq!(design_pos(&app, [987.1, 31.2]), [987.1, 31.2]);
     }
 }
