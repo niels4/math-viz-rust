@@ -188,23 +188,123 @@ pub fn paint_axes(
 /// The plotted curves' look: solid, 3 px (`drawCurve` at `3560eb2`).
 pub const CURVE_WIDTH: f32 = 3.0;
 
+/// The dashed original's look (`dashedLook` at `5cef052`): 2 px, `[6, 6]`
+/// dashes from half a dash in (`lineDashOffset` is half the first dash),
+/// 0.75 alpha, round caps and joins.
+pub const DASHED_CURVE_WIDTH: f32 = 2.0;
+/// The dashed original's pattern (`dash: [6, 6]`).
+pub const DASHED_CURVE_DASH: [f64; 2] = [6.0, 6.0];
+/// Where the pattern starts (`lineDashOffset`: half the first dash).
+pub const DASHED_CURVE_OFFSET: f64 = 3.0;
+/// The dashed original's alpha (`alpha: 0.75`, times the curve's own).
+pub const DASHED_CURVE_ALPHA: f32 = 0.75;
+
+/// The smallest dash piece that survives, in px (the first port's `dash.rs`
+/// floor: a shorter piece never strokes).
+const MIN_DASH_PIECE_PX: f64 = 0.01;
+
+/// The dash on-intervals along a length: on/off pairs from an offset (the
+/// first port's `dash.rs` intervals: the pattern runs from `-offset`, and a
+/// piece shorter than [`MIN_DASH_PIECE_PX`] is dropped).
+fn dash_intervals(length: f64, pattern: [f64; 2], offset: f64) -> Vec<[f64; 2]> {
+    let period = pattern[0] + pattern[1];
+    let mut out: Vec<[f64; 2]> = Vec::new();
+    if period <= 0.0 || length <= 0.0 {
+        return out;
+    }
+    let mut o = offset;
+    while o > period {
+        o -= period;
+    }
+    while o < 0.0 {
+        o += period;
+    }
+    let mut pos = -o;
+    while pos < length {
+        let from = pos.max(0.0);
+        let to = (pos + pattern[0]).min(length);
+        if to - from >= MIN_DASH_PIECE_PX {
+            out.push([from, to]);
+        }
+        pos += period;
+    }
+    out
+}
+
+/// Cut a polyline by a dash pattern from an offset (Canvas 2D's
+/// `setLineDash` with `lineDashOffset`, as the first port's `dash.rs` cuts
+/// it): the on-intervals as subpaths, since Canvas caps each dash with the
+/// look's caps. `pub(crate)` for the line painters (h6-handles), whose
+/// dashed and measured looks cut their shafts the same way.
+pub(crate) fn dash_pieces(
+    points: &[[f64; 2]],
+    pattern: [f64; 2],
+    offset: f64,
+) -> Vec<Vec<[f64; 2]>> {
+    if points.len() < 2 {
+        return Vec::new();
+    }
+    // The distance along the polyline at each vertex.
+    let mut along = vec![0.0; points.len()];
+    for i in 1..points.len() {
+        let dx = points[i][0] - points[i - 1][0];
+        let dy = points[i][1] - points[i - 1][1];
+        along[i] = along[i - 1] + dx.hypot(dy);
+    }
+    let length = along[points.len() - 1];
+    let at = |seg: usize, d: f64| -> [f64; 2] {
+        let span = along[seg + 1] - along[seg];
+        let t = if span == 0.0 {
+            0.0
+        } else {
+            (d - along[seg]) / span
+        };
+        let a = points[seg];
+        let b = points[seg + 1];
+        [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+    };
+    let mut pieces: Vec<Vec<[f64; 2]>> = Vec::new();
+    // The segment the walk is in; intervals come in order.
+    let mut seg = 0;
+    for interval in dash_intervals(length, pattern, offset) {
+        while seg + 2 < points.len() && along[seg + 1] <= interval[0] {
+            seg += 1;
+        }
+        let mut piece = vec![at(seg, interval[0])];
+        let mut end_seg = seg;
+        while end_seg + 2 < points.len() && along[end_seg + 1] < interval[1] {
+            end_seg += 1;
+            piece.push(points[end_seg]);
+        }
+        piece.push(at(end_seg, interval[1]));
+        pieces.push(piece);
+        seg = end_seg;
+    }
+    pieces
+}
+
 /// Paints the frame's curves over the canvas: each curve's sampled polyline
-/// (`plot::sample_curve`: the `drawCurve` sampling, one point per px column
-/// with the partial segment of a draw-on), stroked in `line` (`chartLine`)
-/// at the curve's alpha with round joins, in order so each draws over the
-/// ones before it. Canvas 2D defaults to butt caps and the grid paint sets
-/// `BUTT`, which persists here as there.
+/// (`plot::sample_curve` through [`TransformedFunction::value`], so the
+/// switch's draw-on and fade compose with the transform as the source
+/// composes them), the dashed original behind its transformed curve in the
+/// muted ink, each stroked in order so each draws over the ones before it.
+/// Canvas 2D centres strokes on the layout px as NanoVG does with butt
+/// caps; the dashed pieces carry the look's round caps, as Canvas caps each
+/// dash.
+///
+/// [`TransformedFunction::value`]: crate::transform_curves::TransformedFunction::value
 pub fn paint_curves(
     vg: &mut mv_nvg::Context,
     width: f32,
     height: f32,
     grid: &GridLayout,
-    curves: &[crate::plot::PlotCurve],
+    curves: &[crate::transform_curves::TransformedCurve],
     line: [f32; 4],
+    muted: [f32; 4],
 ) {
     for curve in curves {
         let points = crate::plot::sample_curve(
-            curve.func,
+            |x| curve.func.value(x),
             grid,
             f64::from(width),
             f64::from(height),
@@ -214,16 +314,33 @@ pub fn paint_curves(
         // where Canvas 2D reads the first line-to as one: the explicit move
         // strokes the same pixels on both.
         vg.begin_path();
-        for (i, [x, y]) in points.iter().enumerate() {
-            if i == 0 {
-                vg.move_to(*x as f32, *y as f32);
-            } else {
-                vg.line_to(*x as f32, *y as f32);
+        if curve.dashed {
+            for piece in dash_pieces(&points, DASHED_CURVE_DASH, DASHED_CURVE_OFFSET) {
+                for (i, [x, y]) in piece.iter().enumerate() {
+                    if i == 0 {
+                        vg.move_to(*x as f32, *y as f32);
+                    } else {
+                        vg.line_to(*x as f32, *y as f32);
+                    }
+                }
             }
+            vg.global_alpha(curve.alpha as f32 * DASHED_CURVE_ALPHA);
+            vg.stroke_color(muted);
+            vg.stroke_width(DASHED_CURVE_WIDTH);
+            vg.line_cap(mv_nvg::LineCapType::ROUND);
+        } else {
+            for (i, [x, y]) in points.iter().enumerate() {
+                if i == 0 {
+                    vg.move_to(*x as f32, *y as f32);
+                } else {
+                    vg.line_to(*x as f32, *y as f32);
+                }
+            }
+            vg.global_alpha(curve.alpha as f32);
+            vg.stroke_color(line);
+            vg.stroke_width(CURVE_WIDTH);
+            vg.line_cap(mv_nvg::LineCapType::BUTT);
         }
-        vg.global_alpha(curve.alpha as f32);
-        vg.stroke_color(line);
-        vg.stroke_width(CURVE_WIDTH);
         vg.line_join(mv_nvg::LineCapType::ROUND);
         vg.stroke();
         vg.global_alpha(1.0);
@@ -331,8 +448,8 @@ pub fn plane_texts(
 /// Paints the plane over the canvas's content box: the grid, the axes, the
 /// curves, and, once the font has loaded, the labels and the scale legend
 /// (the `drawCartesianPlane` order: grid, curves, legend).
-// Nine paint inputs (the plane's six plus the frame's curves with their
-// ink): a bundle struct would hide the draw order this signature documents.
+// Ten paint inputs (the plane's six plus the frame's curves with their two
+// inks): a bundle struct would hide the draw order this signature documents.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_plane(
     fonts: &mut mv_text::Fonts,
@@ -342,8 +459,9 @@ pub fn paint_plane(
     scale: f64,
     colors: &PlaneColors,
     font_ready: bool,
-    curves: &[crate::plot::PlotCurve],
+    curves: &[crate::transform_curves::TransformedCurve],
     line: [f32; 4],
+    muted: [f32; 4],
 ) {
     let width = f64::from(content.width);
     let height = f64::from(content.height);
@@ -379,7 +497,15 @@ pub fn paint_plane(
     } else {
         None
     };
-    paint_curves(vg, content.width, content.height, &grid, curves, line);
+    paint_curves(
+        vg,
+        content.width,
+        content.height,
+        &grid,
+        curves,
+        line,
+        muted,
+    );
     if let Some((fonts, geometry)) = legend {
         paint_legend(fonts, vg, &geometry, &colors.legend);
     }

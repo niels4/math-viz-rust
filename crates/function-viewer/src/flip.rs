@@ -15,22 +15,17 @@
 //!
 //! The animation state machine itself ([`ShownTransform`], [`Flip`]) is
 //! `shown_transform.rs` (h6-p-transform); this module owns the atom slot,
-//! the press counter and the frame clock, and stays `App`-free so its tests
-//! run headless: the caller passes the live transform and writes the
-//! returned value through its params.
-//!
-//! Phase-2 wiring (after `claude-port` brings the porter modules, h4's
-//! params and h5's rows): one call line from the flip button in
-//! `transform_row.rs`, one step line in the frame loop, the draw reading
-//! [`shown_transform`], the `views.json` shown line in `harness.rs`.
-//!
-//! Needs from `shown_transform.rs` (named change, applied at the merge):
-//! `ShownTransform::adopt` (the render-phase half of `step`: adopt an
-//! unseen flip without advancing) and `shown` made `pub` (the draw's read
-//! without stepping).
+//! the press counter and the frame clock. The pure halves
+//! ([`press_flip`], [`flip_step`], [`shown_transform`]) take the live
+//! transform and stay `App`-free; [`live_transform`] reads it from the page
+//! params and [`flip_press`] is the toggle's press, by mouse or keyboard
+//! (one function with one call line per press path, so h7's jump list
+//! changes that line).
 
+use crate::app::App;
 use crate::shown_transform::{Flip, ShownTransform};
-use crate::transform_curves::{Transform, TransformParam};
+use crate::state::TransformParam;
+use crate::transform_curves::Transform;
 
 /// The first frame of a flip carries the hook's first-frame gap, as
 /// `plot.rs`'s switch does (re-exported for the tests' frame rig).
@@ -131,6 +126,29 @@ pub fn flip_step(
         state.frame_at = None;
     }
     shown
+}
+
+/// The four live values as one transform (`useShownTransform({ a, b, h, k })`).
+#[must_use]
+pub fn live_transform(app: &App) -> Transform {
+    Transform {
+        a: crate::transform_section::param_value(app, TransformParam::A),
+        b: crate::transform_section::param_value(app, TransformParam::B),
+        h: crate::transform_section::param_value(app, TransformParam::H),
+        k: crate::transform_section::param_value(app, TransformParam::K),
+    }
+}
+
+/// The flip toggle's press, by mouse click or keyboard (`onClick`): the
+/// pending flip with the negated value written through flushed at once, as
+/// `setFlip` + `setValue(-value, { flush: true })` do. Reduced motion shows
+/// the new value at once, as `canAnimate()` being false does.
+pub fn flip_press(app: &mut App, param: TransformParam) {
+    let live = live_transform(app);
+    let to = press_flip(&mut app.flip, live, param, !app.reduced_motion);
+    crate::transform_row::store_param(app, param, to);
+    #[cfg(target_os = "emscripten")]
+    crate::platform_web::platform_write_hash(&app.url.full_hash());
 }
 
 #[cfg(test)]
@@ -298,5 +316,47 @@ mod tests {
         let boxed = press_flip(&mut state, live_a(-2.0), TransformParam::A, true);
         assert_eq!(boxed, 2.0);
         assert_close_to(shown_transform(&state, live_a(2.0)).a, 1.07);
+    }
+
+    /// The toggle's press against the app: the live values read from the
+    /// page params, the negated value written back flushed at once (the box
+    /// and the URL show it), the pending flip set, the plane still showing
+    /// the old value on the press's own turn.
+    #[test]
+    fn the_toggle_press_flips_the_live_value_through_at_once() {
+        let mut app = crate::fixture::headless_app();
+        app.a_param.set_flushed(&mut app.url, 2.0);
+        assert_eq!(live_transform(&app).a, 2.0);
+
+        flip_press(&mut app, TransformParam::A);
+        // The box and the URL show −2.00 at once.
+        assert_eq!(*app.a_param.get(), -2.0);
+        assert_eq!(app.url.query(), "a=-2");
+        // The pending flip is set with a press identity.
+        assert_eq!(
+            app.flip.pending(),
+            Some(Flip {
+                param: TransformParam::A,
+                from: 2.0,
+                to: -2.0,
+                seq: 1,
+            })
+        );
+        // The press's own turn still draws the old value.
+        assert_eq!(shown_transform(&app.flip, live_transform(&app)).a, 2.0);
+    }
+
+    /// With reduced motion the toggle's press shows the new value at once,
+    /// with no turn to run.
+    #[test]
+    fn with_reduced_motion_the_toggle_press_shows_the_new_value_at_once() {
+        let mut app = crate::fixture::headless_app();
+        app.a_param.set_flushed(&mut app.url, 2.0);
+        app.reduced_motion = true;
+
+        flip_press(&mut app, TransformParam::A);
+        assert_eq!(*app.a_param.get(), -2.0);
+        assert_eq!(shown_transform(&app.flip, live_transform(&app)).a, -2.0);
+        assert!(!app.flip.is_animating());
     }
 }

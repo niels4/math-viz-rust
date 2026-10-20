@@ -169,10 +169,14 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // `cur` at publish, which the React draw reads as props).
     let (center, scale) = (app.camera.center, app.camera.scale);
     let colors = crate::plane::plane_colors(theme);
-    // The plotted function from the picker's switch state (h3's curves,
-    // through `plot.rs`): the whole curve at rest, the old fading under the
-    // drawing new one mid-switch.
-    let curves = crate::plot::curves(&app.shown);
+    // The plotted curves under the shown transform (h6-curve's `Plot`): the
+    // switch's curves (`plot.rs`) through `transform_curves`, the dashed
+    // original behind each transformed one; the flip's spring blends the
+    // shown values. At rest with no values the curves pass through whole.
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let switch = crate::plot::curves(&app.shown);
+    let curves = crate::transform_curves::transform_curves(&switch, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -185,6 +189,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         true,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
+        theme.colors[mv_theme::Token::ForegroundMuted],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);

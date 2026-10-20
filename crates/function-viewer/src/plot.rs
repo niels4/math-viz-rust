@@ -247,9 +247,20 @@ fn inside_share(y0: f64, y1: f64, height: f64) -> f64 {
 /// `grid` is the canvas's [`GridLayout`]; it stores no canvas dims, so
 /// `width` and `height` ride along. `draw_to` is the curve's share from the
 /// left (1 for all of it); the curve's `alpha` is paint, not sampling.
+///
+/// The function rides generic (`drawCurve` reads `curve.fn`, which is the
+/// base function or the transform's closure): a plain curve passes its `fn`
+/// pointer, a transformed one its [`TransformedFunction::value`]. Each
+/// sampled y is clamped to the overshoot band
+/// ([`clamp_curve_y`], `drawCurve`'s `Math.min`/`Math.max` with
+/// `overshootPx`, arrived at `5cef052`) before the inside length
+/// accumulates, exactly as the source clamps before pushing the point.
+///
+/// [`TransformedFunction::value`]: crate::transform_curves::TransformedFunction::value
+/// [`clamp_curve_y`]: crate::plane_geometry::clamp_curve_y
 #[must_use]
 pub fn sample_curve(
-    func: PlotFunction,
+    func: impl Fn(f64) -> f64,
     grid: &GridLayout,
     width: f64,
     height: f64,
@@ -263,7 +274,10 @@ pub fn sample_curve(
     let cols = width as usize;
     for i in 0..=cols {
         let px = i as f64;
-        let y = origin_y - func((px - origin_x) / px_per_unit) * px_per_unit;
+        let y = crate::plane_geometry::clamp_curve_y(
+            origin_y - func((px - origin_x) / px_per_unit) * px_per_unit,
+            height,
+        );
         if let Some(&(prev, _)) = points.last() {
             at += (px - prev[0]).hypot(y - prev[1]) * inside_share(prev[1], y, height);
         }

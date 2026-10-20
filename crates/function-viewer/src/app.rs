@@ -132,6 +132,9 @@ pub struct App {
     pub scrub_rest: Option<(crate::state::TransformParam, crate::app_loop::Time)>,
     /// The parameter whose rest tip shows (resolved when the timer fires).
     pub scrub_resting: Option<crate::state::TransformParam>,
+    /// The flip toggle's state: the pending flip, its spring, the press
+    /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
+    pub flip: crate::flip::FlipState,
 }
 
 impl App {
@@ -294,6 +297,7 @@ impl App {
             scrub_hold: None,
             scrub_rest: None,
             scrub_resting: None,
+            flip: crate::flip::FlipState::new(),
         }
     }
 }
