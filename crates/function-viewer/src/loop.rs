@@ -70,6 +70,9 @@ pub enum Pace {
 pub enum Timer {
     /// The scrub box's rest tip: the pointer's 400 ms rest is over.
     ScrubRest,
+    /// The return-to-centre tooltip: the pointer's 400 ms hover is over
+    /// (h6-handles).
+    OverlayTip,
 }
 
 /// One deadline per timer.
@@ -209,6 +212,7 @@ pub fn iterate(app: &mut App) -> bool {
 pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
     match timer {
         Timer::ScrubRest => crate::scrub_value::rest_fired(app),
+        Timer::OverlayTip => crate::overlay::tip_fired(app),
     }
 }
 

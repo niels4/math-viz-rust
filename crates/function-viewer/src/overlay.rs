@@ -139,6 +139,15 @@ pub fn tip_visible(
     hovered_since.is_some_and(|since| now - since >= TIP_DELAY_MS * crate::app_loop::MS)
 }
 
+/// Fires the tooltip's delay: the pointer rested on the button past
+/// [`TIP_DELAY_MS`], so the next draw shows the tip. Leaving early cancels
+/// the timer in the page slot, so a fired timer always means a showing tip.
+pub fn tip_fired(app: &mut crate::app::App) {
+    if app.input.hover.kind == crate::input::HitKind::ReturnToCenter {
+        app.dirty = true;
+    }
+}
+
 /// The tooltip's box from the button's: its right edge sits [`TIP_GAP`] past
 /// the button's padding box (the 1 px border back in), it centres on the
 /// button, and it wraps the measured text with [`TIP_PAD_X`]/[`TIP_PAD_Y`]
@@ -389,6 +398,23 @@ mod tests {
         for (got, want) in [(x, 1205.875), (y, 783.0), (w, 146.625), (h, 31.0)] {
             assert!((got - want).abs() <= 0.5, "tip {got} against {want}");
         }
+    }
+
+    /// The fired delay dirties the frame while the pointer is still on the
+    /// button, and does nothing after it left.
+    #[test]
+    fn tip_fired_dirties_while_hovered() {
+        let mut app = crate::fixture::headless_app();
+        app.input.hover = crate::input::Hit {
+            kind: crate::input::HitKind::ReturnToCenter,
+            index: 0,
+        };
+        tip_fired(&mut app);
+        assert!(app.dirty);
+        app.dirty = false;
+        app.input.hover = crate::input::Hit::default();
+        tip_fired(&mut app);
+        assert!(!app.dirty);
     }
 
     /// The tip shows past 400 ms of hover, or on keyboard focus at once.

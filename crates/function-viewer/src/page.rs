@@ -218,13 +218,18 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
     crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
     // The tooltip's hover clock: armed while the pointer is on the button,
-    // dropped the moment it leaves (the CSS `:hover` rule).
+    // dropped the moment it leaves (the CSS `:hover` rule). The timer keeps
+    // the app's turns coming until the delay is over, as the scrub rest
+    // tip's does.
     if hovered {
         if app.overlay_tip_since.is_none() {
             app.overlay_tip_since = Some(now);
+            app.timers[crate::app_loop::Timer::OverlayTip] =
+                now + crate::overlay::TIP_DELAY_MS * crate::app_loop::MS;
         }
     } else {
         app.overlay_tip_since = None;
+        app.timers[crate::app_loop::Timer::OverlayTip] = 0;
     }
     if crate::overlay::tip_visible(app.overlay_tip_since, focused, app.input.focus_visible, now) {
         crate::overlay::paint_tip(&mut app.fonts, &mut app.vg, &button, &ocolors);
