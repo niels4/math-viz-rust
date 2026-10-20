@@ -445,4 +445,53 @@ mod tests {
         assert!((right_of("9") - 16.4).abs() < 0.01, "one-char label");
         assert!((right_of("-1") - 24.8).abs() < 0.01, "two-char label");
     }
+
+    /// Both axes near the bottom-left corner (center 7.2, 6.6, the user's
+    /// view): the origin sits on the canvas at (135, 723), the x labels run
+    /// below their axis and the y labels left of theirs, as the probe's
+    /// `corner.json` shows.
+    #[test]
+    fn corner_labels_swap_sides() {
+        let grid = layout_grid([7.2, 6.6], 0.5, 990.0, 786.0, LABEL_MARGIN);
+        assert_eq!(grid.origin, [135.0, 723.0]);
+        let labels = layout_labels(&grid, 990.0, 786.0, PLANE_FONT_SIZE, &probe_width);
+        let top_of = |text: &str| {
+            labels
+                .iter()
+                .find(|label| label.text == text)
+                .unwrap_or_else(|| panic!("a {text} label"))
+                .top
+        };
+        assert!(
+            (top_of("-1") - 729.0).abs() < 0.01,
+            "x labels below the axis"
+        );
+        let right_of_y = |text: &str| {
+            labels
+                .iter()
+                .find(|label| label.axis == crate::grid::GridAxis::Y && label.text == text)
+                .unwrap_or_else(|| panic!("a {text} y label"))
+                .right
+        };
+        assert!(
+            (right_of_y("14") - 129.0).abs() < 0.01,
+            "y labels left of the axis"
+        );
+    }
+
+    /// At scale 100 the major step thins to every other line (probe
+    /// `scale-100.json` labels -2000, -1600, ...): the widest on-canvas
+    /// label no longer fits the 50 px spacing.
+    #[test]
+    fn scale_100_thins_to_every_other_major() {
+        let grid = layout_grid([0.0, 0.0], 100.0, 990.0, 786.0, LABEL_MARGIN);
+        assert_eq!(grid.steps.major, 200.0);
+        let lines = crate::grid::x_label_lines(&grid, 990.0, &probe_width);
+        assert!(!lines.is_empty(), "some lines keep labels");
+        assert!(
+            lines.iter().all(|line| (line.unit / 400.0).fract() == 0.0),
+            "labels sit on multiples of twice the major step"
+        );
+        assert_eq!(crate::scale_legend::legend_text(100.0), "100.00 u");
+    }
 }
