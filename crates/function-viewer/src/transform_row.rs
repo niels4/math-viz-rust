@@ -589,7 +589,10 @@ fn field(app: &mut App, param: TransformParam, shown: &str, field_ink: clay::Col
 
 /// Paints the card's rings and chevrons after the command walk (the rings
 /// are box-shadows Clay has no arm for; the chevrons are paths, not text).
-/// Call from `draw_page` after `draw_commands`, as the settings chrome is.
+/// The tip layer walks later in `draw_page` (above these rings, as the DOM's
+/// `z-index: 1` holds it), with the tip arrows after it — so this stops at
+/// the chevrons. Call from `draw_page` after `draw_commands`, as the settings
+/// chrome is.
 pub fn paint_rows(app: &mut App) {
     let theme = crate::ui::current_theme(app).clone();
     let density = density_of(app);
@@ -674,7 +677,6 @@ pub fn paint_rows(app: &mut App) {
             paint_focus_ring(app, &theme, density, mv_clay::id(FLIP_ID, index));
         }
     }
-    crate::scrub_value::paint_extras(app);
 }
 
 /// Paints a 3 px primary-32 % ring outside a button's box (the `:focus-visible`

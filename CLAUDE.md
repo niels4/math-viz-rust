@@ -391,6 +391,33 @@ no new tokens (all eight tabled).
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
 
+### h5-fix-tip (tip above the post-pass rings; flip-focus verdict)
+
+- The scrub tip is the DOM's `z-index: 1` layer: `draw_page` partitions the
+  frame's commands and walks everything a laid-out tip's box holds after
+  the rows' post-pass rings (which print over it otherwise — measured: k's
+  inset ring over a's tip, 304 saturated-gold px in the tip box vs 5 in the
+  reference). Clay order holds within each walk; a neighbour's text fully
+  inside the tip keeps its place ahead of the tip's plate in both, so it
+  paints the same.
+- Only a Rectangle command carries its element's id: Clay derives Border
+  ids (`HashNumber(elementId, children.length)`) and Text ids
+  (`HashNumber(lineIndex, elementId)`) from it (`clay.h`'s
+  `Clay__CalculateFinalLayout`). Matching a layer by id set alone moves the
+  plate and buries its border and words under it (measured: +3827 px);
+  anchor on the id-matched plate Rectangle's box and take everything the
+  box holds. The arrow glyph scopes declare no commands; their paths paint
+  in `paint_extras`, which moved from the end of `paint_rows` to after the
+  tip walk.
+- flip-focus settles from the CSS/TS at `b8a0e1d`, not the pixels: `.box`
+  digits are unconditionally `var(--row-ink)` (the lit state drives row
+  tint, inset width and `data-lit`, never digit colour), and the toggle's
+  focus lights b's row through `onFocus` → `focusAtom` → `litAtom`
+  (lead-wins). Measured in ref-Chromium and ref-Firefox alike: b's toggle
+  focused with its ring, only b lit, all digits full param colour — the
+  port matches on every target, so the union's gold-vs-peach claim does not
+  reproduce and there is no defect and no new quirk; the only engine split
+  stays the known WebKit Tab quirk (focuses b's box, buttons skipped).
 ### h6-curve (the transform's wiring)
 
 - The flip's render phase needs the adoption without the advance: the
@@ -454,6 +481,49 @@ no new tokens (all eight tabled).
 - Judge boxes from `judge.json` are CSS px, not device px: a 34x32 "mystery
   cluster" at (1360, 781) is the button box, and element boxes need the
   canvas offset (433, 97) added — costs an hour when missed.
+### h7-p-plane (the grid carried on the layout)
+
+- Since `1cfd34a` the grid is laid out once per camera update: `GridLayout`
+  stores the `width`, `height` and `scale` it was computed for (appended
+  fields, not TS order), and `x_label_lines` / `layout_labels` / the legend
+  entry read them from the grid instead of taking them as args.
+  `layout_grid` keeps its `(center, scale, width, height, margin)` arg order.
+- `labelMargin` moved from a local in `drawCartesianPlane.ts` to an export
+  in `constants.ts` in the stretch; in Rust it stays `plane::LABEL_MARGIN`
+  (already public) — a deliberate non-move.
+- `hitTest`'s handler filter (`handlers?.[action] === undefined` skips the
+  handle) is vacuous at this hash — both handles carry all five handlers —
+  and is left out; `plot::PlotHandle { kind, at }` stays, handlers dispatch
+  in the app.
+
+### fix-theme-switch (union H1-H6 finding: theme-switch-frames frame 0)
+
+- A floating overlay needs its stacking layer, not just its paint order:
+  the plane's canvas region (declared after the layout) shadowed the open
+  menu's cells/rows at equal z=0, so row clicks light-dismissed the menu
+  instead of switching the theme. `app.input.z` is the designed mechanism
+  (nothing had ever assigned it); the menu now lays out at layer 1. Hit
+  regressions from shadowing show as cursor `default` + theme stuck in
+  views.json, and a headless test (layout + declare_plane_region +
+  collect_regions, then `hit_at` on the click point) pins the layer.
+- The plane paints under the page's Clay content: grid/curves printed over
+  the open menu. `draw_plane` runs before `draw_commands`, with only the
+  menu shadow moved after the plane (bar/sidebar shadows keep their place
+  under it). Nothing else overlaps the canvas, so no other state moves.
+- Mid-fade whole-frame diffs are the transition's shape, not its timing:
+  math-viz2 leaves the view transition uncustomised, so each engine runs
+  its UA default — Chromium's is linear (h1's probe), WebKit's ease-like
+  (measured per-frame: the port's linear fade sits ~0.2 progress behind
+  mid-fade, endpoints equal). One build can't match both; the port stays
+  linear (Chromium-measured, h1's call). The fade's start can lag the click
+  up to one 16 ms grid frame (facts run on the grid), worth ≤6 levels at
+  the end — inherent, like the last-grid-draw note.
+- WebKit doesn't focus buttons on click (macOS convention): after a gear
+  click focus stays on body, so Tab lands on the first page stop (the "a"
+  field, with selection + hint bar), while the port clears focus to the
+  menu's system cell. Chromium agrees with the port. That is the
+  `settings-focus-radio` remainder (engine quirk (d) + h6's new stops),
+  left for the tab-order owner — the menu paint half of it is fixed here.
 
 ## Long runs
 

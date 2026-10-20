@@ -688,6 +688,20 @@ pub const TIP_KEY_ID: &str = "ScrubTipKey";
 /// A key cap's arrow glyph.
 pub const TIP_ARROW_ID: &str = "ScrubTipArrow";
 
+/// The tip containers' hashed element ids, one param per index
+/// (`param_index`, as the rows'). The page walks the commands inside a laid
+/// out tip's box after the rows' post-pass rings, as the DOM's `z-index: 1`
+/// paints the tip above the boxes beneath it (h5-fix-tip: k's inset ring
+/// printed over a's tip). Only the containers match by id: Clay derives the
+/// text and border commands' ids from the element id (`HashNumber` in
+/// `clay.h`), so the layer is everything the container's box holds; the
+/// arrow glyph scopes declare no commands (their paths paint in
+/// [`paint_extras`], which runs after the tip walk).
+#[must_use]
+pub fn tip_box_ids() -> [u32; 4] {
+    [0, 1, 2, 3].map(|index| mv_clay::id(TIP_ID, index).id)
+}
+
 /// The text-selection fill, measured on the reference: the browser's default
 /// selection swaps with the colour scheme (dark `(83,123,165)`, light
 /// `(173,208,245)`); the text keeps the focused ink in both. sRGB bytes, as
@@ -1916,6 +1930,17 @@ mod tests {
             y: 0.0,
             width: 0.0,
             height: 0.0,
+        }
+    }
+
+    /// The tip containers' ids are one hashed id per parameter (h5-fix-tip:
+    /// the page finds the laid-out tip's box through its plate command).
+    #[test]
+    fn tip_box_ids_cover_each_parameter() {
+        let ids = super::tip_box_ids();
+        assert_eq!(ids.len(), 4);
+        for index in 0..4_u32 {
+            assert_eq!(ids[index as usize], mv_clay::id(super::TIP_ID, index).id);
         }
     }
 
