@@ -297,14 +297,14 @@ def plane_camera(
     )
 
 
-def plane_cursor(page) -> str | None:
+def plane_cursor(page: Page) -> str | None:
     """The canvas's data-cursor (CartesianPlane.tsx: pan / grab-hover /
     grab-active), read after a scripted input for the cursor behaviour check
     of the handle and pan-cursor states (h7-plane)."""
     return page.locator("canvas").get_attribute("data-cursor")
 
 
-def plane_lit(page) -> str:
+def plane_lit(page: Page) -> str:
     """The lit params in document order, as the user's handle-drag probe reads
     them: [data-param][data-lit] (readout spans and transform-row divs). Plain
     [data-lit] also matches param-less divs, so the [data-param] guard is

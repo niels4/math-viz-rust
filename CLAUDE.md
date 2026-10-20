@@ -525,6 +525,43 @@ no new tokens (all eight tabled).
   `settings-focus-radio` remainder (engine quirk (d) + h6's new stops),
   left for the tab-order owner — the menu paint half of it is fixed here.
 
+### h7-plane: the plane's handles made live
+
+- No new HitKinds and no handle regions: the press and the hover both name
+  the Plane hit, and `plane_input` hit-tests inside (`plane_geometry`'s
+  `hit_test`/`from_px` over `page.rs::build_handles`, the FunctionViewer
+  build order). `App` appends `hovering`, `hovered` (None = the source's
+  -1), `dragging`, `grab` and `dragged` (the press's handle index: the drag
+  formula's pair never changes mid-drag while the hover index follows the
+  moves).
+- The cursor is state, not regions: `plane_cursor` (`dragging` or a Plane
+  press → Grabbing, else `hovering` → Grab, else Crosshair) runs after the
+  dispatch, the retarget, the press and the release, and at the end of
+  `draw_page` — the per-frame win that matters, because
+  `collect_regions` → `retarget` → `update_cursor` re-resolves the region
+  cursor after every layout and would otherwise stomp the hover override
+  (found by trace: Grab set at the input turn, Crosshair back before the
+  shot). The diamond-to-square single jump lands pan with a and b lit, by
+  the source's statement order (new hover first, then the old end).
+- `harness.rs` writes a `{"cursor": "pan"|"grab-hover"|"grab-active"}`
+  line on change between the plane's three only (other cursors write no
+  line, so off-plane states keep byte-identical views); `act.py` allows the
+  shape and reads `data-cursor`/`[data-param][data-lit]` for the behaviour
+  checks. Shot lines keep the CSS cursor name (`grab`/`crosshair`); the
+  single lines carry the reference's words.
+- Scripting rule (measured on the reference, all engines): a scripted
+  pointermove hit-tests the last render's handles, one step stale, so
+  drags step at most 5 px with the press on the handle centre, and every
+  decisive hover read is preceded by a settle plus a 1 px nudge. The drag
+  past the canvas edge keeps following (pointer capture; offsetX works past
+  the width); past the 1440 viewport SDL's web moves stop reaching the port
+  (web h=10.40 vs native/ref h=11.44 at x=1500, all engines), so
+  handle-drag-out ends at x=1435 (12 px past the canvas edge, in-viewport).
+  Chromium draws 2 fixed dash-edge pixels at 41/255 where native draws them
+  (same spots every same-camera state; everything else ≤15, 0 flat).
+- Harness gotcha: never pipe `./tools/run` through head/tail — the SIGPIPE
+  kills the venv's pip mid-install and the run proceeds without deps.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
