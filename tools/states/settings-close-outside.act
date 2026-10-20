@@ -1,0 +1,13 @@
+# settings-close-outside (H1): a click outside (700, 450, on the plane) closes the
+# menu; the shot is the page at rest with no menu.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+click 700 450
+wait 500
+shot settings-close-outside

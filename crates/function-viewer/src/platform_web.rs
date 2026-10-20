@@ -189,6 +189,15 @@ pub extern "C" fn mv_hash_changed() {
     );
 }
 
+/// Holds the camera's next step for this turn's publish-and-draw (h2-input's
+/// hold): the harness calls this after dispatching a button or wheel verb on
+/// the web, where the native harness sets the same hold from its facts (its
+/// `harness_frame`). The next `frame_step` consumes it.
+#[unsafe(no_mangle)]
+pub extern "C" fn mv_hold_step() {
+    crate::plane_input::hold_camera_step();
+}
+
 /// Sets up the default context.
 ///
 /// Nothing to install on this side: Rust's `System` allocator calls
@@ -597,8 +606,11 @@ fn prefs_key_save(key: &str, text: &str) -> bool {
     }
 }
 
-/// The page's hash query at start: `location.hash` through `mv_read_hash`,
-/// cut to the query part (`#function-viewer?center=1,2` → `center=1,2`).
+/// The page's hash at start: `location.hash` through `mv_read_hash`, whole
+/// (`#function-viewer?center=1,2&scale=2`). Callers parse it with `Url`
+/// (`Url::new`, `sync_from_hash`): cutting the query here dropped it, since
+/// those split the full hash again and read an empty query (h2-plane found
+/// the web build rendering every query state at its defaults).
 pub fn platform_read_hash() -> String {
     // SAFETY: the shell hands a fresh NUL-terminated string; it is read once
     // here, then freed through the shell's `free`.
@@ -609,9 +621,7 @@ pub fn platform_read_hash() -> String {
         }
         let hash = std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned();
         free(ptr.cast::<std::ffi::c_void>());
-        hash.split_once('?')
-            .map(|(_, query)| query.to_string())
-            .unwrap_or_default()
+        hash
     }
 }
 

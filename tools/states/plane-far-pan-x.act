@@ -1,0 +1,10 @@
+# plane-far-pan-x (h2-plane): the plane at rest at 1440 x 900, density 2, dark system, Arctic Ice;
+# panned far from the origin (center 100,100).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=100,100&scale=0.5
+wait 2000
+shot plane-far-pan-x

@@ -130,12 +130,20 @@ pub enum HitKind {
     None,
     /// The top bar's settings gear.
     Gear,
+    /// A light/dark/system cell; `Hit.index` names the cell (0 system, 1 dark, 2 light).
+    SettingsLightDark,
+    /// A theme row; `Hit.index` names the row in the shown list (0..3).
+    SettingsTheme,
+    /// The plane's return-to-centre button (h2-plane's overlay).
+    ReturnToCenter,
+    /// The Cartesian plane's canvas (h2-input; h2-input declares the region).
+    Plane,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
 /// nothing; the page milestones name their capturing kinds here.
-pub fn captures(_kind: HitKind) -> bool {
-    false
+pub fn captures(kind: HitKind) -> bool {
+    matches!(kind, HitKind::Plane)
 }
 
 /// The cursor shown.
@@ -235,6 +243,8 @@ pub struct Declared {
     pub region: Region,
     pub stop: bool,
     pub clip: Option<super::scroll::Scroller>,
+    /// Keep the declared box: a painted target no Clay element resolves.
+    pub keep_box: bool,
 }
 
 /// Declares a target for this frame's layout, unless inert.
@@ -278,24 +288,81 @@ pub fn region(
         },
         stop,
         clip,
+        keep_box: false,
+    });
+}
+
+/// Declares a painted target: the layout computed its box (no Clay element
+/// resolves it), so `collect_regions` keeps the declared box. The plane's
+/// overlay button uses this; Clay-laid targets use `region`.
+pub fn region_kept(
+    app: &mut App,
+    hit: Hit,
+    r#box: clay::BoundingBox,
+    cursor: Cursor,
+    pressed: Cursor,
+    stop: bool,
+    radius: clay::CornerRadius,
+) {
+    if app.input.inert {
+        let z = app.input.z;
+        if (0..64).contains(&z) {
+            app.input.inert_layers |= 1u64 << z;
+        }
+        return;
+    }
+    let z = app.input.z;
+    let clip = app.input.clip;
+    app.input.declared.push(Declared {
+        // Never resolved: `collect_regions` keeps the declared box.
+        id: mv_clay::id("KeptBox", 0),
+        region: Region {
+            hit,
+            r#box,
+            cursor,
+            pressed: if pressed != Cursor::Default {
+                pressed
+            } else {
+                cursor
+            },
+            radius,
+            clip: None,
+            z,
+        },
+        stop,
+        clip,
+        keep_box: true,
     });
 }
 
 /// Resolves the declared boxes through the layout into regions and stops.
 ///
-/// The layout data lives in the Clay context the frame laid out with, which
-/// the caller (the layout pass) holds; the app keeps only the arena backing.
-pub fn collect_regions(app: &mut App, clay: &mv_clay::Clay) {
+/// Clay-laid targets resolve their boxes from their elements; painted targets
+/// declared through [`region_kept`] keep their declared boxes. The layout
+/// data lives in the Clay context the frame laid out with, which the caller
+/// (the layout pass) holds; the app keeps only the arena backing.
+///
+/// Callers hold `&mut App` whole, beside the Clay context they read: the
+/// context outlives the call on this thread and no layout runs beside it
+/// (the same shape as [`crate::ui::ui_scope`]'s aliasing).
+pub fn collect_regions(app: &mut App) {
+    let clay = app.clay.as_ref().expect("clay context initialised") as *const mv_clay::Clay;
+    // SAFETY: the frame lays out and collects on this thread while the app
+    // lives; the context is read (element boxes) while the input state is
+    // written, disjoint fields no layout touches beside this call.
+    let clay = unsafe { &*clay };
     let (input, scroll) = (&mut app.input, &app.scroll);
     input.regions.clear();
     input.stops.clear();
     for d in &input.declared {
-        let data = clay.get_element_data(d.id);
-        if !data.found {
-            continue;
-        }
         let mut r = d.region;
-        r.r#box = data.boundingBox;
+        if !d.keep_box {
+            let data = clay.get_element_data(d.id);
+            if !data.found {
+                continue;
+            }
+            r.r#box = data.boundingBox;
+        }
         if let Some(s) = d.clip {
             // The container's padding box: it clips its content inside its border.
             let c = clay.get_element_data(mv_clay::id(crate::scroll::SCROLLER_IDS[s], 0));
@@ -375,13 +442,28 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.over = !event.left;
             if !event.left {
+                if event.pos != app.input.pointer {
+                    // A real move re-arms hover: a pick's hold lasts only
+                    // until the pointer moves, as Chromium re-hovers then.
+                    crate::settings::pointer_moved(app);
+                }
                 app.input.pointer = event.pos;
             }
-            retarget(app);
+            // A drag the plane holds keeps panning under capture, wherever
+            // the pointer is, as `setPointerCapture` keeps the hook's moves
+            // coming; anything else retargets.
+            if app.input.pressed.kind == HitKind::Plane && !event.left {
+                crate::plane_input::plane_move(app);
+            } else {
+                retarget(app);
+            }
         }
         Input::Button(event) => {
             if crate::trace() {
                 println!("input {event:?}");
+            }
+            if event.pos != app.input.pointer {
+                crate::settings::pointer_moved(app);
             }
             app.input.pointer = event.pos;
             app.input.over = true;
@@ -392,16 +474,48 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             if event.down {
                 press(app);
+                crate::settings::press_down(app);
+                if app.input.pressed.kind == HitKind::Plane {
+                    // SDL's numbering starts at 1; the camera takes the DOM's,
+                    // where the primary button is 0 (only 0 drags, there).
+                    crate::plane_input::plane_down(
+                        app,
+                        crate::camera::PointerButton::Mouse(u32::from(event.button) - 1),
+                    );
+                }
             } else {
+                let down = app.input.pressed;
+                if down.kind == HitKind::Plane {
+                    crate::plane_input::plane_up(app);
+                }
                 release(app);
+                crate::settings::click(app, down);
+                // The overlay button's click (the press started and the
+                // release lands on it, as the button's `onClick` needs both):
+                // the camera back to its defaults, flushed.
+                if down.kind == HitKind::ReturnToCenter
+                    && app.input.hover.kind == HitKind::ReturnToCenter
+                {
+                    app.reset_view();
+                }
             }
         }
         Input::Wheel(event) => {
             if crate::trace() {
                 println!("input {event:?}");
             }
+            // A wheel carries the pointer's position: it is in the window,
+            // as a motion would have it (without this a wheel before any
+            // motion finds no hover and the plane never zooms).
             app.input.pointer = event.pos;
+            app.input.over = true;
             retarget(app);
+            // The plane zooms about the pointer; a held drag keeps the hover
+            // on the plane through capture, so a wheel mid-drag zooms, as the
+            // hook's wheel and drag run on one loop.
+            if app.input.hover.kind == HitKind::Plane {
+                crate::plane_input::plane_wheel(app, event.delta);
+            }
         }
         Input::Pinch(event) => {
             if crate::trace() {
@@ -413,6 +527,8 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 println!("input {event:?}");
             }
             app.input.mods = event.mods;
+            // The page milestones route their keys from here.
+            crate::settings::key(app, &event);
         }
         Input::Text(event) => {
             if crate::trace() {
@@ -435,7 +551,12 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                     handle_input(app, Input::ReducedMotion(ReducedMotionEvent { reduced }), 0);
                 }
             } else if app.input.pressed.kind != HitKind::None {
-                // The window's focus left: a held press ends.
+                // The window's focus left: a held press ends. On the plane
+                // that ends the drag first, as `pointercancel` ends the
+                // hook's (its samples are stale by now, so no glide starts).
+                if app.input.pressed.kind == HitKind::Plane {
+                    crate::plane_input::plane_up(app);
+                }
                 app.input.pressed = Hit::default();
                 retarget(app);
             }
@@ -475,12 +596,15 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
     app.input.time = outer;
 }
 
-/// Recomputes hover and cursor after the pointer or targets changed.
+/// Recomputes hover and cursor after the pointer or targets changed. While
+/// the settings menu holds hover off after a pick, the hover stays dropped
+/// (only a pointer move re-arms it), matching Chromium, which does not
+/// re-hover without a mouse move after the re-render.
 pub fn retarget(app: &mut App) {
     let over = app.input.over;
     let pointer = app.input.pointer;
     let pressed = app.input.pressed;
-    let mut hit = if over {
+    let mut hit = if over && !app.settings.hover_held {
         hit_at(app.input.regions.as_slice(), pointer)
     } else {
         Hit::default()
@@ -1023,5 +1147,48 @@ mod tests {
                 panic!("a display-scale change decodes as Unknown, got {other:?}");
             }
         }
+    }
+
+    /// A painted target keeps its declared box through the resolve: the
+    /// overlay button's box (no Clay element resolves it) lands in the
+    /// regions as declared, with its stop.
+    #[test]
+    fn kept_region_resolves_to_its_declared_box() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        crate::ui::init_clay(&mut app);
+        let button = mv_sys::clay::BoundingBox {
+            x: 1359.5,
+            y: 780.5,
+            width: 36.0,
+            height: 36.0,
+        };
+        region_kept(
+            &mut app,
+            Hit {
+                kind: HitKind::ReturnToCenter,
+                index: 0,
+            },
+            button,
+            Cursor::Pointer,
+            Cursor::Pointer,
+            true,
+            crate::ui::corner_radius_all(4.0),
+        );
+        collect_regions(&mut app);
+        assert_eq!(app.input.regions.len(), 1);
+        let region = app.input.regions[0];
+        assert_eq!(region.hit.kind, HitKind::ReturnToCenter);
+        assert_eq!(
+            [
+                region.r#box.x,
+                region.r#box.y,
+                region.r#box.width,
+                region.r#box.height
+            ],
+            [1359.5, 780.5, 36.0, 36.0]
+        );
+        assert_eq!(app.input.stops, vec![region.hit]);
+        crate::ui::release_clay(&mut app);
     }
 }

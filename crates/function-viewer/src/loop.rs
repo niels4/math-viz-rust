@@ -166,7 +166,16 @@ pub fn iterate(app: &mut App) -> bool {
             app.input.time = 0;
         }
     }
+    // The plane's camera step (h2-input): the camera's frame, the params'
+    // debounce and external sync, the web hash mirror. Before the draw, so
+    // the frame draws what the camera moved to.
+    crate::plane_input::frame_step(app, now);
     let mut drawn = false;
+    // The theme fade redraws until done: no timer arms its frames, so the
+    // turn does while one is in flight (its last frame clears the active).
+    if app.transition.active.is_some() {
+        app.dirty = true;
+    }
     if app.dirty {
         app.dirty = false;
         crate::draw::draw_frame(app, now);
@@ -185,7 +194,12 @@ pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
 pub fn schedule(app: &mut App, _now: Time) {
-    app.r#loop.awake = app.dirty;
+    // A fade in flight keeps the turns coming, as its frames do: the last
+    // one clears the active and lets the app sleep again. A camera in flight
+    // does the same (h2-input): each turn steps it, and the settle stops the
+    // loop — without this a glide stalls after its first step, since the draw
+    // consumes the dirty its step set.
+    app.r#loop.awake = app.dirty || app.transition.active.is_some() || app.camera.animating();
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

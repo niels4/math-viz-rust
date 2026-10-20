@@ -1,7 +1,9 @@
 # theme-switch-frames: frames after a theme click through the settings menu.
-# Seeded dark/arctic-ice; the gear opens the menu, the Tron Cyan row (the
-# reference's row at [1112,244,278,36], centre 1251,262) switches the theme.
-# The cross-fade runs 250 ms linear; frames every 50 ms to 250 ms.
+# Seeded dark/arctic-ice; the gear opens the menu, the pointer moves onto the
+# Tron Cyan row (the reference's row at [1112,244,278,36], centre 1251,262)
+# and settles a frame so the hover - and the fade's snapshot - show it, then
+# the click switches the theme. The cross-fade runs 250 ms linear; frames
+# every 50 ms to 250 ms.
 size 1440 900
 density 2
 scheme dark
@@ -10,5 +12,7 @@ theme arctic-ice
 wait 2000
 click 1383 48
 wait 500
+move 1251 262
+wait 16
 click 1251 262
 frames theme-switch every 50 for 250

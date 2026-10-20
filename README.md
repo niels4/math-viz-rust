@@ -99,3 +99,12 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   `crates/mv-theme/src/themes.rs` through the reference; `tools/run font` instances math-viz2's
   variable woff2 into `assets/fonts/`; `tools/run gamut` checks Display P3 (its allowances
   start empty).
+- **Parallelism:** `tools/run states --jobs N` runs N state-surface pairs at once
+  (default 8: the smallest level within 10 % of the best wall time with zero
+  differences, t1-jobs on 24 cores / 128 GB, H1 H2 natively and in WebKit):
+
+  | jobs | wall | load (1 min, at end) | `same-run` differences |
+  |---|---|---|---|
+  | 1 | 80 s | 6.75 | — (first) |
+  | 8 | 50 s | 20.07 | 0 vs jobs 1 |
+  | 24 | 50 s | 12.71 | 0 vs jobs 8 |

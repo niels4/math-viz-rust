@@ -536,8 +536,12 @@ mod tests {
 
     #[test]
     fn set_theme_slug_writes_the_resolved_schemes_pick() {
-        // As `setThemeSlug`: under a dark resolution a light slug changes
-        // nothing, and under a light resolution a dark slug changes nothing.
+        // The port's deliberate hardening, not the spec: the TS writes the
+        // slug into the resolved scheme's atom blindly (a wrong-scheme slug
+        // lands verbatim), while the port ignores it, so a foreign pick can
+        // never corrupt the stored triple. Under a dark resolution a light
+        // slug changes nothing, and under a light resolution a dark slug
+        // changes nothing.
         let mut state = ThemeState::default();
         state.set_theme_slug(ThemeSlug::TronCyan);
         assert_eq!(state.dark_theme, DarkTheme::TronCyan);

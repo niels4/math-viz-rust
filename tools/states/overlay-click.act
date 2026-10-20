@@ -1,0 +1,16 @@
+# overlay-click (h2-input): the return-to-centre button clicked off default.
+# Open on center=1.5,-2&scale=2, click the button (1359.5,780.5,36,36 from
+# page.json's overlay_button box): the press starts and the release lands on
+# it, so reset_view flushes both params to defaults — the URL empties and
+# the camera returns to the default view. Behaviour: url line empty, camera
+# line center [0,0] scale 0.5, shot at default.
+query center=1.5,-2&scale=2
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 1377.5 798.5
+wait 1000
+shot overlay-click
