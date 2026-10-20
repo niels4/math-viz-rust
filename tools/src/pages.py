@@ -249,11 +249,11 @@ def _runs(port: int, base: str, engines: list[str], out: Path, env: dict[str, st
                 "console": result.console,
             }
             if name == "welcome-route":
-                # The port draws the viewer at every route until h10-page merges
-                # (h10-t-route's record), and the web target writes no views.json,
-                # so the route reader has no route line: a check that can't run.
+                # h10-page merged: the port draws the welcome page at the root route.
+                # The web target writes no views.json, so the route reader has no route
+                # line: a check that can't run (h10-t-route's record).
                 detail["route"] = "can't run: no route line (web writes no views.json)"
-                print(f"  {name} {engine}: draws the viewer until h10-page (route: can't run)")
+                print(f"  {name} {engine}: draws the welcome page (h10-page; route: can't run)")
             if name == "url-roundtrip" and seen:
                 last_href = next(reversed(seen.values()))[1]
                 mark = "#function-viewer"
