@@ -55,3 +55,34 @@ pub fn start(app: &mut App) {
     app.transition.active = Some(ActiveTransition { start: now });
     app.dirty = true;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ms(ms: f64) -> Time {
+        (ms * MS as f64) as Time
+    }
+
+    #[test]
+    fn progress_is_linear_over_250_ms() {
+        let active = ActiveTransition { start: 1_000 };
+        assert_eq!(Transition::progress(active, 1_000), 0.0);
+        assert_eq!(Transition::progress(active, 1_000 + ms(125.0)), 0.5);
+        assert_eq!(Transition::progress(active, 1_000 + ms(250.0)), 1.0);
+        // Clamped past the end and (defensively) before the start.
+        assert_eq!(Transition::progress(active, 1_000 + ms(1_000.0)), 1.0);
+        assert_eq!(Transition::progress(active, 999), 0.0);
+        assert!(!Transition::is_done(active, 1_000 + ms(249.0)));
+        assert!(Transition::is_done(active, 1_000 + ms(250.0)));
+    }
+
+    #[test]
+    fn start_arms_the_fade_and_dirties() {
+        let mut app = crate::fixture::headless_app();
+        assert!(app.transition.active.is_none());
+        start(&mut app);
+        assert!(app.transition.active.is_some());
+        assert!(app.dirty);
+    }
+}
