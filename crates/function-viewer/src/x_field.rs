@@ -482,12 +482,6 @@ pub fn edit_tip(app: &mut App) {
         return;
     };
     let (tone, cells) = tip_cells(&edit);
-    eprintln!(
-        "TIPDBG invalid={} tone={:?} text={:?}",
-        edit.invalid,
-        tone == crate::tip::TipTone::Error,
-        cells.len()
-    );
     crate::tip::layout_tip(
         app,
         &tip_ids(),
