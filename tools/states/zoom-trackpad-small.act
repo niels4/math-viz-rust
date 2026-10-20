@@ -1,0 +1,24 @@
+# zoom-trackpad-small (h2-input): ten 0.2 px steps, each too small to zoom
+# alone (below the scale snap epsilon), summing to a 2 px zoom.
+# Behaviour: the scale reaches 0.5*e^0.002 with no step back, url scale after
+# settle. (Fractional deltas: verify Playwright's mouse.wheel carries them on
+# the browser targets at run time; native queues page px directly.)
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wheel 0 0.2
+wait 1500
+shot zoom-trackpad-small

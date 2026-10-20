@@ -8,7 +8,8 @@
 //! Option<Flip>`) and wires the app's reduced-motion setting in as
 //! `can_animate`, as `plot::Shown::switch_to` does.
 
-use crate::transform_curves::{Transform, TransformParam};
+use crate::state::TransformParam;
+use crate::transform_curves::Transform;
 
 /// How long the flip takes, in ms (`durationMs`).
 pub const DURATION_MS: f64 = 1000.0;

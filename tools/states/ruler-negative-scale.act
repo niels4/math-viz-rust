@@ -1,0 +1,21 @@
+# ruler-negative-scale (h5-ruler): a at -1.5, held 30 px into a drag.
+# The tape reads the size (1.59): its lattice stays on positive magnitudes.
+# Y is the overlap band shared with the port: the port sits 18 px higher until h5-buttons lands the readout height (see progress).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=-1.5
+wait 500
+move 331.5 441.5
+down
+move 336.5 441.5 over 40
+move 341.5 441.5 over 40
+move 346.5 441.5 over 40
+move 351.5 441.5 over 40
+move 356.5 441.5 over 40
+move 361.5 441.5 over 40
+shot ruler-negative-scale
+up
+wait 1200

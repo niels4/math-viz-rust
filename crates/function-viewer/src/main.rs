@@ -31,10 +31,12 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod number_field;
 pub mod overlay;
 pub mod page;
 pub mod plane;
 pub mod plane_geometry;
+pub mod plane_input;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -47,14 +49,25 @@ pub mod platform_web;
 pub mod platform_windows;
 pub mod plot;
 pub mod prefs;
+pub mod readout;
+pub mod reset;
+pub mod ruler;
+pub mod ruler_marks;
 pub mod scale_legend;
 pub mod scroll;
+pub mod scrub;
+pub mod scrub_value;
+pub mod selector;
 pub mod settings;
 pub mod shown_transform;
+pub mod sidebar;
+pub mod state;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;
 pub mod transform_curves;
+pub mod transform_row;
+pub mod transform_section;
 pub mod transition;
 pub mod typography;
 pub mod ui;
@@ -962,6 +975,12 @@ impl Main {
         crate::prefs::take_prefs_themes(&mut app);
         // The page query at start: `--query` (empty without it).
         app.url = crate::url::Url::from_query(&options.query);
+        // The camera and its params start from that query (h2-input); the
+        // picked function and its shown curve start there too (h3); the
+        // transform params start there as well (h4-rows).
+        crate::plane_input::init_camera_from_url(&mut app);
+        crate::selector::init_func_from_url(&mut app);
+        crate::transform_section::init_params_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1107,6 +1126,12 @@ impl Main {
         // The page query at start: the hash's query part, if the page was
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
         app.url = crate::url::Url::new(&platform_read_hash());
+        // The camera and its params start from that query (h2-input); the
+        // picked function and its shown curve start there too (h3); the
+        // transform params start there as well (h4-rows).
+        crate::plane_input::init_camera_from_url(&mut app);
+        crate::selector::init_func_from_url(&mut app);
+        crate::transform_section::init_params_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1329,12 +1354,12 @@ impl Main {
                 #[cfg(target_os = "emscripten")]
                 if *code == UserCode::Hash as i32 {
                     // The page's hash changed under the app (an edit in the
-                    // address bar, back/forward): route and query in at once.
-                    // Param live values follow through each param's `sync`,
-                    // which their owners run on the frame step (h2-input adds
-                    // the camera's); with no params yet this is the query the
-                    // harness records.
+                    // address bar, back/forward): route and query in at once,
+                    // then each param's sync with the still camera's adopt
+                    // (h2-input owns the camera's half).
                     app.url.sync_from_hash(&platform_read_hash());
+                    crate::plane_input::external_url_synced(app);
+                    crate::transform_section::external_params_synced(app);
                     return AppResult::Continue;
                 }
                 // Anything else (notably `ReducedMotion`) falls through to

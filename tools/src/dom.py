@@ -148,8 +148,30 @@ Dom = dict[str, Any]
 # it. H0's page has one state; each milestone appends the layouts it lays out.
 # h1-settings: the menu's boxes only exist with the menu open, so the fixture runs the
 # open menu in both schemes (dark options at settings-open, light options at
-# settings-light-dark-system).
-FIXTURE_STATES = ("default", "settings-open", "settings-light-dark-system")
+# settings-light-dark-system). h4-readout: the readout's boxes at values (the
+# only state with terms, the fraction, the sup and the scale in both lines).
+# h4-rows' rows states join the fixture: the rows' regions resolve here, so the
+# layout tests hold the port's boxes to the reference's (h4-readout's readout
+# states are already here).
+FIXTURE_STATES = (
+    "default",
+    "settings-open",
+    "settings-light-dark-system",
+    "readout-values",
+    "rows-default",
+    "rows-hover-a",
+    "rows-focus-k",
+    "rows-typed",
+    "rows-enter",
+    "rows-zero-scale",
+    "rows-arrows",
+    "box-tip-rest",
+    "box-tip-typing",
+    # h5-ruler: the ruler and tape only exist mid-drag, so the fixture runs
+    # ruler-a-30 (a's box held 30 px in).
+    "ruler-a-30",
+    "reset-visible",
+)
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"
 

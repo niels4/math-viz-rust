@@ -67,7 +67,10 @@ pub enum Pace {
 /// The deadlines the app arms. The shell arms none; the page milestones append
 /// their variants here (append-only, like `App`'s fields).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-pub enum Timer {}
+pub enum Timer {
+    /// The scrub box's rest tip: the pointer's 400 ms rest is over.
+    ScrubRest,
+}
 
 /// One deadline per timer.
 pub type Timers = EnumMap<Timer, Time>;
@@ -166,6 +169,25 @@ pub fn iterate(app: &mut App) -> bool {
             app.input.time = 0;
         }
     }
+    // The plane's camera step (h2-input): the camera's frame, the params'
+    // debounce and external sync, the web hash mirror. Before the draw, so
+    // the frame draws what the camera moved to.
+    crate::plane_input::frame_step(app, now);
+    // The picker's plot step (h3): the switch's frame, then an outside edit
+    // flowing in. Before the draw, so the frame draws what the switch drew
+    // to.
+    crate::selector::plot_step(app, now);
+    crate::selector::external_func_synced(app);
+    // The transform params' debounce and external sync (h4-rows): a pending
+    // write fires, an outside edit flows into the live values. Before the
+    // draw, so the frame draws what the values moved to. A fired write
+    // repaints: the readout reads the URL, so without this it would keep
+    // showing the pre-debounce values on a quiet page.
+    if crate::transform_section::params_step(app, (now / MS) as u64) {
+        app.dirty = true;
+        #[cfg(target_os = "emscripten")]
+        crate::platform_web::platform_write_hash(&app.url.full_hash());
+    }
     let mut drawn = false;
     // The theme fade redraws until done: no timer arms its frames, so the
     // turn does while one is in flight (its last frame clears the active).
@@ -184,15 +206,28 @@ pub fn iterate(app: &mut App) -> bool {
 }
 
 /// Runs one fired timer's action. The shell arms no timers, so no arm fires.
-pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
-    match timer {}
+pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
+    match timer {
+        Timer::ScrubRest => crate::scrub_value::rest_fired(app),
+    }
 }
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
 pub fn schedule(app: &mut App, _now: Time) {
     // A fade in flight keeps the turns coming, as its frames do: the last
-    // one clears the active and lets the app sleep again.
-    app.r#loop.awake = app.dirty || app.transition.active.is_some();
+    // one clears the active and lets the app sleep again. A camera in flight
+    // does the same (h2-input): each turn steps it, and the settle stops the
+    // loop — without this a glide stalls after its first step, since the draw
+    // consumes the dirty its step set. A plot switch does the same (h3). A
+    // debounced page-param write does the same (h5-box): each turn steps it,
+    // and the write stops the loop — without this a typed or nudged value
+    // never reaches the URL on a quiet page, since nothing else steps the
+    // params once the frame settles.
+    app.r#loop.awake = app.dirty
+        || app.transition.active.is_some()
+        || app.camera.animating()
+        || app.shown.is_switching()
+        || crate::transform_section::params_pending(app);
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

@@ -1,0 +1,11 @@
+# select-sinx (H3): picking sin x at rest after the click. The sin x label's
+# centre is (340.5, 187): cell [299,170,83,34]. The click flushes func=sinx.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 340.5 187
+wait 2000
+shot select-sinx

@@ -1,0 +1,20 @@
+# ruler-k-30 (h5-ruler): k's box held 30 px into a drag.
+# The shift tape shows whole numbers 50 px apart about 0.6.
+# Y is the overlap band shared with the port: the port sits 18 px higher until h5-buttons lands the readout height (see progress).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 485.5
+down
+move 336.5 485.5 over 40
+move 341.5 485.5 over 40
+move 346.5 485.5 over 40
+move 351.5 485.5 over 40
+move 356.5 485.5 over 40
+move 361.5 485.5 over 40
+shot ruler-k-30
+up
+wait 1200

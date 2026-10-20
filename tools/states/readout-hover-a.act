@@ -1,0 +1,12 @@
+# readout-hover-a (h4-readout): the pointer on a in the form line (105.8, 320):
+# a lit in both lines. Values on x2 so a shows in the value line too.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3&b=2
+wait 2000
+move 106 320
+wait 300
+shot readout-hover-a

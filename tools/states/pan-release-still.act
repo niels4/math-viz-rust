@@ -1,0 +1,17 @@
+# pan-release-still (h2-input): a 200 px drag, held still 300 ms, released.
+# No glide starts (the flick window only sees the standstill); the release's
+# frame flushes the URL at once. Behaviour: one post-release frame, then
+# rest; url center=-4.0000,0.0000, no scale key.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 728 490
+down
+move 928 490 over 128
+wait 300
+up
+wait 1000
+shot pan-release-still

@@ -1,0 +1,9 @@
+# url-func (H3): a func=sinx link opens on sin x, whole, with no animation.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx
+wait 2000
+shot url-func

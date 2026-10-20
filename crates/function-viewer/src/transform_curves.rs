@@ -7,26 +7,14 @@
 //!   [`Transform`], [`transform_curves`], [`transform_handles`],
 //!   [`transform_lines`].
 //! - `src/components/views/FunctionViewer/baseFunctions.ts` (`unitX`):
-//!   the `u` argument stays a plain `f64` the caller passes (h4/h5 are
-//!   unmerged, so no param plumbing exists yet); `crate::functions::unit_x`
-//!   is the value the caller reads.
+//!   the `u` argument stays a plain `f64` the caller passes;
+//!   `crate::functions::unit_x` is the value the caller reads.
 //!
-//! `TransformParam` (`TransformParam` in `state.ts`) is defined here because
-//! `state.rs` does not exist in this tree yet (h4 unmerged); h4's `state.rs`
-//! reuses it when it lands.
+//! The params type is `crate::state::TransformParam` (h4's `state.rs`).
 
 use crate::functions::{FunctionSlug, base};
 use crate::plot::{HandleKind, LineKind, PlotCurve, PlotFunction, PlotHandle, PlotLine, PlotPoint};
-
-/// A transform parameter (`TransformParam` in `state.ts`): the field of
-/// [`Transform`] a row, handle or line addresses.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TransformParam {
-    A,
-    B,
-    H,
-    K,
-}
+use crate::state::TransformParam;
 
 /// The four transform values (`Transform` in `transformCurves.ts`): a
 /// struct, not a map, since the keys are fixed and the tests write them as
