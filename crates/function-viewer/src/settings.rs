@@ -860,6 +860,7 @@ pub fn press_down(app: &mut App) {
         | HitKind::TransformResetAll
         | HitKind::Wordmark
         | HitKind::WelcomeCta
+        | HitKind::WelcomeHero
         | HitKind::PointsField
         | HitKind::PointSlider => {
             close_menu(app);

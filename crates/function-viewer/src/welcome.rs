@@ -476,6 +476,18 @@ fn hero(app: &mut App) {
         };
         crate::ui::ui_scope(app, mv_clay::id("WelcomeHeroPlane", 0), &frame, |_| {});
     });
+    crate::input::region(
+        app,
+        mv_clay::id("WelcomeHeroPlane", 0),
+        Hit {
+            kind: HitKind::WelcomeHero,
+            index: 0,
+        },
+        Cursor::Pointer,
+        Cursor::Pointer,
+        false,
+        crate::ui::corner_radius_all(WELCOME_RADIUS),
+    );
 }
 
 /// Declares a square icon element painting `kind` in `ink`, as the top bar's
@@ -741,7 +753,7 @@ pub fn click(app: &mut App, down: Hit) {
     if down != up {
         return;
     }
-    if down.kind == HitKind::WelcomeCta {
+    if down.kind == HitKind::WelcomeCta || down.kind == HitKind::WelcomeHero {
         navigate(app, VIEWER_ROUTE, "");
     }
 }
@@ -933,6 +945,23 @@ mod tests {
     }
 
     #[test]
+    fn opens_the_function_viewer_from_the_animated_graph() {
+        // h11-hero (77c4996): a press and release on the hero region at
+        // the welcome route leaves the route function-viewer with an empty
+        // query, as the anchor does.
+        let mut app = crate::fixture::headless_app();
+        assert_eq!(Route::of(&app.url), Route::Welcome);
+        let down = Hit {
+            kind: HitKind::WelcomeHero,
+            index: 0,
+        };
+        app.input.pressed = down;
+        app.input.hover = down;
+        crate::welcome::click(&mut app, down);
+        assert_eq!(Route::of(&app.url), Route::FunctionViewer);
+        assert_eq!(app.url.query(), "");
+    }
+
     fn navigation_sets_the_route_and_enters_it() {
         // Tests run natively; on the web the same sync-and-enter runs
         // beside the `location.hash` assignment. The button to

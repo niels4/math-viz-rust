@@ -174,6 +174,12 @@ pub enum HitKind {
     /// (`tabIndex={-1}` in `XField.tsx`): focus arrives by mouse, by focus
     /// or by Enter from the slider, and typing replaces the selected text.
     PointsField,
+    /// The welcome page's hero canvas link to `#function-viewer` (h11-hero;
+    /// `index` 0). A hot region over `hero_plane` with the pointer cursor;
+    /// a primary press and release both inside it navigate, as the anchor
+    /// does (77c4996). Never a focus stop: `tabIndex={-1}` on the anchor,
+    /// so the Tab walk stays gear then CTA.
+    WelcomeHero,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
