@@ -1175,7 +1175,7 @@ mod tests {
             true,
             crate::ui::corner_radius_all(4.0),
         );
-        collect_regions(app);
+        collect_regions(&mut app);
         assert_eq!(app.input.regions.len(), 1);
         let region = app.input.regions[0];
         assert_eq!(region.hit.kind, HitKind::ReturnToCenter);

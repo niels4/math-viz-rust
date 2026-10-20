@@ -14,8 +14,6 @@
 
 use mv_sys::clay;
 
-use crate::app::App;
-
 /// The overlay sits this far inside the plane's edges (`--space-inset`).
 pub const INSET: f32 = 12.0;
 
@@ -222,11 +220,10 @@ pub fn overlay_colors(theme: &mv_theme::Theme) -> OverlayColors {
     }
 }
 
-/// The return-to-centre click resets through [`App::reset_view`], which lives
-/// in `plane_input.rs` (the only copy; this module's twin went away at
-/// h2-input's merge): both params to their defaults, flushed, with the live
-/// camera following a still one at once.
-
+// The return-to-centre click resets through `App::reset_view`, which lives
+// in `plane_input.rs` (the only copy; this module's twin went away at
+// h2-input's merge): both params to their defaults, flushed, with the live
+// camera following a still one at once.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -288,7 +285,7 @@ mod tests {
     #[test]
     fn reset_view_clears_the_camera_keys() {
         let mut app = crate::fixture::headless_app();
-        app.url = Url::from_query("center=1.5000,-2.0000&scale=2.00");
+        app.url = crate::url::Url::from_query("center=1.5000,-2.0000&scale=2.00");
         crate::plane_input::init_camera_from_url(&mut app);
         app.dirty = false;
         app.reset_view();
