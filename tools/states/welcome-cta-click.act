@@ -1,0 +1,16 @@
+# welcome-cta-click (h10-page): the button's centre (about (233, 553));
+# the click navigates to #function-viewer with an empty query; the shot 2 s
+# later: the viewer at its defaults. Behaviour: the route and url lines.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 233 553
+wait 2000
+move 720 48
+wait 300
+shot welcome-cta-click

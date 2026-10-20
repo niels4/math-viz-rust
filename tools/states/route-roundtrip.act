@@ -1,0 +1,20 @@
+# route-roundtrip (h10-page): the viewer with func=x2&a=2&h=1; the wordmark
+# home; 1 s; the button back; 2 s; the shot: the viewer on x at a 1, h 0
+# with the hash bare and the menu closed. Behaviour: the route and url lines
+# at each step.
+route function-viewer
+query func=x2&a=2&h=1
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 500
+click 104 48
+wait 1000
+click 233 553
+wait 2000
+move 720 48
+wait 300
+shot route-roundtrip

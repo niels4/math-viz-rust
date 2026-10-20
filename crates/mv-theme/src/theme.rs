@@ -236,8 +236,15 @@ mod tests {
         fixture
     }
 
-    // A token's CSS name: ParamA18 is --param-a-18.
+    // A token's CSS name: ParamA18 is --param-a-18. The welcome page's
+    // tokens keep their page names (h10-page): --title, not --welcome-title.
     fn css_name(token: Token) -> String {
+        match token {
+            Token::WelcomeTitle => return String::from("--title"),
+            Token::WelcomeCta => return String::from("--cta"),
+            Token::WelcomeCtaForeground => return String::from("--cta-foreground"),
+            _ => {}
+        }
         let mut name = String::from("--");
         let mut prev_letter = false;
         for (i, ch) in format!("{token:?}").chars().enumerate() {
@@ -493,6 +500,9 @@ mod tests {
         Token::ParamH,
         Token::PointP,
         Token::PointQ,
+        Token::WelcomeTitle,
+        Token::WelcomeCta,
+        Token::WelcomeCtaForeground,
     ];
 
     #[test]
@@ -581,12 +591,13 @@ mod tests {
                 );
             }
         }
-        // The expected count: 240 tokens with a colour (201 plus the sidebar's
-        // --section, 21 inside-sRGB --param-* inks and 12 inside-sRGB
-        // --point-* inks), all inside sRGB; the three dark shadow colours
-        // transparent; three --param-* inks outside sRGB at their oklch's
-        // bytes (h4-readout); the 24 mixes inside too.
-        assert_eq!(tokens.inside, 240);
+        // The expected count: 258 tokens with a colour (201 plus the sidebar's
+        // --section, 21 inside-sRGB --param-* inks, 12 inside-sRGB
+        // --point-* inks and 18 inside-sRGB welcome --title/--cta inks),
+        // all inside sRGB; the three dark shadow colours transparent; three
+        // --param-* inks outside sRGB at their oklch's bytes (h4-readout);
+        // the 24 mixes inside too.
+        assert_eq!(tokens.inside, 258);
         assert_eq!(tokens.outside, 3);
         assert_eq!(tokens.transparent, 3);
         assert_eq!(mixes.outside, 0);

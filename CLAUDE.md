@@ -921,6 +921,76 @@ no new tokens (all eight tabled).
   against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
   (53/100); at dpr 1 it is 0.52.
 
+### h10-page (the welcome page's static layout and the second route)
+
+- The route lives in `welcome.rs::Route::of(&Url)` (`""` welcome,
+  `function-viewer` viewer, else welcome; slashes trimmed as the Router
+  does). `layout_page`/`draw_page` branch on it; the viewer branch is the
+  old body (drawn first in the file as `draw_viewer`). The welcome branch
+  lays out only its own elements (top row, frame, intro, hero, menu) and
+  paints bg, the backdrop stub, the still, the commands, menu chrome and
+  the CTA ring. The ~13 viewer-layout tests seed
+  `app.url = Url::new("#function-viewer…")` (points_section, selector,
+  plane, readout, settings x2, top_bar, x_field's helper).
+- Fresh mount (`enter_route`): viewer resets component state (drafts,
+  scrub/holds/rest, menu, hover/focus, flip, overlay tip, moved_by,
+  slider, field, camera_frame_at) and re-inits camera+params+func from
+  the URL; atoms (`state`, incl. jumps) kept. Welcome closes the menu.
+  Runs at startup implicitly (fresh by construction), on web `hashchange`
+  (main.rs Hash arm, prev-vs-new route), in the harness hash verb, and in
+  `navigate` natively. Web navigation assigns `location.hash` (history
+  entry; the existing hashchange path enters); `mv_navigate_hash` lives in
+  library.js, declared extern, never exported. `--route` (h10-t-route's)
+  seeds `App.url`'s route at startup; the harness hash verb keeps the
+  script's route (`script_route`), matching act.py's `self.route`.
+- Fresh mounts hover nothing until the pointer acts (`input.hover_fresh`,
+  cleared on pointer move/button/wheel): the browser applies no `:hover`
+  without a mouse move after the route's components mount, and the
+  reference's post-navigation hover is racy engine to engine (measured:
+  the lit row flapped between states runs; the move-to-neutral ends both
+  sides unlit deterministically). `retarget` holds hover off while set.
+- The blend finding: NanoVG's GL backend premultiplies paint rgb by alpha
+  when uploading uniforms (`glnvg__premulColor`), blended
+  (ONE, ONE_MINUS_SRC_ALPHA) — exactly the browser's compositing for fills
+  AND text, so straight theme inks are exact including alpha (an early
+  SRC_ALPHA-blend experiment double-applied alpha, read 0.75x dark on the
+  dashed curve, and was reverted). Title proof: 27,940 flat stem pixels at
+  0 levels on Tron Cyan, 30,926 on Clean Teal, vs ref-WebKit; the rest of
+  its diffs sit on paper lines and in the lights' falloff (h10-hero's).
+  `draw::css_background` on a translucent Clay rect would double-apply —
+  the welcome pass paints no translucent rects, so it stays exact.
+- The shaping fix (a layer change, in `mv-text/shape.rs`): the port's
+  shaper applied GPOS kern pairs with a space on EITHER side, while all
+  three browsers kern (X,space) and never (space,X) (measured per pair:
+  (space,t) −12u and (space,V) −31u apply in kb, in no browser;
+  (x,space) −20u, (a,space) −14u, (r,space) −18u, (l,space) −22u apply in
+  WebKit and kb alike; Chromium/Firefox skip (X,space) except as noted).
+  `shape()` now shapes each word with its trailing space (never with the
+  next word's head); `measure_word`'s leading-space adjustment keeps
+  Clay's sum exact. Whole-workspace suite green; the CTA box went
+  305.878 → 306.719-exact. Remaining engine spread: Chromium/Firefox skip
+  (X,space) (subpixel edge pixels, category d); WebKit-only (X,space)
+  kerns recorded per text as quirk (e). nbsp pairs untouched (engines
+  disagree up to 1.2px among themselves).
+- Tokens: `--title`/`--cta`/`--cta-foreground` on `[data-testid=root-view]`
+  (Token::WelcomeTitle/Cta/CtaForeground); `themes.py` reads them from
+  `WelcomePage.module.css`'s `.page` block, its MIX regex takes
+  `in srgb …, transparent` (same Mix: premultiplied srgb with transparent
+  keeps rgb, scales alpha), `verify` skips selectors missing on the viewer
+  route, `tokens.py` takes the three on `/` through `oklch(from …)`.
+- Boxes `mark/description/cta/hint/hero_plane` plus `welcome_chip_*`
+  (`chip_a` is taken); dom.py fixture runs `welcome-route` (probe) and
+  `welcome-default`; milestones H10 lists all 13 states.
+- The h10-seam merge adapted the hero to the bare `paint_plane` (empty
+  handles/lines/markers; bg fill + border + cutouts stay the hero's own
+  pass so the menu's opaque background covers the still where they
+  overlap) and regenerated the three generated files at 68e1c7b (my rows
+  included; arctic-ice `--secondary` is h9's value, part of this hash).
+- The description hard-breaks at the reference's three line breaks (Clay
+  never wraps; greedy-fit test pins them); the CTA focus ring reproduces
+  Chromium's 1px `rgb(0,95,204)` at 1px offset (WebKit skips the link on
+  Tab — the known quirk, category e; Firefox draws its own variant).
+
 ### t-pages (the GitHub Pages proof)
 
 - `WEB_BASE` (default `/`, must start and end with `/`) beside `WEB_PORT`: one helper,

@@ -849,7 +849,7 @@ fn laid_out_page(app: &mut crate::app::App, query: &str) {
     crate::ui::init_clay(app);
     app.size = [1440.0, 900.0];
     app.pixels = [2880, 1800];
-    app.url = crate::url::Url::from_query(query);
+    app.url = crate::url::Url::new(&format!("#function-viewer?{query}"));
     crate::transform_section::init_params_from_url(app);
     let _commands = crate::page::layout_page(app);
     app.visible_range = crate::visible_range::live(app);

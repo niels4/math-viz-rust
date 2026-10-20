@@ -1564,7 +1564,7 @@ mod layout_tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
-        app.url = crate::url::Url::from_query("func=x2&a=2&h=1&k=-3&b=2");
+        app.url = crate::url::Url::new("#function-viewer?func=x2&a=2&h=1&k=-3&b=2");
         crate::selector::init_func_from_url(&mut app);
         // The lines read the rows' live params (h5-box), so the params join
         // the URL in the seed, as each `build()` re-seeds them.

@@ -781,6 +781,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let fixture = crate::fixture::page_fixture().expect("page fixture parses");

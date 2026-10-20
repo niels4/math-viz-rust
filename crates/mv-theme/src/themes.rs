@@ -52,6 +52,9 @@ pub enum Token {
     ParamH,
     PointP,
     PointQ,
+    WelcomeTitle,
+    WelcomeCta,
+    WelcomeCtaForeground,
 }
 
 /// An oklch colour as a theme file writes it.
@@ -472,6 +475,12 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal05)),
                 (Token::PointQ, Value::Ref(Token::Ordinal03)),
+                (Token::WelcomeTitle, Value::Ref(Token::Primary)),
+                (Token::WelcomeCta, Value::Ref(Token::Warning)),
+                (
+                    Token::WelcomeCtaForeground,
+                    Value::Ref(Token::PrimaryForeground),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -836,6 +845,19 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal05)),
                 (Token::PointQ, Value::Ref(Token::Ordinal02)),
+                (
+                    Token::WelcomeTitle,
+                    Value::Mix(Mix {
+                        a: Token::Primary,
+                        p: 65.0,
+                        b: None,
+                    }),
+                ),
+                (Token::WelcomeCta, Value::Ref(Token::Accent)),
+                (
+                    Token::WelcomeCtaForeground,
+                    Value::Ref(Token::AccentForeground),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 4.0, // 4px
@@ -1200,6 +1222,12 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal03)),
                 (Token::PointQ, Value::Ref(Token::Ordinal02)),
+                (Token::WelcomeTitle, Value::Ref(Token::Primary)),
+                (Token::WelcomeCta, Value::Ref(Token::Accent)),
+                (
+                    Token::WelcomeCtaForeground,
+                    Value::Ref(Token::AccentForeground),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1556,6 +1584,19 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal05)),
                 (Token::PointQ, Value::Ref(Token::Ordinal04)),
+                (
+                    Token::WelcomeTitle,
+                    Value::Mix(Mix {
+                        a: Token::Primary,
+                        p: 85.0,
+                        b: None,
+                    }),
+                ),
+                (Token::WelcomeCta, Value::Ref(Token::Warning)),
+                (
+                    Token::WelcomeCtaForeground,
+                    Value::Ref(Token::PrimaryForeground),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)
@@ -1912,6 +1953,16 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal05)),
                 (Token::PointQ, Value::Ref(Token::Ordinal11)),
+                (
+                    Token::WelcomeTitle,
+                    Value::Mix(Mix {
+                        a: Token::Primary,
+                        p: 85.0,
+                        b: None,
+                    }),
+                ),
+                (Token::WelcomeCta, Value::Ref(Token::Warning)),
+                (Token::WelcomeCtaForeground, Value::Ref(Token::Foreground)),
             ],
             radius: 9.6,       // 0.6rem
             card_radius: 18.0, // 18px
@@ -2276,6 +2327,19 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 ),
                 (Token::PointP, Value::Ref(Token::Ordinal05)),
                 (Token::PointQ, Value::Ref(Token::Ordinal02)),
+                (
+                    Token::WelcomeTitle,
+                    Value::Mix(Mix {
+                        a: Token::Primary,
+                        p: 85.0,
+                        b: None,
+                    }),
+                ),
+                (Token::WelcomeCta, Value::Ref(Token::Accent)),
+                (
+                    Token::WelcomeCtaForeground,
+                    Value::Ref(Token::AccentForeground),
+                ),
             ],
             radius: 9.6,      // 0.6rem
             card_radius: 9.6, // var(--radius)

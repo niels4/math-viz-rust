@@ -81,6 +81,7 @@ pub mod typography;
 pub mod ui;
 pub mod url;
 pub mod visible_range;
+pub mod welcome;
 pub mod welcome_loop;
 pub mod x_field;
 
@@ -1077,6 +1078,13 @@ impl Main {
         crate::prefs::take_prefs_themes(&mut app);
         // The page query at start: `--query` (empty without it).
         app.url = crate::url::Url::from_query(&options.query);
+        // The page route at start: `--route` (the script's `route` line rides
+        // it in; the hand-run binary defaults to welcome, as the browser's
+        // `/` does). h10-page wires it into the URL the route reads.
+        if options.route == "function-viewer" {
+            app.url
+                .sync_from_hash(&format!("#function-viewer?{}", options.query));
+        }
         // The camera and its params start from that query (h2-input); the
         // picked function and its shown curve start there too (h3); the
         // transform params start there as well (h4-rows).
@@ -1456,10 +1464,16 @@ impl Main {
                 #[cfg(target_os = "emscripten")]
                 if *code == UserCode::Hash as i32 {
                     // The page's hash changed under the app (an edit in the
-                    // address bar, back/forward): route and query in at once,
+                    // address bar, back/forward, or h10-page's navigation
+                    // assigning `location.hash`): route and query in at once,
                     // then each param's sync with the still camera's adopt
-                    // (h2-input owns the camera's half).
+                    // (h2-input owns the camera's half). A changed route
+                    // enters it (a fresh mount, as entering a route is).
+                    let prev = app.url.route().to_string();
                     app.url.sync_from_hash(&platform_read_hash());
+                    if prev != app.url.route() {
+                        crate::welcome::enter_route(app);
+                    }
                     crate::plane_input::external_url_synced(app);
                     crate::transform_section::external_params_synced(app);
                     return AppResult::Continue;

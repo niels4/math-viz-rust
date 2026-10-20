@@ -385,7 +385,13 @@ pub fn paint_labels(
 /// Fills the canvas's corner triangles with the page colour: the canvas
 /// bitmap paints square corners and the CSS radius rounds them after, so the
 /// port cuts the same triangles out after painting its ink. Canvas-relative.
-fn paint_corner_cutouts(vg: &mut mv_nvg::Context, width: f32, height: f32, page: [f32; 4]) {
+/// h10-page's hero shares it (its frame rounds the same way).
+pub(crate) fn paint_corner_cutouts(
+    vg: &mut mv_nvg::Context,
+    width: f32,
+    height: f32,
+    page: [f32; 4],
+) {
     /// The bezier control offset for a quarter circle of radius 1.
     const KAPPA: f32 = 0.552_284_8;
     let r = CANVAS_RADIUS;
@@ -933,6 +939,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let data = clay.get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));

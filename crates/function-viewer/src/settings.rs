@@ -851,6 +851,7 @@ pub fn press_down(app: &mut App) {
         | HitKind::TransformReset
         | HitKind::TransformResetAll
         | HitKind::Wordmark
+        | HitKind::WelcomeCta
         | HitKind::PointsField
         | HitKind::PointSlider => {
             close_menu(app);
@@ -874,11 +875,13 @@ pub fn click(app: &mut App, down: Hit) {
             app.input.focus = Hit::default();
             app.dirty = true;
         }
-        // The wordmark link to the root page: a no-op click (h8-plane; the
-        // root page is never in the port, which has one route). The press
-        // started and the release lands on it, as a button's `onClick`
-        // needs both; nothing changes, and no frame is marked dirty.
-        HitKind::Wordmark => {}
+        // The wordmark link to the welcome page (h10-page; the root page is
+        // now a real route, plan §3.7 Routes): the press started and the
+        // release lands on it, as a button's `onClick` needs both, and the
+        // page navigates home with an empty query, as the anchor does.
+        HitKind::Wordmark => {
+            crate::welcome::navigate(app, "", "");
+        }
         HitKind::SettingsLightDark if (down.index as usize) < LIGHT_DARK_ORDER.len() => {
             let option = LIGHT_DARK_ORDER[down.index as usize];
             let changed = option != app.theme.light_dark;
@@ -1189,6 +1192,7 @@ mod tests {
         app.pixels = [2880, 1800];
         app.theme.light_dark = LightDark::Dark;
         app.settings.open();
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         crate::plane_input::declare_plane_region(&mut app);
         crate::input::collect_regions(&mut app);
@@ -1243,6 +1247,7 @@ mod tests {
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
         app.settings.open();
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let fixture = crate::fixture::page_fixture().expect("page fixture parses");
