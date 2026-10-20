@@ -245,9 +245,9 @@ fn declare_plane_button(app: &mut App) {
     );
 }
 
-/// Paints the plane's slot over the canvas: the grid, axes, labels and scale
-/// legend on the content box, then the overlay's brackets and button. Runs
-/// after the Clay commands (over the page background), before the
+/// Paints the plane's slot over the canvas: the bare plane (grid, axes,
+/// labels, curves, handles, markers) then the scale legend on the content
+/// box, then the overlay's brackets and button. Runs after the Clay commands (over the page background), before the
 /// transition's fade.
 fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
@@ -282,6 +282,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     let mcolors = crate::plane_markers::marker_colors(theme);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
+    let font_ready = true;
     crate::plane::paint_plane(
         &mut app.fonts,
         &mut app.vg,
@@ -289,7 +290,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         center,
         scale,
         &colors,
-        true,
+        font_ready,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
         theme.colors[mv_theme::Token::ForegroundMuted],
@@ -299,6 +300,32 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         &markers,
         &mcolors,
     );
+    // The scale legend after the bare plane (the viewer's `drawPlaneWithScale`
+    // draws the plane, then the legend once the font has loaded): the same
+    // grid and measure the painter used, in the canvas's translated and
+    // scissored space, as it painted inside `paint_plane`.
+    if font_ready {
+        let grid = crate::grid::layout_grid(
+            center,
+            scale,
+            f64::from(content.width),
+            f64::from(content.height),
+            crate::plane::LABEL_MARGIN,
+        );
+        let label = crate::scale_legend::legend_text(scale);
+        let text_width = f64::from(mv_text::measure(
+            &mut app.fonts,
+            crate::plane::label_style(),
+            &label,
+        ));
+        let geometry = crate::scale_legend::legend_geometry(&grid, text_width);
+        app.vg.save();
+        app.vg
+            .scissor(content.x, content.y, content.width, content.height);
+        app.vg.translate(content.x, content.y);
+        crate::scale_legend::paint_legend(&mut app.fonts, &mut app.vg, &geometry, &colors.legend);
+        app.vg.restore();
+    }
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
     crate::overlay::paint_corners(
