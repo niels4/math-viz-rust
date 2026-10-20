@@ -686,6 +686,45 @@ no new tokens (all eight tabled).
   Arctic Ice). Seed each theme in its own slot; the three-key model reads
   `dark-theme` in dark mode.
 
+### h8-points-slider (the x-of-P slider)
+
+- The track is a grow-wide 20 px Clay scope with the region and tab stop;
+  thumb and tip are post-pass paint from the laid-out track (no Clay scopes,
+  like the overlay button): thumb centre = track.x + px-rounded left,
+  tip = measured width centred on the thumb and clamped inside. The layout
+  test asserts the arithmetic boxes against the fixture (track, thumb, full
+  tip box with real fonts); the dom fixture runs slider-default (track,
+  thumb) and slider-hover (tip, `display:none` at rest).
+- Focus entries are click-h's-box + one Tab (the flip-focus pattern):
+  absolute Tab×5 differs per engine (WebKit skips radios/buttons without
+  Full Keyboard Access; chromium/firefox do not), while h-box → slider is
+  next-stop in every engine (the h toggle precedes the h box in DOM order).
+  A click on the track would jump P, so scripts never click it for focus.
+- A left-button press focuses the track without the ring
+  (`set_focus(hit, false)`: DOM focus, no `:focus-visible`), then starts the
+  drag only with a live range and laid-out track. Moves route by a
+  `slider_hold` capture predicate beside the scrub's (the shell's
+  `captures()` stays plane-only); release/up/blur flush `p` and clear
+  `p_dragging`. SDL has no buttons field, cancel or capture-loss events, so
+  the buttons==0/cancel/lost-capture arms are accepted gaps. Enter sets
+  `App.slider_edit` for h8-points-field (which merges later); the readout
+  field merges its own focus stop past the slider.
+- P rides the shared param plumbing (`params_step` steps and syncs it;
+  the loop's separate `p_step` was deleted as a duplicate at the row
+  merge). The `p` views line (`fmt_g17`) is validated in `act.py` beside
+  the `q` line.
+- The hover thumb scales 1.12 (radii × 1.12 about the centre — the fixture
+  thumb boxes 20.16 px on hover); the parked thumb is a dashed ring
+  (circle sampled to 72 segments, cut with the plane's `dash_pieces` at
+  `[3,2]` offset 0) with no core. Halo is `theme::plate(primary)` (26%),
+  the focus ring `theme::ring` (32%), both plain-alpha strokes like the
+  rows' rings. Tip text baselines hang from a centred content strut
+  (readout shape): `x` Stix400Italic 14/18, value RobotoMono500 13 tabular
+  on a 17 px line offset 0.5 px.
+- Fractions floor in WebKit mouse input (press at 249.54 reads clientX 249):
+  scripts use whole px and the unit tests pin the integer-coord values
+  (press 250 → 2.03, +30 → 3.82, click 100 → −6.92).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

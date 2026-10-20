@@ -378,7 +378,7 @@ pub fn slider(app: &mut App) {
 }
 
 /// Sends the pointer's value: the live write, repainting on a change (the
-/// hook's `send`, debounced through the loop's [`p_step`]).
+/// hook's `send`, debounced through the loop's shared param step).
 fn send_at(app: &mut App, range: SliderRange, track_x: f64, track_w: f64, client_x: f64) {
     let Some(next) = value_from_client_x(client_x, track_x, track_w, range) else {
         return;
@@ -526,18 +526,6 @@ fn shift_held(event: &KeyEvent) -> bool {
     event
         .mods
         .intersects(sdl3::keyboard::Mod::LSHIFTMOD | sdl3::keyboard::Mod::RSHIFTMOD)
-}
-
-/// One frame's debounce, then an outside edit flowing in: `p`'s `step` (a
-/// pending write fires) and `sync` (a hash edit flows into the live value).
-/// Reports whether the query changed, for the web hash mirror. Runs in the
-/// loop beside the transform params' step.
-pub fn p_step(app: &mut App, now_ms: u64) -> bool {
-    let wrote = app.p_param.step(&mut app.url, now_ms);
-    if app.p_param.sync(&app.url) {
-        app.dirty = true;
-    }
-    wrote
 }
 
 /// The thumb's centre in window px, or `None` off a track with no travel.

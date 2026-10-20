@@ -189,9 +189,9 @@ pub fn iterate(app: &mut App) -> bool {
     // draw, so the frame draws what the values moved to. A fired write
     // repaints: the readout reads the URL, so without this it would keep
     // showing the pre-debounce values on a quiet page.
-    if crate::transform_section::params_step(app, (now / MS) as u64)
-        | crate::point_slider::p_step(app, (now / MS) as u64)
-    {
+    // `params_step` also steps `p` (h8-plane; P rides the shared param
+    // plumbing with the transform params).
+    if crate::transform_section::params_step(app, (now / MS) as u64) {
         app.dirty = true;
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
@@ -260,8 +260,7 @@ pub fn schedule(app: &mut App, _now: Time) {
         || app.camera.animating()
         || app.shown.is_switching()
         || app.flip.is_animating()
-        || crate::transform_section::params_pending(app)
-        || app.p_param.has_pending();
+        || crate::transform_section::params_pending(app);
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;
