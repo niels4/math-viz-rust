@@ -323,6 +323,7 @@ pub fn init_func_from_url(app: &mut App) {
     let slug = *app.func_param.get();
     app.shown = crate::plot::Shown::new(crate::functions::base(slug));
     app.plot_frame_at = None;
+    app.plot_hold = false;
 }
 
 /// Picks the option: the URL at once (the hook's `setFunc` with
@@ -332,16 +333,32 @@ pub fn init_func_from_url(app: &mut App) {
 pub fn pick_function(app: &mut App, slug: FunctionSlug, index: usize) {
     app.func_param.set_flushed(&mut app.url, slug);
     let next = crate::functions::base(slug);
-    // `switch_to` no-ops on the shown function; the held turn is only for a
-    // real switch (a no-op mid-switch must not pause the running one).
+    // `switch_to` no-ops on the shown function; only a real switch holds a
+    // turn (a no-op mid-switch must not pause the running one).
     if !std::ptr::fn_addr_eq(next, app.shown.func) {
-        app.shown.switch_to(next, !app.reduced_motion);
-        app.plot_frame_at = None;
+        begin_switch(app, next);
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
     }
     crate::input::set_focus(app, cell_hit(index), false);
     app.dirty = true;
+}
+
+/// Starts the switch to `next`, holding the turn: from rest the next step
+/// carries the hook's first-frame gap; mid-switch the running clock persists
+/// (the hook's loop is keyed on `switching`, so a re-pick never restarts it:
+/// the turn draws the reset curves, the next frame diffs from the last
+/// callback, not the click).
+fn begin_switch(app: &mut App, next: crate::plot::PlotFunction) {
+    let mid = app.shown.is_switching();
+    app.shown.switch_to(next, !app.reduced_motion);
+    if app.shown.is_switching() {
+        if mid {
+            app.plot_hold = true;
+        } else {
+            app.plot_frame_at = None;
+        }
+    }
 }
 
 /// Routes a click: the release whose down-hit and up-hit agree on a cell.
@@ -401,6 +418,12 @@ pub fn plot_step(app: &mut App, now: crate::app_loop::Time) {
     if !app.shown.is_switching() {
         return;
     }
+    // A mid-switch re-pick's own turn draws the reset curves without
+    // stepping, keeping the running clock for the next frame.
+    if app.plot_hold {
+        app.plot_hold = false;
+        return;
+    }
     let Some(last) = app.plot_frame_at else {
         app.plot_frame_at = Some(now);
         return;
@@ -423,8 +446,7 @@ pub fn external_func_synced(app: &mut App) -> bool {
     }
     let next = crate::functions::base(*app.func_param.get());
     if !std::ptr::fn_addr_eq(next, app.shown.func) {
-        app.shown.switch_to(next, !app.reduced_motion);
-        app.plot_frame_at = None;
+        begin_switch(app, next);
     }
     app.dirty = true;
     true
@@ -702,6 +724,30 @@ mod tests {
             }]
         );
         assert!(app.plot_frame_at.is_none());
+    }
+
+    /// A mid-switch re-pick holds its own turn without restarting the clock:
+    /// the turn draws the reset curves, and the next frame diffs from the
+    /// last callback, as the hook's `switching`-keyed loop does.
+    #[test]
+    fn mid_switch_repick_holds_the_turn_keeping_the_clock() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        pick_function(&mut app, FunctionSlug::X2, 1);
+        plot_step(&mut app, 16_000_000);
+        plot_step(&mut app, 32_000_000);
+        // Mid-switch, the clock anchored at the last step.
+        assert_eq!(app.plot_frame_at, Some(32_000_000));
+        pick_function(&mut app, FunctionSlug::X3, 2);
+        // The re-pick's turn: held, the reset curves drawn, the anchor kept.
+        plot_step(&mut app, 48_000_000);
+        assert_eq!(app.plot_frame_at, Some(32_000_000));
+        assert_eq!(app.shown.elapsed, 0.0);
+        // The next turn diffs from the last step, not the re-pick.
+        plot_step(&mut app, 64_000_000);
+        assert_eq!(app.shown.elapsed, 32.0);
     }
 
     /// The port's boxes against `testdata/page.json` (the reference at this

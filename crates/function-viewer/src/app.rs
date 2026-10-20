@@ -93,9 +93,14 @@ pub struct App {
     /// `setFunc` with `{ flush: true }` does).
     pub func_param: crate::url::QueryParam<crate::functions::FunctionSlug>,
     /// When the switch last stepped, on the app's clock; `None` while at
-    /// rest and on the switch's own turn (h3; the turn draws the
+    /// rest and on a switch-from-rest's own turn (h3; the turn draws the
     /// render-phase curves, the loop steps from the turn after).
     pub plot_frame_at: Option<crate::app_loop::Time>,
+    /// Skip the plot step on a mid-switch re-pick's own turn, keeping the
+    /// running clock (h3; the hook's loop is keyed on `switching`, so a
+    /// re-pick never restarts it: the turn draws the reset curves, the next
+    /// frame diffs from the last callback, not the click).
+    pub plot_hold: bool,
 }
 
 impl App {
@@ -240,6 +245,7 @@ impl App {
                 crate::functions::FunctionSlug::X1,
             )),
             plot_frame_at: None,
+            plot_hold: false,
         }
     }
 }
