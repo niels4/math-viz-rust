@@ -1,0 +1,10 @@
+# readout-x2 (h4-readout): the function readout at rest at 1440 x 900, density 2,
+# dark system, Arctic Ice.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2
+wait 2000
+shot readout-x2

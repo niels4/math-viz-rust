@@ -1,0 +1,10 @@
+# readout-narrow (h4-readout): the function readout at rest at 1440 x 900, density 2,
+# dark system, Arctic Ice.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x1&a=20&b=30&h=10&k=12.5
+wait 2000
+shot readout-narrow
