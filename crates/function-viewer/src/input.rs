@@ -1,7 +1,8 @@
-//! The whole pointer/keyboard/focus/cursor/target layer.
+//! The pointer/keyboard/focus/cursor/target layer.
 //!
-//! SDL events become `Input` facts; `handle_input` hit-tests the last frame's
-//! regions and routes each fact to its widget. Regions and focus stops are
+//! SDL events become `Input` facts; `handle_input` updates the shell state
+//! (pointer, modifiers, size, scheme) and marks dirty. The page milestones
+//! route the facts to their handlers from here. Regions and focus stops are
 //! declared during layout, resolved into the last frame's targets, and kept in
 //! `InputState` on the app.
 
@@ -12,7 +13,6 @@ use enum_map::{Enum, EnumMap};
 
 use crate::app::App;
 use crate::app_loop::{Time, USER_EVENT_TYPE, UserCode, clock_now};
-use crate::parts::{apply_model, report_focus, report_hover};
 #[cfg(not(target_os = "emscripten"))]
 use crate::platform_native::{
     platform_reduced_motion, platform_set_cursor, platform_system_dark, platform_wheel_px,
@@ -122,64 +122,18 @@ pub struct Hit {
     pub index: i64,
 }
 
-/// The 24 targets a hit can name.
+/// The targets a hit can name. The shell names none; the page milestones
+/// append their kinds here (append-only, like `App`'s fields).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HitKind {
     #[default]
     None,
-    /// The top bar's wordmark link.
-    Wordmark,
-    /// The settings button, which opens the settings panel.
-    Gear,
-    /// A function picker's option, by index.
-    Picker,
-    /// A transform's row, by parameter.
-    Row,
-    /// A row's letter chip.
-    Chip,
-    /// A scale's flip toggle.
-    Flip,
-    /// A row's number box.
-    Box,
-    /// A point's row: P's lights P's partners.
-    Point,
-    /// P's track.
-    Track,
-    Plane,
-    /// The Original toggle in the plane's tools.
-    Ghost,
-    /// Return to origin.
-    Origin,
-    /// The zoom's `+` (0) and `-` (1).
-    ZoomStep,
-    /// A row's reset, by parameter, while its value is off its default.
-    Reset,
-    /// Transform's Reset all, while any value is off its default.
-    ResetAll,
-    /// The zoom control's capsule, its one tab stop.
-    Zoom,
-    /// The equation card, between its terms.
-    Equation,
-    /// A parameter's term in the equation.
-    Term,
-    /// P's x in its readout.
-    PField,
-    /// An open explainer's card, by parameter.
-    Explainer,
-    /// The settings panel's Appearance toggle: an option, by mode.
-    SettingsMode,
-    /// The settings panel's list: a theme's row, by its place.
-    SettingsTheme,
-    /// The settings panel, between its controls.
-    SettingsPanel,
 }
 
-/// Whether a kind holds the pointer until release.
-pub fn captures(kind: HitKind) -> bool {
-    matches!(
-        kind,
-        HitKind::Box | HitKind::Term | HitKind::Track | HitKind::Plane
-    )
+/// Whether a kind holds the pointer until release. The shell captures
+/// nothing; the page milestones name their capturing kinds here.
+pub fn captures(_kind: HitKind) -> bool {
+    false
 }
 
 /// The cursor shown.
@@ -281,19 +235,6 @@ pub struct Declared {
     pub clip: Option<super::scroll::Scroller>,
 }
 
-/// A parameter index as its parameter, when it names one. Hits and stops only
-/// ever hold valid indices (they are built from parameters), so anything else
-/// reports none.
-fn param_at(index: i64) -> Option<mv_viewer::Param> {
-    match index {
-        0 => Some(mv_viewer::Param::A),
-        1 => Some(mv_viewer::Param::K),
-        2 => Some(mv_viewer::Param::B),
-        3 => Some(mv_viewer::Param::H),
-        _ => None,
-    }
-}
-
 /// Declares a target for this frame's layout, unless inert.
 pub fn region(
     app: &mut App,
@@ -357,7 +298,7 @@ pub fn collect_regions(app: &mut App, clay: &mv_clay::Clay) {
             // The container's padding box: it clips its content inside its border.
             let c = clay.get_element_data(mv_clay::id(crate::scroll::SCROLLER_IDS[s], 0));
             if c.found {
-                r.clip = Some(crate::effects::grow_box(c.boundingBox, -scroll[s].border));
+                r.clip = Some(crate::scroll::grow_box(c.boundingBox, -scroll[s].border));
             }
         }
         input.regions.push(r);
@@ -417,37 +358,24 @@ pub fn region_of(app: &App, hit: Hit) -> (Region, bool) {
     )
 }
 
-/// Routes one input fact to its widget handler.
+/// Routes one input fact to the shell state.
 ///
 /// `time` is when the fact happened, on the app's clock, 0 for now. The
-/// fact's own time stands in `input.time` while it is handled (a drag's
-/// samples, a rest's tip, the caret's blink all count from it) and the
+/// fact's own time stands in `input.time` while it is handled and the
 /// previous value is restored after, including on the early returns below.
 pub fn handle_input(app: &mut App, input: Input, time: Time) {
     let outer = app.input.time;
     app.input.time = if time != 0 { time } else { clock_now(app) };
     match input {
         Input::Pointer(event) => {
-            // Odin logs each fact (`log.debugf`); the port's other arms do,
-            // this one didn't: gated, so scripted runs stay problem-free
-            // (stdout: web stderr counts as a harness problem).
             if crate::trace() {
                 println!("input {event:?}");
             }
             app.input.over = !event.left;
             if !event.left {
                 app.input.pointer = event.pos;
-                match app.input.pressed.kind {
-                    HitKind::Box | HitKind::Term => crate::number_box::box_drag(app),
-                    HitKind::Track => crate::track::track_drag(app),
-                    HitKind::PField => crate::point_rows::p_field_drag(app),
-                    HitKind::Plane => crate::plane_input::plane_moved(app),
-                    _ => {}
-                }
             }
-            crate::plane_input::plane_pointer_moved(app);
             retarget(app);
-            crate::plane_input::report_plane_pointer(app);
         }
         Input::Button(event) => {
             if crate::trace() {
@@ -461,78 +389,33 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 return;
             }
             if event.down {
-                press(app, event.clicks);
+                press(app);
             } else {
                 release(app);
             }
-            crate::plane_input::report_plane_pointer(app);
         }
         Input::Wheel(event) => {
             if crate::trace() {
                 println!("input {event:?}");
             }
             app.input.pointer = event.pos;
-            let hit = hit_at(app.input.regions.as_slice(), event.pos);
-            if hit.kind == HitKind::Box
-                && let Some(p) = param_at(hit.index)
-            {
-                let mode = crate::number_box::held_mode(app.input.mods);
-                if crate::number_box::box_wheel(app, p, event.delta[1], mode) {
-                    app.input.time = outer;
-                    return;
-                }
-            }
-            if app
-                .input
-                .mods
-                .intersects(sdl3::keyboard::Mod::LCTRLMOD | sdl3::keyboard::Mod::RCTRLMOD)
-            {
-                // A browser hands a trackpad's pinch to the page as a wheel with Ctrl held, -100
-                // ln(scale) px, which the web shell reads back as a pinch: the same
-                // wheel goes the same way natively, so both builds read it alike, to the bit.
-                pinch(app, ((-event.delta[1] as f64) / 100.0).exp() as f32);
-            } else if hit.kind == HitKind::Plane {
-                // The plane zooms on any wheel, about the pointer.
-                crate::plane_input::plane_wheel(app, event.delta[1] as f64);
-            } else {
-                // The next frame lays the page out scrolled and finds what is under the pointer.
-                let _ = crate::scroll::scroll_wheel(app, event.pos, event.delta);
-            }
+            retarget(app);
         }
         Input::Pinch(event) => {
-            // Over a number box a pinch is a Ctrl + wheel, as a browser reports one, and snaps it.
-            let hit = hit_at(app.input.regions.as_slice(), app.input.pointer);
-            let snapped = hit.kind == HitKind::Box
-                && param_at(hit.index).is_some_and(|p| {
-                    crate::number_box::box_wheel(
-                        app,
-                        p,
-                        -100.0 * event.scale.ln(),
-                        mv_scrub::Mode::Snap,
-                    )
-                });
-            if snapped {
-                app.input.time = outer;
-                return;
+            if crate::trace() {
+                println!("input pinch {:.4}", event.scale);
             }
-            pinch(app, event.scale);
         }
         Input::Key(event) => {
             if crate::trace() {
                 println!("input {event:?}");
             }
             app.input.mods = event.mods;
-            if event.down {
-                key_down(app, event.key, event.mods);
-            }
-            // A modifier pressed or let go mid-drag changes the drag's mode.
-            crate::number_box::box_modifiers(app);
         }
         Input::Text(event) => {
             if crate::trace() {
                 println!("input text {:?}", event.text);
             }
-            crate::number_field::field_text(app, &event.text);
         }
         Input::Window(event) => {
             app.size = event.size;
@@ -549,21 +432,10 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if reduced != app.reduced_motion {
                     handle_input(app, Input::ReducedMotion(ReducedMotionEvent { reduced }), 0);
                 }
-            } else {
-                // The window's focus left: a drag ends, as the page's blur stoppers end it, and an
-                // open field applies its number, as the input's blur does.
-                match app.input.pressed.kind {
-                    HitKind::Box | HitKind::Term => crate::number_box::box_cancel(app),
-                    HitKind::Track => crate::track::track_release(app),
-                    HitKind::Plane => crate::plane_input::plane_cancel(app),
-                    _ => {}
-                }
-                if app.input.pressed.kind != HitKind::None {
-                    app.input.pressed = Hit::default();
-                    retarget(app);
-                    crate::plane_input::report_plane_pointer(app);
-                }
-                crate::number_field::field_blur(app);
+            } else if app.input.pressed.kind != HitKind::None {
+                // The window's focus left: a held press ends.
+                app.input.pressed = Hit::default();
+                retarget(app);
             }
         }
         Input::Scheme(event) => {
@@ -585,10 +457,10 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             app.dirty = true;
         }
         Input::Model(event) => {
+            // The page milestones route the model to their state from here.
             if crate::trace() {
                 println!("input {event:?}");
             }
-            apply_model(app, &event.change);
         }
     }
     app.input.time = outer;
@@ -608,17 +480,13 @@ pub fn retarget(app: &mut App) {
         hit = pressed;
     }
     if hit != app.input.hover {
-        let from = app.input.hover;
         app.input.hover = hit;
-        crate::number_box::box_hover(app, from, hit);
-        crate::explainer::chip_hover(app, from, hit);
-        report_hover(app, from, hit);
         app.dirty = true;
     }
     update_cursor(app);
 }
 
-/// Picks the cursor from pressed/hover/plane/text.
+/// Picks the cursor from pressed/hover/text.
 pub fn update_cursor(app: &mut App) {
     let hover = app.input.hover;
     let pressed = app.input.pressed;
@@ -636,10 +504,6 @@ pub fn update_cursor(app: &mut App) {
             cursor = r.cursor;
             z = r.z;
         }
-    }
-    // The plane's cursor says what a press on it would do there.
-    if hover.kind == HitKind::Plane && (over || pressed.kind == HitKind::Plane) {
-        cursor = crate::plane_input::plane_cursor(app);
     }
     if cursor == Cursor::Default && over && !captures(pressed.kind) && over_text(app, z) {
         cursor = Cursor::Text;
@@ -689,219 +553,22 @@ pub fn set_cursor(app: &mut App, cursor: Cursor) {
     }
 }
 
-/// Captures the target, sets focus, routes to the widget press.
-pub fn press(app: &mut App, clicks: i64) {
+/// Captures the target under the pointer. The page milestones route the press
+/// to their handlers from here.
+pub fn press(app: &mut App) {
     let pointer = app.input.pointer;
-    let hit = hit_at(app.input.regions.as_slice(), pointer);
-    app.input.pressed = hit;
-    crate::settings::settings_pressed(app, hit);
-    // A press in the open field keeps its focus (P's x, which isn't a stop of its own).
-    let target = if is_stop(app, hit) || crate::number_field::field_holds(app, hit) {
-        hit
-    } else {
-        Hit::default()
-    };
-    set_focus(app, target, false, false);
-    match hit.kind {
-        HitKind::Box => {
-            if let Some(p) = param_at(hit.index) {
-                crate::number_box::box_press(app, p, clicks);
-            }
-        }
-        HitKind::Term => {
-            if let Some(p) = crate::equation::term_param(hit) {
-                crate::number_box::term_press(app, p, clicks);
-            }
-        }
-        HitKind::Track => crate::track::track_press(app),
-        HitKind::PField => crate::point_rows::p_field_press(app),
-        HitKind::Plane => crate::plane_input::plane_press(app),
-        _ => {}
-    }
+    app.input.pressed = hit_at(app.input.regions.as_slice(), pointer);
+    app.input.focus = Hit::default();
+    app.input.focus_visible = false;
     app.dirty = true;
     retarget(app);
 }
 
-/// Releases the capture: clicks or routes the release.
+/// Releases the capture.
 pub fn release(app: &mut App) {
-    let pressed = app.input.pressed;
     app.input.pressed = Hit::default();
-    match pressed.kind {
-        HitKind::Box | HitKind::Term => crate::number_box::box_release(app),
-        HitKind::Track => crate::track::track_release(app),
-        HitKind::PField => {
-            app.boxes.field.selecting = false;
-        }
-        HitKind::Plane => crate::plane_input::plane_release(app),
-        HitKind::None => {}
-        _ => {
-            if hit_at(app.input.regions.as_slice(), app.input.pointer) == pressed {
-                activate(app, pressed, false);
-            }
-        }
-    }
     app.dirty = true;
     retarget(app);
-}
-
-/// Clicks a button target or a keyboard-activated stop.
-pub fn activate(app: &mut App, hit: Hit, keyboard: bool) {
-    match hit.kind {
-        HitKind::Picker => crate::sidebar::picker_choose(app, hit.index, keyboard),
-        HitKind::Flip => {
-            if let Some(p) = param_at(hit.index) {
-                crate::sidebar::flip_activate(app, p);
-            }
-        }
-        HitKind::Reset => {
-            if let Some(p) = param_at(hit.index) {
-                crate::parts::dispatch(
-                    app,
-                    mv_viewer::Action::ResetParam(mv_viewer::ResetParam { param: p }),
-                );
-            }
-        }
-        HitKind::ResetAll => crate::sidebar::reset_all_activate(app),
-        HitKind::Ghost | HitKind::Origin | HitKind::ZoomStep => {
-            crate::plane_area::plane_tool_activate(app, hit);
-        }
-        HitKind::Chip => {
-            if let Some(p) = param_at(hit.index) {
-                crate::explainer::chip_click(app, p);
-            }
-        }
-        HitKind::Gear => crate::settings::gear_activate(app, keyboard),
-        HitKind::SettingsMode => {
-            crate::settings::settings_mode_choose(app, hit.index, keyboard);
-        }
-        HitKind::SettingsTheme => {
-            crate::settings::settings_theme_choose(app, hit.index, keyboard);
-        }
-        _ => {}
-    }
-}
-
-/// Zooms the plane when over it.
-pub fn pinch(app: &mut App, scale: f32) {
-    if crate::trace() {
-        println!("input pinch {scale:.4}");
-    }
-    if hit_at(app.input.regions.as_slice(), app.input.pointer).kind == HitKind::Plane {
-        crate::plane_input::plane_pinch(app, scale);
-    }
-}
-
-/// Routes a key to the focused widget, the plane, the explainer, Tab/activate.
-pub fn key_down(app: &mut App, key: sdl3::keyboard::Keycode, mods: sdl3::keyboard::Mod) {
-    let focus = app.input.focus;
-    let shift = mods.intersects(sdl3::keyboard::Mod::LSHIFTMOD | sdl3::keyboard::Mod::RSHIFTMOD);
-    // Any key but a modifier alone shows the focused part's ring, focused by a press or not:
-    // `:focus-visible` comes to match an element the keyboard interacts with. No focus event
-    // comes of it, so what the parts take from one stays as the press left it.
-    if focus.kind != HitKind::None && !modifier_key(key) && !app.input.focus_visible {
-        app.input.focus_visible = true;
-        app.dirty = true;
-    }
-    match focus.kind {
-        HitKind::Box => {
-            if let Some(p) = param_at(focus.index) {
-                if crate::number_field::field_open_on(app, p) {
-                    if key == sdl3::keyboard::Keycode::Tab && shift {
-                        // The box itself is the stop before its field: it takes the focus back, and the
-                        // field applies what it holds as it loses the focus.
-                        crate::number_field::field_blur(app);
-                        set_focus(app, focus, true, true);
-                        return;
-                    }
-                    // The field takes its keys; a character comes as text input, and Tab moves on.
-                    if crate::number_field::field_key(app, key, mods)
-                        || key != sdl3::keyboard::Keycode::Tab
-                    {
-                        return;
-                    }
-                } else if crate::number_box::box_key(app, p, key, mods) {
-                    return;
-                }
-            }
-        }
-        HitKind::PField => {
-            if crate::number_field::p_field_open(app) {
-                if key == sdl3::keyboard::Keycode::Tab {
-                    // The field sits just before P's track in reading order: Tab moves on to the track,
-                    // Shift+Tab to the stop before it, and the field applies what it holds as it loses
-                    // the focus.
-                    crate::number_field::field_blur(app);
-                    let track = Hit {
-                        kind: HitKind::Track,
-                        index: 0,
-                    };
-                    let next = if shift {
-                        stop_beside(app, track, -1)
-                    } else {
-                        track
-                    };
-                    set_focus(app, next, true, false);
-                    return;
-                }
-                // The field takes its keys; a character comes as text input.
-                let _ = crate::number_field::field_key(app, key, mods);
-                return;
-            }
-        }
-        HitKind::Track => {
-            if crate::track::track_key(app, key, mods) {
-                return;
-            }
-        }
-        HitKind::Picker => {
-            if crate::sidebar::picker_key(app, key) {
-                return;
-            }
-        }
-        HitKind::Zoom => {
-            if crate::plane_area::zoom_control_key(app, key, mods) {
-                return;
-            }
-        }
-        HitKind::Gear | HitKind::SettingsMode | HitKind::SettingsTheme
-            if crate::settings::settings_key(app, focus, key) =>
-        {
-            // The open panel takes Esc first, and the view's own Esc waits for the next one.
-            return;
-        }
-        _ => {}
-    }
-    if focus.kind == HitKind::Plane && crate::plane_input::plane_key(app, key, mods) {
-        return;
-    }
-    if crate::explainer::explainer_key(app, key, mods) {
-        return;
-    }
-    match key {
-        sdl3::keyboard::Keycode::Tab => move_focus(app, if shift { -1 } else { 1 }),
-        sdl3::keyboard::Keycode::Return | sdl3::keyboard::Keycode::Space
-            if focus.kind != HitKind::None =>
-        {
-            activate(app, focus, true);
-        }
-        _ => {}
-    }
-}
-
-/// Whether the key is a modifier or caps lock.
-pub fn modifier_key(key: sdl3::keyboard::Keycode) -> bool {
-    matches!(
-        key,
-        sdl3::keyboard::Keycode::LShift
-            | sdl3::keyboard::Keycode::RShift
-            | sdl3::keyboard::Keycode::LCtrl
-            | sdl3::keyboard::Keycode::RCtrl
-            | sdl3::keyboard::Keycode::LAlt
-            | sdl3::keyboard::Keycode::RAlt
-            | sdl3::keyboard::Keycode::LGui
-            | sdl3::keyboard::Keycode::RGui
-            | sdl3::keyboard::Keycode::CapsLock
-    )
 }
 
 /// Whether the hit is a focus stop.
@@ -929,14 +596,14 @@ pub fn move_focus(app: &mut App, step: i64) {
         count as i64 - 1
     };
     if next < 0 || next >= count as i64 {
-        set_focus(app, Hit::default(), false, false);
+        set_focus(app, Hit::default(), false);
     } else {
         let hit = app.input.stops[next as usize];
-        set_focus(app, hit, true, false);
+        set_focus(app, hit, true);
     }
     if crate::trace() {
-        // The harness's focus line (`tools/run loop` reads it): the Odin
-        // shape `Hit{kind = Box, index = 1}`, not Rust's `{:?}` debug, whose
+        // The harness's focus line (`tools/run loop` reads it): the shape
+        // `Hit{kind = None, index = 0}`, not Rust's `{:?}` debug, whose
         // spaces and colons the loop's FOCUS_LINE does not match.
         println!(
             "focus Hit{{kind = {:?}, index = {}}}",
@@ -958,19 +625,13 @@ pub fn stop_beside(app: &mut App, hit: Hit, step: i64) -> Hit {
     Hit::default()
 }
 
-/// Moves focus, notifies, and marks reveal/dirty.
-pub fn set_focus(app: &mut App, hit: Hit, visible: bool, again: bool) {
+/// Moves focus and marks dirty. The page milestones notify their handlers of
+/// the move from here.
+pub fn set_focus(app: &mut App, hit: Hit, visible: bool) {
     let before = app.input.focus;
     app.input.focus = hit;
     app.input.focus_visible = visible;
     app.input.keyed = visible;
-    if before != hit && crate::number_field::field_holds(app, before) {
-        crate::number_field::field_blur(app);
-    }
-    crate::settings::settings_focus_moved(app, before, hit);
-    report_focus(app, again || before != hit);
-    // A focus the keyboard moves shows the part: its scroll container brings it into view
-    // once the next layout has shown what the focus changes.
     if visible && before != hit {
         app.input.reveal = true;
     }
@@ -994,8 +655,7 @@ static PINCH_SCALES: Mutex<Vec<(u64, f32)>> = Mutex::new(Vec::new());
 ///
 /// SDL reports a trackpad pinch as `SDL_EVENT_PINCH_UPDATE`, whose scale the
 /// safe event enum drops (it arrives as `Unknown` with no payload). The watch
-/// reads the raw union as SDL queues each event — the point where the Odin
-/// port's `input_from_event` reads `event.pinch.scale` — and the `Unknown`
+/// reads the raw union as SDL queues each event and the `Unknown`
 /// arm joins the scale back by the timestamp both carry. Call once at startup
 /// (next to the platform's own event watch); a second call is a no-op. The
 /// web's pinch arrives the same way: `library.js` posts SDL's own pinch event
@@ -1216,99 +876,13 @@ pub fn window_event(window: &sdl3::video::Window) -> WindowEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::App;
 
     /// Serializes the tests that push to and peep from SDL's global event
     /// queue: parallel `cargo test` threads otherwise race (a peep takes a
     /// sibling test's event, or a push lands after the peep), failing about
-    /// 2 runs in 8. Added by i1-frame (driver's note); the shape follows
-    /// `mv_clay::tests_lock`, but this is its own queue and its own lock.
+    /// 2 runs in 8. The shape follows `mv_clay::tests_lock`, but this is its
+    /// own queue and its own lock.
     static SDL_QUEUE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-    /// An app that runs no layout: the model and the focus, as the input
-    /// handlers leave them. Every other field is the headless constructor's
-    /// zero: no window, no GL, no NanoVG. Ported from `input_test.odin:15`.
-    ///
-    /// Exception to `motion_watch_fade`'s invariant (registered only after
-    /// the App's last move): this test App is still moved once, by the
-    /// return below, after `motion_init` stores the raw pointer to its Q
-    /// row. The exception holds because no test here ever draws or reads
-    /// the watch list — the stored pointer is never dereferenced — as the
-    /// reference test's listing only touches the motion state the
-    /// assertions below read.
-    fn input_app() -> App {
-        let mut app = crate::fixture::headless_app();
-        app.viewer = mv_viewer::initial_state();
-        app.r#loop.script_time = Some(0);
-        crate::motion_driver::motion_init(&mut app);
-        app
-    }
-
-    /// A parameter as its same-named part.
-    fn part_of_param(p: mv_viewer::Param) -> mv_viewer::Part {
-        match p {
-            mv_viewer::Param::A => mv_viewer::Part::A,
-            mv_viewer::Param::K => mv_viewer::Part::K,
-            mv_viewer::Param::B => mv_viewer::Part::B,
-            mv_viewer::Param::H => mv_viewer::Part::H,
-        }
-    }
-
-    /// A key on a part a press focused shows its ring and no tip; a modifier
-    /// alone shows no ring. The keyboard's own focus brings both.
-    #[test]
-    fn a_key_on_a_part_a_press_focused_shows_its_ring_and_no_tip() {
-        let app = &mut input_app();
-        // The reference test lists the driver's own fades here (`motion_init`);
-        // the app-surface module for the motion driver omits that procedure,
-        // so the call lands with app-plane's declaration (recorded). The
-        // listing only touches the motion watch list, which none of the
-        // assertions below read.
-        let k = mv_viewer::Param::K;
-        let bx = Hit {
-            kind: HitKind::Box,
-            index: k as i64,
-        };
-        let tip = |app: &mut App, p: mv_viewer::Param| -> Vec<mv_viewer::Phrase> {
-            let ui = mv_viewer::part_ui(&app.viewer, part_of_param(p));
-            let (phrases, _) = crate::sidebar::row_tip_phrases(app, p, &ui);
-            phrases
-        };
-        set_focus(app, bx, false, false); // as a press leaves it
-        assert!(!app.input.focus_visible);
-        key_down(
-            app,
-            sdl3::keyboard::Keycode::LShift,
-            sdl3::keyboard::Mod::LSHIFTMOD,
-        );
-        assert!(!app.input.focus_visible);
-        key_down(
-            app,
-            sdl3::keyboard::Keycode::Right,
-            sdl3::keyboard::Mod::empty(),
-        );
-        assert!(app.input.focus_visible);
-        assert!(!app.input.keyed);
-        assert_eq!(app.viewer.params[k], 0.01);
-        assert!(tip(app, k).is_empty());
-        // The flip (a button focused on click): a key it takes no action on shows its ring.
-        let flip = Hit {
-            kind: HitKind::Flip,
-            index: mv_viewer::Param::A as i64,
-        };
-        set_focus(app, flip, false, false);
-        key_down(
-            app,
-            sdl3::keyboard::Keycode::X,
-            sdl3::keyboard::Mod::empty(),
-        );
-        assert!(app.input.focus_visible);
-        assert_eq!(app.viewer.params[mv_viewer::Param::A], 1.0);
-        // Tab's focus is the keyboard's: the ring and the tip.
-        set_focus(app, bx, true, false);
-        assert!(app.input.focus_visible && app.input.keyed);
-        assert!(!tip(app, k).is_empty());
-    }
 
     /// A synthetic pinch queued through the raw sys calls decodes to a pinch
     /// with its scale: the watch notes the raw union's scale as SDL queues
@@ -1373,8 +947,7 @@ mod tests {
 
     /// The pinch store is shared across threads: SDL may call the event watch
     /// on another thread than the one routing events, so a scale pushed from
-    /// a second thread must be visible where the routing runs. (The review
-    /// asked for this proof when the store moved off `thread_local!`.)
+    /// a second thread must be visible where the routing runs.
     #[test]
     fn pinch_store_is_shared_across_threads() {
         const STAMP: u64 = u64::MAX - 7;
@@ -1397,9 +970,8 @@ mod tests {
 
     /// A synthetic display-scale change queues and decodes as the `Unknown`
     /// type the re-read arm matches, which is the headless half of the fix:
-    /// the arm itself re-reads live window sizes (as the Odin window event
-    /// does), so its run waits for a real display-scale event under `i0`'s
-    /// routing.
+    /// the arm itself re-reads live window sizes, so its run waits for a real
+    /// display-scale event under the routing.
     #[test]
     fn display_scale_change_decodes_as_its_unknown_type() {
         let _queue = SDL_QUEUE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -1438,9 +1010,11 @@ mod tests {
                 assert_eq!(
                     type_,
                     sys_events::SDL_EventType::WINDOW_DISPLAY_SCALE_CHANGED.0
-                )
+                );
             }
-            other => panic!("a display-scale change decodes as Unknown, got {other:?}"),
+            other => {
+                panic!("a display-scale change decodes as Unknown, got {other:?}");
+            }
         }
     }
 }

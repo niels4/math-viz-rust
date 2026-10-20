@@ -71,6 +71,12 @@ unsafe extern "C" {
     /// ruling 2026-10-18 on the web build's browser shortcuts). A flag the
     /// shell sets; no export is needed.
     pub fn mv_field_editing(editing: bool);
+    /// The page's hash (`location.hash`), freshly allocated; the caller reads
+    /// it once and frees it through `free`.
+    pub fn mv_read_hash() -> *mut std::os::raw::c_char;
+    /// Writes the page's hash through `history.replaceState` (no history
+    /// entry), so the page behaves as math-viz2's does.
+    pub fn mv_write_hash(hash: *const std::os::raw::c_char);
     /// The C allocator's memalign.
     pub fn memalign(alignment: usize, size: usize) -> *mut std::ffi::c_void;
     /// The C allocator's free.
@@ -94,33 +100,23 @@ pub extern "C" fn mv_pinch(scale: f32) {
     }
 }
 
-/// Stored prefs from another tab (the storage event), queued as the app's own
-/// event with the prefs packed into its first word, checked as a read is.
+/// Stored prefs from another tab (the storage event): the app re-reads its
+/// keys on the main thread, so this only wakes it with the prefs user event.
 ///
 /// # Safety
 ///
-/// `stored` must be a valid NUL-terminated string (or null, which reads as
-/// the defaults); it is only read during the call. Called from the shell's
-/// storage listener on the browser thread.
+/// `stored` is the shell's storage text, read never; it only keeps the
+/// export's shape the shell calls. Called from the shell's storage listener
+/// on the browser thread.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn mv_prefs_stored(stored: *const std::os::raw::c_char) {
-    // SAFETY: the shell hands a NUL-terminated string it allocated; it is
-    // only read here, never retained.
-    let owned = unsafe {
-        if stored.is_null() {
-            String::new()
-        } else {
-            std::ffi::CStr::from_ptr(stored)
-                .to_string_lossy()
-                .into_owned()
-        }
-    };
-    // The word packs the values, so nothing of the text crosses into the
-    // event.
-    let prefs = mv_theme::prefs::parse_prefs(&owned);
+    // The event carries one key's new value, while the app needs all three;
+    // the main thread re-reads them (see the `Prefs` arm in `main.rs`), as
+    // math-viz2's storage subscription re-reads its atoms.
+    let _ = stored;
     crate::app_loop::push_user_event(
         crate::app_loop::UserCode::Prefs,
-        crate::prefs::prefs_word(prefs) as *mut std::ffi::c_void,
+        std::ptr::null_mut(),
         std::ptr::null_mut(),
     );
 }
@@ -456,19 +452,98 @@ pub fn platform_field_editing(editing: bool) {
     }
 }
 
-/// The prefs live under the port's own storage key (never the Odin app's).
+/// The prefs live under the port's own storage keys (never math-viz2's). The
+/// string only records that prefs persist on this side (localStorage); the
+/// three keys ride in the load/save below. Empty while a script runs, which
+/// keeps prefs in memory.
 pub fn platform_prefs_store(_dir: &str) -> String {
-    mv_theme::prefs::PREFS_KEY.to_string()
+    "localStorage".to_string()
 }
 
-/// Reads the prefs key from local storage; empty and not found when nothing
-/// is stored or storage throws (as in a private window).
+/// Reads the three prefs keys from local storage; empty and not found when
+/// nothing is stored or storage throws (as in a private window). Each value
+/// is checked as math-viz2 checks it (a missing or unknown one taking its
+/// default); the triple returns as the one JSON object the native file
+/// holds, so both sides share the parse.
 pub fn platform_load_prefs(app: &mut App) -> (String, bool) {
     if app.prefs_store.is_empty() {
         return (String::new(), false);
     }
-    let key = app.prefs_store.clone();
-    // SAFETY: the key is a live `String`; a null buffer asks for the length.
+    let mut prefs = mv_theme::DEFAULT_PREFS;
+    let mut found = false;
+    if let Some(text) = prefs_key_load(mv_theme::PREFS_KEY_LIGHT_DARK) {
+        found = true;
+        if let Some(mode) = stored_mode(&text) {
+            prefs.mode = mode;
+        }
+    }
+    if let Some(text) = prefs_key_load(mv_theme::PREFS_KEY_DARK_THEME) {
+        found = true;
+        if let Some(dark) = stored_slug(&text, mv_theme::Scheme::Dark) {
+            prefs.dark = dark;
+        }
+    }
+    if let Some(text) = prefs_key_load(mv_theme::PREFS_KEY_LIGHT_THEME) {
+        found = true;
+        if let Some(light) = stored_slug(&text, mv_theme::Scheme::Light) {
+            prefs.light = light;
+        }
+    }
+    (mv_theme::prefs_json(prefs), found)
+}
+
+/// Saves the prefs, one value per key; false when storage throws.
+pub fn platform_save_prefs(app: &mut App, text: &str) -> bool {
+    if app.prefs_store.is_empty() {
+        return false;
+    }
+    let prefs = mv_theme::parse_prefs(text);
+    prefs_key_save(
+        mv_theme::PREFS_KEY_LIGHT_DARK,
+        &stored_json(mv_theme::MODE_WORDS[prefs.mode]),
+    ) && prefs_key_save(
+        mv_theme::PREFS_KEY_DARK_THEME,
+        &stored_json(mv_theme::SLUG_WORDS[prefs.dark]),
+    ) && prefs_key_save(
+        mv_theme::PREFS_KEY_LIGHT_THEME,
+        &stored_json(mv_theme::SLUG_WORDS[prefs.light]),
+    )
+}
+
+/// One value as stored: the JSON string, as math-viz2 writes it.
+fn stored_json(word: &str) -> String {
+    serde_json::to_string(word).unwrap_or_else(|_| format!("{word:?}"))
+}
+
+/// A stored mode word as read: `None` for a missing or unknown one.
+fn stored_mode(text: &str) -> Option<mv_theme::Mode> {
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    let word = value.as_str()?;
+    for (mode, w) in &mv_theme::MODE_WORDS {
+        if *w == word {
+            return Some(mode);
+        }
+    }
+    None
+}
+
+/// A stored theme slug as read: `None` for a missing one, an unknown one, or
+/// one of the other scheme's (each key keeps its scheme's pick).
+fn stored_slug(text: &str, scheme: mv_theme::Scheme) -> Option<mv_theme::Slug> {
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    let word = value.as_str()?;
+    for (slug, w) in &mv_theme::SLUG_WORDS {
+        if *w == word && mv_theme::slug_scheme(slug) == scheme {
+            return Some(slug);
+        }
+    }
+    None
+}
+
+/// Reads one prefs key from local storage; `None` when nothing is stored or
+/// storage throws.
+fn prefs_key_load(key: &str) -> Option<String> {
+    // SAFETY: the key is a live `&str`; a null buffer asks for the length.
     let n = unsafe {
         mv_prefs_load(
             key.as_ptr(),
@@ -478,7 +553,7 @@ pub fn platform_load_prefs(app: &mut App) -> (String, bool) {
         )
     };
     if n < 0 {
-        return (String::new(), false);
+        return None;
     }
     let mut buf = vec![0u8; (n + 1) as usize];
     // SAFETY: `buf` holds `n + 1` bytes; the shell copies at most that many.
@@ -490,18 +565,11 @@ pub fn platform_load_prefs(app: &mut App) -> (String, bool) {
             n + 1,
         );
     }
-    (
-        String::from_utf8_lossy(&buf[..n as usize]).into_owned(),
-        true,
-    )
+    Some(String::from_utf8_lossy(&buf[..n as usize]).into_owned())
 }
 
-/// Saves the prefs key to local storage; false when storage throws.
-pub fn platform_save_prefs(app: &mut App, text: &str) -> bool {
-    if app.prefs_store.is_empty() {
-        return false;
-    }
-    let key = app.prefs_store.clone();
+/// Saves one prefs key to local storage; false when storage throws.
+fn prefs_key_save(key: &str, text: &str) -> bool {
     // SAFETY: the key and text are live; the shell copies both before
     // returning.
     unsafe {
@@ -511,6 +579,24 @@ pub fn platform_save_prefs(app: &mut App, text: &str) -> bool {
             text.as_ptr(),
             text.len() as std::os::raw::c_int,
         )
+    }
+}
+
+/// The page's hash query at start: `location.hash` through `mv_read_hash`,
+/// cut to the query part (`#function-viewer?center=1,2` → `center=1,2`).
+pub fn platform_read_hash() -> String {
+    // SAFETY: the shell hands a fresh NUL-terminated string; it is read once
+    // here, then freed through the shell's `free`.
+    unsafe {
+        let ptr = mv_read_hash();
+        if ptr.is_null() {
+            return String::new();
+        }
+        let hash = std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned();
+        free(ptr.cast::<std::ffi::c_void>());
+        hash.split_once('?')
+            .map(|(_, query)| query.to_string())
+            .unwrap_or_default()
     }
 }
 

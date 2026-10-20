@@ -312,7 +312,7 @@ impl Context {
                 dst_rgb as c_int,
                 src_alpha as c_int,
                 dst_alpha as c_int,
-            )
+            );
         }
     }
 
@@ -634,7 +634,7 @@ impl Context {
                 rad_top_right,
                 rad_bottom_right,
                 rad_bottom_left,
-            )
+            );
         }
     }
 
@@ -874,7 +874,7 @@ impl Context {
                 break_row_width,
                 range.start as *const c_char,
                 range.end as *const c_char,
-            )
+            );
         }
     }
 
@@ -922,7 +922,7 @@ impl Context {
                 range.start as *const c_char,
                 range.end as *const c_char,
                 bounds.as_mut_ptr(),
-            )
+            );
         }
     }
 

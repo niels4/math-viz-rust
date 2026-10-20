@@ -127,7 +127,7 @@ pub fn typeset(
             for p in &line.placed {
                 line.baseline = line.baseline.max(p.baseline);
             }
-            for p in line.placed.iter_mut() {
+            for p in &mut line.placed {
                 p.top = line.baseline - p.baseline;
                 p.baseline = line.baseline;
                 line.height = line.height.max(p.top + p.height);
@@ -137,7 +137,7 @@ pub fn typeset(
             for p in &line.placed {
                 line.height = line.height.max(p.height);
             }
-            for p in line.placed.iter_mut() {
+            for p in &mut line.placed {
                 p.top = (line.height - p.height) / 2.0;
                 p.baseline += p.top;
             }

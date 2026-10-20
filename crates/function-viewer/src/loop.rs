@@ -64,18 +64,10 @@ pub enum Pace {
     Fixed60,
 }
 
-/// The four deadlines the app arms.
+/// The deadlines the app arms. The shell arms none; the page milestones append
+/// their variants here (append-only, like `App`'s fields).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-pub enum Timer {
-    /// A number box's rest: its row's tip after the pointer has rested on it.
-    Tip,
-    /// The typed field's caret blinking.
-    Caret,
-    /// P's ghost lingering after a transform's drag lets go.
-    PGhost,
-    /// A letter chip's rest: its explainer after the pointer has rested on it.
-    ChipRest,
-}
+pub enum Timer {}
 
 /// One deadline per timer.
 pub type Timers = EnumMap<Timer, Time>;
@@ -149,13 +141,13 @@ pub fn timer_stop(app: &mut App, timer: Timer) {
     app.timers[timer] = 0;
 }
 
-/// One turn: fires due timers, settles motion and the plane, draws when dirty
-/// or moving, and schedules the next deadline.
+/// One turn: fires due timers, draws when dirty, and schedules the next
+/// deadline.
 pub fn iterate(app: &mut App) -> bool {
     let now = clock_now(app);
     app.r#loop.iterations += 1;
-    // The timers in order, re-read live: firing one may re-arm a later one
-    // (the caret's blink), which this same turn then sees.
+    // The timers in order, re-read live: firing one may re-arm a later one,
+    // which this same turn then sees.
     let order: Vec<Timer> = app.timers.iter().map(|(timer, _)| timer).collect();
     for timer in order {
         let due = app.timers[timer];
@@ -171,40 +163,26 @@ pub fn iterate(app: &mut App) -> bool {
             app.input.time = 0;
         }
     }
-    crate::motion_driver::motion_settle(app, now);
-    crate::plane_input::plane_glide(app, now);
-    let moving = crate::motion_driver::motion_moving(app) || crate::plane_input::plane_gliding(app);
     let mut drawn = false;
-    if app.dirty || moving {
+    if app.dirty {
         app.dirty = false;
         crate::draw::draw_frame(app, now);
         app.r#loop.frames += 1;
         drawn = true;
-        crate::motion_driver::motion_drawn(app);
     }
     schedule(app, now);
     trace_iteration(app, now, drawn);
     drawn
 }
 
-/// Runs one fired timer's action.
-pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
-    match timer {
-        Timer::Tip => crate::number_box::box_rested(app),
-        Timer::Caret => crate::number_field::caret_blinked(app),
-        Timer::PGhost => crate::parts::dispatch(
-            app,
-            mv_viewer::Action::ClearPBefore(mv_viewer::ClearPBefore),
-        ),
-        Timer::ChipRest => crate::explainer::chip_rested(app),
-    }
+/// Runs one fired timer's action. The shell arms no timers, so no arm fires.
+pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
+    match timer {}
 }
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
 pub fn schedule(app: &mut App, _now: Time) {
-    app.r#loop.awake = crate::motion_driver::motion_awake(app)
-        || crate::plane_input::plane_gliding(app)
-        || app.dirty;
+    app.r#loop.awake = app.dirty;
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

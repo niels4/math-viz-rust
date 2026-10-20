@@ -1,42 +1,34 @@
-// The Function Viewer: one SDL3 window drawing the page, natively and on the web.
+// The Function Viewer shell: one SDL3 window drawing one cleared frame,
+// natively and on the web.
 //
 // SDL3's main callbacks drive both builds: `#[app_impl]` assigns
 // `app_init/iterate/event/quit` to SDL_AppInit/Iterate/Event/Quit, so SDL owns
-// the loop natively and the browser does on the web. The page state
+// the loop natively and the browser does on the web. The shell state
 // (`app::App`, built by `App::bare` and filled by `app_init` below) and one
-// module per app file hang off this root. There is no `fn main`:
+// module per shell concern hang off this root. There is no `fn main`:
 // `sdl3-main` generates it. A scripted run draws hidden (this login has no
 // display, and a visible swap would wait on a vsync that never comes);
-// an interactive run shows the window, as the Odin app does.
+// an interactive run shows the window.
 //
-// Surface: the ported items carry `todo!()` bodies; the wiring milestone fills
-// them. Nothing here names the port this app was ported from.
+// Surface: the kept utilities (draw helpers, ui scope, scroll, regions, the
+// icon painter) carry no page yet; the page milestones wire them.
 #![allow(dead_code)]
 
 pub mod app;
 // `loop` is a keyword and cannot be a module name, so the `loop.rs` file
-// (one file per app file) is declared under this name.
+// is declared under this name.
 #[path = "loop.rs"]
 pub mod app_loop;
 pub mod draw;
-pub mod effects;
-pub mod equation;
-pub mod explainer;
 pub mod fixture;
 pub mod flex;
+pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
 pub mod harness;
 pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
-pub mod math_text;
-pub mod motion_driver;
-pub mod number_box;
-pub mod number_field;
-pub mod parts;
-pub mod plane_area;
-pub mod plane_input;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -47,19 +39,11 @@ pub mod platform_unix;
 pub mod platform_web;
 #[cfg(windows)]
 pub mod platform_windows;
-pub mod point_rows;
 pub mod prefs;
-pub mod ruler_tape;
 pub mod scroll;
-pub mod settings;
-pub mod sidebar;
 pub mod svgpath;
-pub mod tip;
-pub mod top_bar;
-pub mod track;
 pub mod typography;
 pub mod ui;
-pub mod widgets;
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -68,8 +52,8 @@ use glow::HasContext as _;
 use sdl3::event::Event;
 use sdl3_main::{AppResult, AppResultWithState, MainThreadData, app_impl};
 
-// t0a's window. The page's own size is WINDOW_SIZE below; the triangle keeps
-// drawing at the spike's size until the page is wired.
+// t0a's window. The page's own size is WINDOW_SIZE below; the shell clears
+// its frame at the script's size until the page is wired.
 const WINDOW_TITLE: &str = "Function Viewer";
 
 /// The page's window: 1440x900 logical, at least 420x560. These replace the
@@ -104,6 +88,9 @@ pub struct Options {
     pub pace: Option<app_loop::Pace>,
     pub prefs: String,
     pub trace: bool,
+    /// The page query at start (`App.url`): `--query` natively, the hash on
+    /// the web. The harness writes it to `views.json` whenever it changes.
+    pub query: String,
     pub slug: Option<mv_theme::Slug>,
     pub mode: Option<mv_theme::Mode>,
     pub space: Option<mv_theme::Space>,
@@ -122,6 +109,7 @@ pub struct Options {
 /// prefs in DIR; `--trace` logs each fact and timer. `--theme SLUG` shows
 /// that theme and `--mode` sets the stored mode; `--space srgb|p3` sets the
 /// colour space the frames are drawn in (a script says all three itself).
+/// `--query STRING` sets the page query at start (`App.url`).
 /// Failures print `[ERROR]` (which the harness counts as a problem) and
 /// return `false`.
 fn parse_options(args: &[String]) -> (Options, bool) {
@@ -177,6 +165,7 @@ fn parse_options(args: &[String]) -> (Options, bool) {
                 }
             },
             "--prefs" => options.prefs = value.to_string(),
+            "--query" => options.query = value.to_string(),
             "--theme" => match one_of(&[value], &mv_theme::SLUG_WORDS, arg) {
                 Ok(slug) => options.slug = Some(slug),
                 Err(message) => {
@@ -281,16 +270,13 @@ fn parse_options(args: &[String]) -> (Options, bool) {
         if !ok {
             return (Options::default(), false);
         }
-        let text = match String::from_utf8(data) {
-            Ok(text) => text,
-            Err(_) => {
-                eprintln!(
-                    "[ERROR] --- [{}:{}] could not read {path}",
-                    file!(),
-                    line!()
-                );
-                return (Options::default(), false);
-            }
+        let Ok(text) = String::from_utf8(data) else {
+            eprintln!(
+                "[ERROR] --- [{}:{}] could not read {path}",
+                file!(),
+                line!()
+            );
+            return (Options::default(), false);
         };
         match mv_script::parse(&text) {
             (run, None) => options.script = Some(run),
@@ -359,8 +345,8 @@ fn parse_options(args: &[String]) -> (Options, bool) {
         start.dark_theme = prefs.dark;
         start.light_theme = prefs.light;
         start.space = options.space.unwrap_or_else(platform_default_space);
-        // One shot named for the file, in its directory, of the page at
-        // rest: once the first paint has run its course.
+        // One shot named for the file, in its directory, at rest: once the
+        // first frames have run their course.
         let (dir, file) = match png.rfind('/') {
             Some(slash) => (png[..slash].to_string(), &png[slash + 1..]),
             None => (".".to_string(), png.as_str()),
@@ -371,9 +357,7 @@ fn parse_options(args: &[String]) -> (Options, bool) {
             actions: vec![
                 mv_script::Action {
                     line: 0,
-                    verb: mv_script::Verb::Wait(mv_script::Wait {
-                        ms: (mv_viewer::FIRST_PAINT_END * 1000.0) as i64,
-                    }),
+                    verb: mv_script::Verb::Wait(mv_script::Wait { ms: 2000 }),
                     surface: mv_script::Surface::All,
                 },
                 mv_script::Action {
@@ -412,14 +396,14 @@ where
     E: for<'a> enum_map::EnumArray<&'a str>,
 {
     if fields.len() == 1 {
-        for (e, word) in words.iter() {
+        for (e, word) in words {
             if fields[0] == *word {
                 return Ok(e);
             }
         }
     }
     let mut list = String::new();
-    for (_, word) in words.iter() {
+    for (_, word) in words {
         if !list.is_empty() {
             list.push_str(", ");
         }
@@ -454,16 +438,16 @@ fn appearance(
 #[cfg(not(target_os = "emscripten"))]
 use crate::platform_native::{
     platform_args, platform_context, platform_default_pace, platform_default_space,
-    platform_gl_attributes, platform_hints, platform_init, platform_loop_counts,
-    platform_prefs_store, platform_quit, platform_read_file, platform_reduced_motion,
-    platform_window_made,
+    platform_gl_attributes, platform_hints, platform_init, platform_load_prefs,
+    platform_loop_counts, platform_prefs_store, platform_quit, platform_read_file,
+    platform_reduced_motion, platform_window_made,
 };
 #[cfg(target_os = "emscripten")]
 use crate::platform_web::{
     mv_panic_at_frame, mv_trace, platform_args, platform_context, platform_default_pace,
     platform_default_space, platform_gl_attributes, platform_hints, platform_init,
-    platform_loop_counts, platform_prefs_store, platform_quit, platform_read_file,
-    platform_reduced_motion, platform_window_made,
+    platform_load_prefs, platform_loop_counts, platform_prefs_store, platform_quit,
+    platform_read_file, platform_read_hash, platform_reduced_motion, platform_window_made,
 };
 
 #[cfg(test)]
@@ -647,7 +631,7 @@ mod options_tests {
         assert_eq!(script.start.space, mv_theme::Space::DisplayP3);
         assert_eq!(script.actions.len(), 2);
         match &script.actions[0].verb {
-            mv_script::Verb::Wait(wait) => assert_eq!(wait.ms, 2600),
+            mv_script::Verb::Wait(wait) => assert_eq!(wait.ms, 2000),
             verb => panic!("a wait first, not {verb:?}"),
         }
         match &script.actions[1].verb {
@@ -691,6 +675,24 @@ mod options_tests {
             let (_, ok) = parse_options(&args(&argv));
             assert!(!ok, "for {bad:?}");
         }
+    }
+
+    #[test]
+    fn query_sets_the_page_query() {
+        let (options, ok) = parse_options(&args(&[
+            "function-viewer",
+            "--png",
+            "a.png",
+            "--space",
+            "srgb",
+            "--query",
+            "center=1,2&scale=2",
+        ]));
+        assert!(ok);
+        assert_eq!(options.query, "center=1,2&scale=2");
+        let (options, ok) = parse_options(&args(&["function-viewer"]));
+        assert!(ok);
+        assert!(options.query.is_empty());
     }
 
     #[test]
@@ -808,16 +810,18 @@ fn load_gl(video: &sdl3::VideoSubsystem) -> glow::Context {
         glow::Context::from_loader_function(|name| {
             video
                 .gl_get_proc_address(name)
-                .map(|f| f as *const std::ffi::c_void)
-                .unwrap_or(std::ptr::null())
+                .map_or(std::ptr::null(), |f| f as *const std::ffi::c_void)
         })
     }
 }
 
 impl Main {
-    /// Builds the window, the GL context and the real `App`, in the Odin
-    /// order. Returns the app with what to do with it: a scripted run the
-    /// caller executes (natively only), else an interactive app.
+    /// Builds the window, the GL context and the real `App`: the window and
+    /// its colour space, GL through glow, NanoVG, the themes resolved in the
+    /// space, fonts, Clay's measure (after the last move, in `app_init`),
+    /// prefs, then the harness (or the loop, interactively). Returns the app
+    /// with what to do with it: a scripted run the caller executes (natively
+    /// only), else an interactive app.
     #[cfg(not(target_os = "emscripten"))]
     fn build() -> Result<(Self, Option<ScriptedRun>), String> {
         platform_context();
@@ -908,12 +912,10 @@ impl Main {
             return Err("text.init failed".to_string());
         }
         mv_text::load_into(&mut app.fonts, &mut app.vg);
-        // No `init_clay` here: Clay's measure closure keeps a `*mut App`
-        // (t0c-wire's finding), and `app` moves once more into its box
-        // below. `app_init` runs it after the last move.
+        // No `init_clay` here: Clay's measure closure keeps a `*mut App`,
+        // and `app` moves once more into its box below. `app_init` runs it
+        // after the last move.
         crate::icons::set_window_icon(&mut app);
-        app.viewer = mv_viewer::initial_state();
-        crate::plane_area::plane_init(&mut app);
 
         // What the platform says, or under a script what the script says.
         app.system_scheme = if crate::input::system_dark() {
@@ -941,11 +943,8 @@ impl Main {
             crate::prefs::load_prefs(&mut app);
             app.prefs = appearance(app.prefs, &options, app.system_scheme);
         }
-        // No `motion_init` here: the watch list keeps a `*mut FadeIn`, and
-        // `app` moves once more into its box below. `app_init` runs it after
-        // the last move, beside `init_clay`.
-        let now = crate::app_loop::clock_now(&mut app);
-        crate::motion_driver::motion_launch(&mut app, now);
+        // The page query at start: `--query` (empty without it).
+        app.url = options.query.clone();
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1072,12 +1071,10 @@ impl Main {
             return Err("text.init failed".to_string());
         }
         mv_text::load_into(&mut app.fonts, &mut app.vg);
-        // No `init_clay` here: Clay's measure closure keeps a `*mut App`
-        // (t0c-wire's finding), and `app` moves once more into its box
-        // below. `app_init` runs it after the last move.
+        // No `init_clay` here: Clay's measure closure keeps a `*mut App`,
+        // and `app` moves once more into its box below. `app_init` runs it
+        // after the last move.
         crate::icons::set_window_icon(&mut app);
-        app.viewer = mv_viewer::initial_state();
-        crate::plane_area::plane_init(&mut app);
 
         // What the platform says (a script's overrides arrive per model line
         // on the web; see `mv_model_line`).
@@ -1090,11 +1087,9 @@ impl Main {
         app.prefs_store = platform_prefs_store(&options.prefs);
         crate::prefs::load_prefs(&mut app);
         app.prefs = appearance(app.prefs, &options, app.system_scheme);
-        // No `motion_init` here: the watch list keeps a `*mut FadeIn`, and
-        // `app` moves once more into its box below. `app_init` runs it after
-        // the last move, beside `init_clay`.
-        let now = crate::app_loop::clock_now(&mut app);
-        crate::motion_driver::motion_launch(&mut app, now);
+        // The page query at start: the hash's query part, if the page was
+        // loaded with one (`#function-viewer?center=1,2&scale=2`).
+        app.url = platform_read_hash();
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1124,14 +1119,13 @@ impl Main {
     }
 }
 
-/// Tears the app down in the Odin order: the live run's file, the platform,
-/// the layers, NanoVG's fonts, Clay, then the GL context and the window
-/// (SDL quits with the `Sdl` handle's drop).
+/// Tears the app down: the live run's file, the platform, NanoVG's fonts,
+/// Clay, then the GL context and the window (SDL quits with the `Sdl`
+/// handle's drop).
 fn teardown(app: &mut crate::app::App) {
     #[cfg(not(target_os = "emscripten"))]
     crate::live::live_finish(app);
     platform_quit();
-    crate::draw::release_layers(app);
     mv_text::destroy(&mut app.fonts);
     crate::ui::release_clay(app);
     #[cfg(not(target_os = "emscripten"))]
@@ -1163,17 +1157,11 @@ impl Main {
                 {
                     // Clay after the App's last move: its measure closure
                     // holds a `*mut App`, which boxing would otherwise leave
-                    // dangling (t0c-wire). Everything `build` did needs no
-                    // Clay; the first layout (harness or iterate) does.
-                    // The motion watch list after the last move for the same
-                    // reason: `motion_init` keeps a `*mut FadeIn` to Q's row,
-                    // and the pre-box address dangles (i2-plane: the native
-                    // fling's first frames drew no plane while its Q fade ran,
-                    // and no shot ever counted translucent).
+                    // dangling. Everything `build` did needs no Clay; the
+                    // first layout does.
                     let mut guard = main.lock().expect("app_init: clay lock");
                     let app = &mut guard.main.assert_get_mut().app;
                     crate::ui::init_clay(app);
-                    crate::motion_driver::motion_init(app);
                 }
                 #[cfg(not(target_os = "emscripten"))]
                 if let Some(run) = run {
@@ -1301,10 +1289,20 @@ impl Main {
                     return AppResult::Continue;
                 }
                 if *code == UserCode::Prefs as i32 {
-                    crate::prefs::prefs_stored_elsewhere(
-                        app,
-                        crate::prefs::prefs_of_word(*data1 as usize),
-                    );
+                    if data1.is_null() {
+                        // The web's storage event: another tab wrote under one
+                        // of the prefs keys. The event carries one key's new
+                        // value, while the app needs all three, so the keys
+                        // are re-read here, as math-viz2's storage subscription
+                        // re-reads its atoms.
+                        let (text, _) = platform_load_prefs(app);
+                        crate::prefs::prefs_stored_elsewhere(app, mv_theme::parse_prefs(&text));
+                    } else {
+                        crate::prefs::prefs_stored_elsewhere(
+                            app,
+                            crate::prefs::prefs_of_word(*data1 as usize),
+                        );
+                    }
                     return AppResult::Continue;
                 }
                 #[cfg(not(target_os = "emscripten"))]

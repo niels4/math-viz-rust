@@ -30,7 +30,7 @@ unsafe extern "C" fn malloc_allocator(_data: *mut c_void, op: *mut kb::allocator
             kb::allocator_op_kind::FREE => {
                 libc::free((*op).op.Free.Pointer);
             }
-            _ => {}
+            kb::allocator_op_kind::NONE => {}
         }
     }
 }
@@ -86,8 +86,8 @@ impl ShapeContext {
                 text.as_ptr() as *mut u8,
                 text.len() as c_int,
                 mode,
-            )
-        };
+            );
+        }
     }
 
     /// The next shaped run; `None` when shaping is done.
