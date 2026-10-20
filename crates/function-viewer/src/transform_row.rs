@@ -929,8 +929,12 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
             crate::input::move_focus(app, if shift { -1 } else { 1 });
             sync_focus_state(app);
             // Tabbing into a field arms its restore point and parks the
-            // caret at the end, as focusing the DOM input would.
-            if let Some(landed) = hit_param(app.input.focus) {
+            // caret at the end, as focusing the DOM input would. A toggle
+            // landing arms nothing: the field never took the focus, so no
+            // typing tip shows (h5-buttons flip-focus).
+            if app.input.focus.kind == HitKind::TransformField
+                && let Some(landed) = index_param(app.input.focus.index)
+            {
                 let value = crate::transform_section::param_value(app, landed);
                 app.drafts[landed].typing_from = Some(value);
                 let shown = crate::scrub_value::box_text(app, landed);
