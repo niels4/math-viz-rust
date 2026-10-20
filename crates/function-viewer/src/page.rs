@@ -170,12 +170,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
     let Some(b) = element_box(app, mv_clay::id("TopBar", 0)) else {
         return;
     };
-    paint_shadow(
-        app,
-        b,
-        crate::top_bar::TOPBAR_RADIUS,
-        ink,
-    );
+    paint_shadow(app, b, crate::top_bar::TOPBAR_RADIUS, ink);
 }
 
 /// Paints the settings menu's shadow: 0 6 px 18 px in the shadow colour,
