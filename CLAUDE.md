@@ -554,13 +554,36 @@ no new tokens (all eight tabled).
   drags step at most 5 px with the press on the handle centre, and every
   decisive hover read is preceded by a settle plus a 1 px nudge. The drag
   past the canvas edge keeps following (pointer capture; offsetX works past
-  the width); past the 1440 viewport SDL's web moves stop reaching the port
-  (web h=10.40 vs native/ref h=11.44 at x=1500, all engines), so
-  handle-drag-out ends at x=1435 (12 px past the canvas edge, in-viewport).
+  the width). (Superseded by h7-fix-capture: the port's web glue now
+  captures too, so handle-drag-out ends at x=1500 with h=11.44 on native,
+  web-webkit, web-chromium and the reference; the past-the-viewport stop
+  was a glue gap, not a stack limit.)
   Chromium draws 2 fixed dash-edge pixels at 41/255 where native draws them
   (same spots every same-camera state; everything else ≤15, 0 flat).
 - Harness gotcha: never pipe `./tools/run` through head/tail — the SIGPIPE
   kills the venv's pip mid-install and the run proceeds without deps.
+
+### h7-fix-capture: canvas pointer capture on the web; HandleId
+
+- The web past-the-viewport stop was a glue gap, not a stack limit:
+  `useCamera.ts:180-182` captures the canvas on every press
+  (`setPointerCapture`, implicit release — the hook never calls release)
+  and the port's `web/library.js` never did, so SDL's canvas listeners
+  lost the moves past the viewport edge. `mv_web_init` now captures on
+  canvas pointerdown (try/catch, `Module.canvas ??
+  document.getElementById("canvas")`), mirroring the hook exactly.
+  handle-drag-out is back at x=1500: h=11.44 on native, web-webkit,
+  web-chromium, ref-webkit and ref-chromium.
+- Harness/engine limit, measured: Playwright's Firefox dispatches broken
+  coordinates for moves past the viewport edge, and the reference follows
+  them too (ref-firefox h=-18.56, k=11.5 — the canvas maps the last move
+  to window ~(0,-85)); the port lands on the identical values, so judge
+  Firefox port-vs-ref directly on input-driven states.
+- `plane_input` carries handles as `HandleId { Shift, Scale }`
+  (`Option<HandleId>` in `App::hovered`/`dragged`, `from_index`/`index`
+  helpers at the hit-test boundary): `handle_params`, `drag_move` and
+  `plane_up` match both arms with a `None => {}` no-op (nothing may set
+  or flush without a press — the old `_` fallback flushed h/k).
 
 ## Long runs
 

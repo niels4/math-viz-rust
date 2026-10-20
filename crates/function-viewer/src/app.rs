@@ -9,6 +9,7 @@ use enum_map::EnumMap;
 
 use crate::app_loop;
 use crate::input::InputState;
+use crate::plane_input::HandleId;
 use crate::scroll::{Scroll, Scroller};
 use crate::url::Url;
 
@@ -140,19 +141,19 @@ pub struct App {
     /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
     pub flip: crate::flip::FlipState,
     /// The plane's handle hover: the cursor rule's `hovering` and the last
-    /// hovered handle's index (shift 0, scale 1, `None` for none), as
-    /// `CartesianPlane.tsx`'s `hovering` state and `lastHoveredIndex` ref
-    /// do (h7-plane; `plane_input.rs` owns the dispatch).
+    /// hovered handle (`None` for none), as `CartesianPlane.tsx`'s
+    /// `hovering` state and `lastHoveredIndex` ref do (h7-plane;
+    /// `plane_input.rs` owns the dispatch).
     pub hovering: bool,
-    pub hovered: Option<usize>,
+    pub hovered: Option<HandleId>,
     /// A plane handle drag in flight, with the press's grab offset in plane
     /// units (the `dragging` state and the `grab` ref at `251c080`).
     pub dragging: bool,
     pub grab: [f64; 2],
-    /// The pressed handle's index while a drag flies (the hook's closed-over
+    /// The pressed handle while a drag flies (the hook's closed-over
     /// handle: the drag's formula pair never changes mid-drag, while the
     /// hover index follows the moves).
-    pub dragged: Option<usize>,
+    pub dragged: Option<HandleId>,
 }
 
 impl App {
