@@ -24,3 +24,5 @@ H6 = ["curve-values", "curve-b", "curve-sinx-values", "flip-frames", "flip-typed
 # scale handles, no pan while dragging, the release flush, the drag past the
 # canvas edge, and the pan cursor (h7-plane).
 H7 = ["handle-hover-shift", "handle-hover-scale", "handle-hover-move", "handle-hover-end", "handle-drag-shift", "handle-drag-scale", "handle-drag-release", "handle-drag-no-pan", "handle-drag-out", "pan-cursor", "reset-frames", "reset-all-frames", "reduced-reset", "rows-lit-hk-drag", "rows-lit-ab-hover", "readout-lit-hk"]
+# H8 at 96f1e84: the P and Q points (h8-points-slider owns the slider-* states).
+H8 = ["slider-default", "slider-hover", "slider-focus", "slider-drag-30", "slider-release", "slider-press-jump", "slider-keys", "slider-home-end", "slider-parked-left", "slider-parked-right", "slider-camera"]

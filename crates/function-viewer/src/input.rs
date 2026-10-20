@@ -158,6 +158,9 @@ pub enum HitKind {
     TransformReset,
     /// The Transform card's Reset all (h5-buttons; a focus stop, `index` 0).
     TransformResetAll,
+    /// The x-of-P slider's track (h8-points-slider; the whole 20 px box is
+    /// the hit, the thumb takes no pointer events; a focus stop, in tab order).
+    PointSlider,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -483,6 +486,8 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 crate::plane_input::plane_move(app);
             } else if crate::scrub_value::captured(app) && !event.left {
                 crate::scrub_value::pointer_moved(app);
+            } else if crate::point_slider::slider_captured(app) && !event.left {
+                crate::point_slider::pointer_moved(app);
             } else {
                 retarget(app);
                 crate::plane_input::plane_hover(app);
@@ -507,6 +512,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 press(app);
                 crate::settings::press_down(app);
                 crate::transform_row::press_down(app);
+                crate::point_slider::press_down(app);
                 if app.input.pressed.kind == HitKind::Plane {
                     // SDL's numbering starts at 1; the camera takes the DOM's,
                     // where the primary button is 0 (only 0 drags, there).
@@ -524,6 +530,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 // tap may reset or move the caret. Before the release clears
                 // the press the down hit names.
                 crate::scrub_value::release_up(app, down, event.pos, event.clicks);
+                crate::point_slider::release_up(app);
                 release(app);
                 // The release cleared the press the cursor rule read: over
                 // the plane the hover rule's cursor wins back (h7-plane: a
@@ -583,6 +590,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
                 crate::transform_row::key(app, &event);
             }
+            // The x-of-P slider's own keys (h8-points-slider): arrows, Home,
+            // End and Enter on its focused track; Tab walks on above.
+            crate::point_slider::key(app, &event);
             // A modifier anywhere re-reads a held scrub's mode live
             // mid-drag, as the window key hook does (down and up, never a
             // repeat, which cannot change the mode; acts only then).
@@ -622,6 +632,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 // A held scrub ends too, flushing when it dragged, as the
                 // window release stops the box's press.
                 crate::scrub_value::focus_lost(app);
+                crate::point_slider::focus_lost(app);
                 app.input.pressed = Hit::default();
                 retarget(app);
             }

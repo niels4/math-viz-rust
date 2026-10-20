@@ -344,6 +344,9 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The transform rows' inset rings, focus rings and chevrons (h4-rows),
     // and Reset all's focus ring (h5-buttons).
     crate::transform_row::paint_rows(app);
+    // The x-of-P slider's track, thumb and tip (h8-points-slider; the Points
+    // card's paint hook, beside the rows).
+    crate::point_slider::paint_slider(app);
     crate::transform_section::paint_head(app);
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.

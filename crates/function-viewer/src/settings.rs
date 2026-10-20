@@ -849,7 +849,8 @@ pub fn press_down(app: &mut App) {
         | HitKind::TransformField
         | HitKind::TransformFlip
         | HitKind::TransformReset
-        | HitKind::TransformResetAll => {
+        | HitKind::TransformResetAll
+        | HitKind::PointSlider => {
             close_menu(app);
         }
     }

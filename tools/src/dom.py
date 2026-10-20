@@ -180,6 +180,10 @@ FIXTURE_STATES = (
     # h7-sidebar: the h and k rulers only exist mid-drag, so the fixture runs
     # rows-lit-hk-drag (the shift handle held).
     "rows-lit-hk-drag",
+    # h8-points-slider: the track and thumb at rest (slider-default), the tip
+    # on hover (slider-hover; display:none at rest).
+    "slider-default",
+    "slider-hover",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

@@ -163,6 +163,7 @@ pub fn init_params_from_url(app: &mut App) {
     app.b_param = crate::url::QueryParam::new(&B_PARAM, &query);
     app.h_param = crate::url::QueryParam::new(&H_PARAM, &query);
     app.k_param = crate::url::QueryParam::new(&K_PARAM, &query);
+    app.p_param = crate::url::QueryParam::new(&crate::functions::P_PARAM, &query);
 }
 
 /// One frame's debounce, then an outside edit flowing in: each param's

@@ -154,6 +154,15 @@ pub struct App {
     /// handle: the drag's formula pair never changes mid-drag, while the
     /// hover index follows the moves).
     pub dragged: Option<HandleId>,
+    /// P's page param: the live x with its flush (h8-points-slider; the
+    /// same number param as h and k, key `p`, default 2).
+    pub p_param: crate::url::QueryParam<f64>,
+    /// An x-of-P slider drag in flight (h8-points-slider;
+    /// `point_slider.rs` owns the machine; `state.p_dragging` mirrors it).
+    pub slider_hold: Option<crate::point_slider::SliderDrag>,
+    /// The x field was asked open from the slider's Enter (h8-points-field
+    /// consumes it in its wiring, opening the field and clearing the flag).
+    pub slider_edit: bool,
 }
 
 impl App {
@@ -323,6 +332,9 @@ impl App {
             dragging: false,
             grab: [0.0, 0.0],
             dragged: None,
+            p_param: crate::url::QueryParam::new(&crate::functions::P_PARAM, ""),
+            slider_hold: None,
+            slider_edit: false,
         }
     }
 }

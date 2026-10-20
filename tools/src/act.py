@@ -811,7 +811,8 @@ def check_views(out: Path) -> list[str]:
     the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
     one parameter to the list, still accepting the old single-parameter shape). A line holding only `cursor`
     (pan / grab-hover / grab-active) is the canvas's cursor, written whenever it changes between
-    the plane's three (h7-plane). A line holding only `shown` ({a, b, h, k,
+    the plane's three (h7-plane). A line holding only `p` (P's live value) is the x-of-P
+    slider's, written whenever it changes (h8-points-slider). A line holding only `shown` ({a, b, h, k,
     animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
     problems: list[str] = []
     try:
@@ -864,6 +865,10 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"cursor"}:
             if view.get("cursor") not in ("pan", "grab-hover", "grab-active"):
                 problems.append(f"views.json line {number}: 'cursor' is not a plane cursor")
+            continue
+        if set(view) == {"p"}:
+            if not _is_num(view.get("p")):
+                problems.append(f"views.json line {number}: 'p' is not a number")
             continue
         if set(view) == {"shown"}:
             shown_raw: object = view.get("shown")

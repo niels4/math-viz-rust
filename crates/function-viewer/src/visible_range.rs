@@ -25,6 +25,29 @@ pub struct VisibleRange {
 /// is 0; else the centre (`[x, y]`, as the camera holds it) spread by half
 /// the plane — floored at the centre px — over `px_per_unit`.
 /// `center` and `scale` are the camera's live values, as the atom reads them.
+/// The plane's visible plot range at the live camera over the last frame's
+/// content box (the atom as a function of the app): `None` before the first
+/// layout or off a degenerate span, when the slider's press returns early.
+/// The slider and the Points rows read this, as the atom's subscribers do.
+#[must_use]
+pub fn live(app: &crate::app::App) -> Option<VisibleRange> {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
+    if !data.found {
+        return None;
+    }
+    let content = crate::plane::canvas_content(&data.boundingBox);
+    visible_range(
+        f64::from(content.width),
+        f64::from(content.height),
+        app.camera.center,
+        app.camera.scale,
+    )
+}
+
 #[must_use]
 pub fn visible_range(
     width: f64,
