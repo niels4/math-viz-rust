@@ -53,6 +53,7 @@ pub mod ruler_marks;
 pub mod scale_legend;
 pub mod scroll;
 pub mod scrub;
+pub mod scrub_value;
 pub mod selector;
 pub mod settings;
 pub mod sidebar;

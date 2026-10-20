@@ -67,7 +67,10 @@ pub enum Pace {
 /// The deadlines the app arms. The shell arms none; the page milestones append
 /// their variants here (append-only, like `App`'s fields).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-pub enum Timer {}
+pub enum Timer {
+    /// The scrub box's rest tip: the pointer's 400 ms rest is over.
+    ScrubRest,
+}
 
 /// One deadline per timer.
 pub type Timers = EnumMap<Timer, Time>;
@@ -200,8 +203,10 @@ pub fn iterate(app: &mut App) -> bool {
 }
 
 /// Runs one fired timer's action. The shell arms no timers, so no arm fires.
-pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
-    match timer {}
+pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
+    match timer {
+        Timer::ScrubRest => crate::scrub_value::rest_fired(app),
+    }
 }
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.

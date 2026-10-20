@@ -466,9 +466,12 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             // A drag the plane holds keeps panning under capture, wherever
             // the pointer is, as `setPointerCapture` keeps the hook's moves
-            // coming; anything else retargets.
+            // coming; a scrub the value box holds keeps scrubbing the same
+            // way; anything else retargets.
             if app.input.pressed.kind == HitKind::Plane && !event.left {
                 crate::plane_input::plane_move(app);
+            } else if crate::scrub_value::captured(app) && !event.left {
+                crate::scrub_value::pointer_moved(app);
             } else {
                 retarget(app);
             }
@@ -504,6 +507,10 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if down.kind == HitKind::Plane {
                     crate::plane_input::plane_up(app);
                 }
+                // A box press ends: a scrub flushes or opens the field, a
+                // tap may reset or move the caret. Before the release clears
+                // the press the down hit names.
+                crate::scrub_value::release_up(app, down, event.pos, event.clicks);
                 release(app);
                 crate::settings::click(app, down);
                 crate::selector::click(app, down);
@@ -527,6 +534,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             app.input.pointer = event.pos;
             app.input.over = true;
             retarget(app);
+            // A wheel over a value box steps it (ignored while typed into,
+            // when the page may scroll instead).
+            if app.input.hover.kind == HitKind::TransformField {
+                crate::scrub_value::wheel_over(app, event.delta[1]);
+            }
             // The plane zooms about the pointer; a held drag keeps the hover
             // on the plane through capture, so a wheel mid-drag zooms, as the
             // hook's wheel and drag run on one loop.
@@ -547,6 +559,12 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             // The page milestones route their keys from here.
             if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
                 crate::transform_row::key(app, &event);
+            }
+            // A modifier anywhere re-reads a held scrub's mode live
+            // mid-drag, as the window key hook does (down and up, never a
+            // repeat, which cannot change the mode; acts only then).
+            if !event.repeat {
+                crate::scrub_value::modifier_key(app);
             }
         }
         Input::Text(event) => {
@@ -578,6 +596,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if app.input.pressed.kind == HitKind::Plane {
                     crate::plane_input::plane_up(app);
                 }
+                // A held scrub ends too, flushing when it dragged, as the
+                // window release stops the box's press.
+                crate::scrub_value::focus_lost(app);
                 app.input.pressed = Hit::default();
                 retarget(app);
             }
@@ -630,7 +651,7 @@ pub fn retarget(app: &mut App) {
     } else {
         Hit::default()
     };
-    if captures(pressed.kind) {
+    if captures(pressed.kind) || crate::scrub_value::captured(app) {
         hit = pressed;
     }
     if hit != app.input.hover {

@@ -1,17 +1,20 @@
-//! One transform parameter's row: its chip, name and typed number field.
+//! One transform parameter's row: its chip, name and scrub value box.
 //!
 //! Ported from `SideBar/TransformRow.tsx` and `TransformRow.module.css` at
-//! `5714319`: the 44 px row (`data-param`, `data-lit`), the 26 px chip with
-//! the parameter's letter in its colour, the name, and the 107×32 box with
-//! two decorative chevrons around the field ([`crate::number_field`]).
-//! Pointing at the row or focusing its box highlights the parameter
-//! everywhere it shows; the row lights up wherever the highlight comes from.
+//! `5714319`, with the box grown into `ScrubValue/` at `b8a0e1d` (the drag
+//! with its modifiers, the wheel, the arrow keys, Esc, the double-click
+//! reset, the tips — [`crate::scrub_value`] owns the machine, this module
+//! the row's layout and paint): the 44 px row (`data-param`, `data-lit`),
+//! the 26 px chip with the parameter's letter in its colour, the name, and
+//! the 107×32 box with two decorative chevrons around the field
+//! ([`crate::number_field`]). Pointing at the row or focusing its box
+//! highlights the parameter everywhere it shows; the row lights up wherever
+//! the highlight comes from.
 //!
-//! Layout and paint wire into the sidebar in phase 2 (h3's column, h4-readout's
-//! readout); this module holds the CSS-derived constants and the chevron
-//! geometry. The highlight sync state is h4-readout's [`crate::state`]
-//! (reused here; the phase-1 stub is deleted). Hit kinds (`input.rs`) and the
-//! field's commit wiring join with the `App` fields they need.
+//! The box's press, keys, wheel, text and tip route through
+//! [`crate::scrub_value`]; the row keeps the highlight sync state in
+//! h4-readout's [`crate::state`], the layout constants and the chevron
+//! geometry.
 
 /// The row: flex, 44 px tall, `0 6px 0 8px` padding, `--space-inset` (12) gap,
 /// `--radius-card` (4) corners; lit rows tint with the parameter's colour.
@@ -76,7 +79,7 @@ use mv_sys::clay;
 
 use crate::app::App;
 use crate::input::{Cursor, Hit, HitKind};
-use crate::number_field::{commit_value, display_draft};
+use crate::number_field::commit_value;
 use crate::state::TransformParam;
 
 /// Element ids, one per parameter row.
@@ -87,6 +90,8 @@ pub const BOX_ID: &str = "TransformBox";
 pub const CHEVRON_ID: &str = "TransformChevron";
 pub const FIELD_ID: &str = "TransformField";
 pub const FIELD_TEXT_ID: &str = "TransformFieldText";
+/// The selection plate around the field's text run.
+pub const FIELD_RUN_ID: &str = "TransformFieldRun";
 
 /// The parameter's index: `Hit.index` for its row and field hits, in
 /// `TransformParam` order.
@@ -145,8 +150,7 @@ pub fn row(app: &mut App, param: TransformParam) {
     let theme = crate::ui::current_theme(app).clone();
     let ink = |token| crate::ui::ink(&theme, token);
     let param_ink = ink(param.colour_token());
-    let value = crate::transform_section::param_value(app, param);
-    let shown = display_draft(&app.drafts[param].draft, value);
+    let shown = crate::scrub_value::box_text(app, param);
     let lit = app.state.is_lit(param);
     let focused = app.input.focus == field_hit(param);
     let name_ink = if lit {
@@ -237,10 +241,14 @@ fn chip(app: &mut App, param: TransformParam, param_ink: clay::Color, index: u32
     });
 }
 
-/// The value box: the chevrons around the field. The 9.5 px side padding is
-/// fractional (Clay's padding is whole px), so spacers hold it, as the
-/// picker's dividers hold its 1 px (the Border arm strokes only uniform
-/// borders). The field is the row's focus stop.
+/// The value box: the chevrons around the field, and the tip under it. The
+/// 9.5 px side padding is fractional (Clay's padding is whole px), so
+/// spacers hold it, as the picker's dividers hold its 1 px (the Border arm
+/// strokes only uniform borders). The whole box is the row's focus stop and
+/// scrub target: the field's inner element keeps no region of its own (the
+/// DOM field takes no pointer events until it opens for typing). While a
+/// scrub holds the box, its fill tints and its border follows the modifier
+/// (accent for fine, warning for snap).
 fn value_box(
     app: &mut App,
     param: TransformParam,
@@ -250,6 +258,23 @@ fn value_box(
     index: u32,
 ) {
     let theme = crate::ui::current_theme(app).clone();
+    let mode = crate::scrub_value::drag_mode(app, param);
+    let background = if mode.is_some() {
+        let tint = mv_theme::band(&theme, param.colour_token());
+        [
+            tint[0] * 255.0,
+            tint[1] * 255.0,
+            tint[2] * 255.0,
+            tint[3] * 255.0,
+        ]
+    } else {
+        crate::ui::ink(&theme, mv_theme::Token::BackgroundMuted)
+    };
+    let stroke = match mode {
+        Some(crate::scrub::ScrubMode::Fine) => crate::ui::ink(&theme, mv_theme::Token::Accent),
+        Some(crate::scrub::ScrubMode::Snap) => crate::ui::ink(&theme, mv_theme::Token::Warning),
+        _ => param_ink,
+    };
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_fixed(BOX_WIDTH),
@@ -267,25 +292,35 @@ fn value_box(
         x: clay::LayoutAlignmentX::Left,
         y: clay::LayoutAlignmentY::Center,
     };
-    decl.backgroundColor = crate::ui::ink(&theme, mv_theme::Token::BackgroundMuted);
+    decl.backgroundColor = background;
     decl.border = clay::BorderElementConfig {
-        color: param_ink,
+        color: stroke,
         width: mv_clay::border_outside(BOX_BORDER as u16),
     };
     decl.cornerRadius = crate::ui::corner_radius_all(BOX_RADIUS);
     crate::ui::ui_scope(app, mv_clay::id(BOX_ID, index), &decl, |app| {
         edge(app, index, 0);
         chevron(app, true, index);
-        field(app, shown, field_ink, index);
+        field(app, param, shown, field_ink, index);
         chevron(app, false, index);
         edge(app, index, 1);
+        crate::scrub_value::tip(app, param, index);
     });
+    let focused = app.input.focus == field_hit(param);
     crate::input::region(
         app,
-        mv_clay::id(FIELD_ID, index),
+        mv_clay::id(BOX_ID, index),
         field_hit(param),
-        Cursor::Default,
-        Cursor::Default,
+        if focused {
+            Cursor::Text
+        } else {
+            Cursor::EwResize
+        },
+        if focused {
+            Cursor::Text
+        } else {
+            Cursor::EwResize
+        },
         true,
         crate::ui::corner_radius_all(BOX_RADIUS),
     );
@@ -321,8 +356,10 @@ fn chevron(app: &mut App, left: bool, index: u32) {
     );
 }
 
-/// The field: the shown text right-aligned in the remaining width.
-fn field(app: &mut App, shown: &str, field_ink: clay::Color, index: u32) {
+/// The field: the shown text right-aligned in the remaining width. While the
+/// caret covers the whole text, the run carries the browser's selection
+/// fill (scheme-picked, the text keeping the focused ink in both).
+fn field(app: &mut App, param: TransformParam, shown: &str, field_ink: clay::Color, index: u32) {
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
@@ -333,14 +370,33 @@ fn field(app: &mut App, shown: &str, field_ink: clay::Color, index: u32) {
         y: clay::LayoutAlignmentY::Center,
     };
     crate::ui::ui_scope(app, mv_clay::id(FIELD_ID, index), &decl, |app| {
-        crate::typography::text(
-            app,
-            mv_clay::id(FIELD_TEXT_ID, index),
-            crate::typography::Type::FieldText,
-            shown,
-            field_ink,
-            false,
-        );
+        let selected = app.drafts[param].is_selected(shown);
+        let mut run = crate::ui::empty_decl();
+        run.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        };
+        if selected {
+            let dark = matches!(
+                app.theme.resolved_scheme(),
+                crate::theme_state::SystemScheme::Dark
+            );
+            run.backgroundColor = if dark {
+                crate::scrub_value::SELECTION_DARK
+            } else {
+                crate::scrub_value::SELECTION_LIGHT
+            };
+        }
+        crate::ui::ui_scope(app, mv_clay::id(FIELD_RUN_ID, index), &run, |app| {
+            crate::typography::text(
+                app,
+                mv_clay::id(FIELD_TEXT_ID, index),
+                crate::typography::Type::FieldText,
+                shown,
+                field_ink,
+                false,
+            );
+        });
     });
 }
 
@@ -356,6 +412,17 @@ pub fn paint_rows(app: &mut App) {
             continue;
         };
         let ink = crate::draw::nvg_color(crate::ui::ink(&theme, param.colour_token()));
+        // The inset ring follows the scrub modifier (accent for fine, warning
+        // for snap), as `--box-stroke` does; the chevrons keep the ink.
+        let ring_ink = match crate::scrub_value::drag_mode(app, param) {
+            Some(crate::scrub::ScrubMode::Fine) => {
+                crate::draw::nvg_color(crate::ui::ink(&theme, mv_theme::Token::Accent))
+            }
+            Some(crate::scrub::ScrubMode::Snap) => {
+                crate::draw::nvg_color(crate::ui::ink(&theme, mv_theme::Token::Warning))
+            }
+            _ => ink,
+        };
         // The inset ring: 1 px while lit or focused, 0.5 px at rest. CSS
         // paints the inset shadow inside the border (the reference holds two
         // full border rows plus one ring row), so the path sits a border
@@ -383,7 +450,7 @@ pub fn paint_rows(app: &mut App) {
             },
             crate::ui::corner_radius_all(BOX_RADIUS - edge),
         );
-        app.vg.stroke_color(ink);
+        app.vg.stroke_color(ring_ink);
         app.vg.stroke_width(ring);
         app.vg.stroke();
         // The `:focus-visible` ring: 3 px of primary at 32 % outside the box.
@@ -411,6 +478,7 @@ pub fn paint_rows(app: &mut App) {
         paint_chevron(app, ink, density, index, true);
         paint_chevron(app, ink, density, index, false);
     }
+    crate::scrub_value::paint_extras(app);
 }
 
 /// Paints one chevron in its box: the 1.6 px round path in the ink.
@@ -461,6 +529,10 @@ fn density_of(app: &App) -> f32 {
 /// change only, and skips moves within one parameter's row and field, so a
 /// move inside never re-stamps the touch (the DOM fires enter once).
 pub fn sync_hover(app: &mut App, before: Hit, now: Hit) {
+    // The rest tip arms on box enters first: a move from row padding into
+    // the box enters the box with the parameter unchanged, which the lead
+    // sync below skips.
+    crate::scrub_value::hover_moved(app, before, now);
     let was = hit_param(before);
     let is = hit_param(now);
     if was == is {
@@ -474,39 +546,28 @@ pub fn sync_hover(app: &mut App, before: Hit, now: Hit) {
     }
 }
 
-/// Routes a pointer press: a press on a field focuses it (the browser
-/// focuses inputs on mousedown, keeping the draft); anywhere else blurs: the
-/// focused draft commits and focus leaves, as `onBlur={commit}` does. Call
-/// after `settings::press_down`, as the Button arm chains the milestones.
+/// Routes a pointer press: the scrub box owns box presses (starting a scrub,
+/// keeping a tap, or blurring the old field first); anything else blurs, as
+/// below. Call after `settings::press_down`, as the Button arm chains the
+/// milestones.
 pub fn press_down(app: &mut App) {
-    let pressed = app.input.pressed;
-    let pressed_param = if pressed.kind == HitKind::TransformField {
-        index_param(pressed.index)
-    } else {
-        None
-    };
-    let focused = app.state.focus.map(|touch| touch.param);
-    if focused != pressed_param {
-        if let Some(param) = focused {
-            commit_param(app, param);
-        }
-        app.state.set_focus(None);
-        stop_text_input(app);
-    }
-    if let Some(param) = pressed_param {
-        focus_field(app, param);
-    }
+    crate::scrub_value::press_down(app);
 }
 
 /// Routes a key to the focused field. Enter commits (keeping the focus, as
-/// the reference keeps editing); Backspace edits the draft; Ctrl/Command+A
-/// selects the box's text for the next typed text to replace, as the browser
-/// does; Tab commits and moves focus stepwise, as blur-then-focus does.
+/// the reference keeps editing); Tab commits and moves focus stepwise, as
+/// blur-then-focus does; Ctrl/Command+A selects the box's text for the next
+/// typed text to replace, as the browser does. The scrub box's own keys —
+/// the nudge and caret arrows, Home/End, Backspace/Delete, Esc — run first
+/// ([`crate::scrub_value::field_key`], which does not overlap these arms).
 /// Returns whether consumed.
 pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
     use sdl3::keyboard::Keycode;
     if !event.down || event.repeat {
         return false;
+    }
+    if crate::scrub_value::field_key(app, event) {
+        return true;
     }
     if app.input.focus.kind != HitKind::TransformField {
         return false;
@@ -519,33 +580,28 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
             commit_param(app, param);
             true
         }
-        Keycode::Backspace => {
-            let shown = app.drafts[param]
-                .draft
-                .clone()
-                .unwrap_or_else(|| display_current(app, param));
-            let mut shown = shown;
-            if app.drafts[param].selected {
-                shown.clear();
-            } else {
-                shown.pop();
-            }
-            app.drafts[param].draft = Some(shown);
-            app.drafts[param].selected = false;
-            app.dirty = true;
-            true
-        }
         Keycode::Tab => {
             commit_param(app, param);
+            app.drafts[param].typing_from = None;
             let shift = event
                 .mods
                 .intersects(sdl3::keyboard::Mod::LSHIFTMOD | sdl3::keyboard::Mod::RSHIFTMOD);
             crate::input::move_focus(app, if shift { -1 } else { 1 });
             sync_focus_state(app);
+            // Tabbing into a field arms its restore point and parks the
+            // caret at the end, as focusing the DOM input would.
+            if let Some(landed) = hit_param(app.input.focus) {
+                let value = crate::transform_section::param_value(app, landed);
+                app.drafts[landed].typing_from = Some(value);
+                let shown = crate::scrub_value::box_text(app, landed);
+                let len = shown.chars().count();
+                app.drafts[landed].caret = [len, len];
+            }
             true
         }
         Keycode::A if event.mods.intersects(ctrl_mods()) => {
-            app.drafts[param].selected = true;
+            let shown = crate::scrub_value::box_text(app, param);
+            crate::number_field::select_all(&mut app.drafts[param], &shown);
             app.dirty = true;
             true
         }
@@ -561,45 +617,27 @@ fn ctrl_mods() -> sdl3::keyboard::Mod {
         | sdl3::keyboard::Mod::RGUIMOD
 }
 
-/// Routes typed text to the focused field: replacing the selected text, else
-/// appending to the draft (starting it from the shown value, as a caret at
-/// the end would).
+/// Routes typed text to the focused field, inserting at the caret
+/// ([`crate::scrub_value::type_text`]).
 pub fn text(app: &mut App, text: &str) {
-    if text.is_empty() || app.input.focus.kind != HitKind::TransformField {
-        return;
-    }
-    let Some(param) = index_param(app.input.focus.index) else {
-        return;
-    };
-    let mut next = if app.drafts[param].selected {
-        String::new()
-    } else {
-        app.drafts[param]
-            .draft
-            .clone()
-            .unwrap_or_else(|| display_current(app, param))
-    };
-    next.push_str(text);
-    let field = &mut app.drafts[param];
-    field.draft = Some(next);
-    field.selected = false;
-    app.dirty = true;
+    crate::scrub_value::type_text(app, text);
 }
 
 /// The focused draft commits: Enter's and blur's shared half (`commit`).
+/// The caret parks at the end of the committed text, as the DOM input moves
+/// it when its value is set.
 pub fn commit_param(app: &mut App, param: TransformParam) {
-    let draft = {
-        let field = &mut app.drafts[param];
-        field.selected = false;
-        field.take()
-    };
+    let draft = app.drafts[param].take();
     // Taking the draft always repaints: the box falls back to the value
     // whether the parse takes (the value moves) or refuses (the old value
     // comes back) — without this a refused Enter leaves its text stranded.
     if draft.is_some() {
         app.dirty = true;
     }
-    let next = commit_value(&draft, crate::transform_section::param_def(param).parse);
+    let next = commit_value(
+        draft.as_deref(),
+        crate::transform_section::param_def(param).parse,
+    );
     if let Some(value) = next {
         match param {
             TransformParam::A => app.a_param.set_flushed(&mut app.url, value),
@@ -609,12 +647,14 @@ pub fn commit_param(app: &mut App, param: TransformParam) {
         }
         app.dirty = true;
     }
+    let len = crate::scrub_value::box_text(app, param).chars().count();
+    app.drafts[param].caret = [len, len];
 }
 
 /// Focuses a field: the keyboard stop, the highlight, and the platform's
-/// text input (as a focused DOM input takes keys).
-fn focus_field(app: &mut App, param: TransformParam) {
-    app.drafts[param].selected = false;
+/// text input (as a focused DOM input takes keys). The selection and
+/// restore point are the opener's (click selects, Tab parks at the end).
+pub(crate) fn focus_field(app: &mut App, param: TransformParam) {
     crate::input::set_focus(app, field_hit(param), true);
     app.state.set_focus(Some(param));
     start_text_input(app);
@@ -626,14 +666,9 @@ fn sync_focus_state(app: &mut App) {
     app.state.set_focus(param);
 }
 
-/// The box's shown text for edits starting from the value.
-fn display_current(app: &App, param: TransformParam) -> String {
-    display_draft(&None, crate::transform_section::param_value(app, param))
-}
-
 /// Starts the platform's text input for the focused field; headless tests
 /// have no window, so nothing starts there.
-fn start_text_input(app: &mut App) {
+pub(crate) fn start_text_input(app: &mut App) {
     if app.window.is_none() {
         return;
     }
@@ -641,7 +676,7 @@ fn start_text_input(app: &mut App) {
 }
 
 /// Stops the platform's text input on blur; headless, nothing runs.
-fn stop_text_input(app: &mut App) {
+pub(crate) fn stop_text_input(app: &mut App) {
     if app.window.is_none() {
         return;
     }
