@@ -747,13 +747,19 @@ fn paint_thumb(
     } else {
         1.0
     };
+    // Primary at 26%/32% over the card, as `theme::plate`/`theme::ring`
+    // hold it: `ui::ink` first (0..1 to 0..255), as every other `nvg_color`
+    // call site does — the helpers' raw output is not a NanoVG colour.
+    let primary = crate::ui::ink(theme, mv_theme::Token::Primary);
     if dragging {
         app.vg.begin_path();
         app.vg.circle(cx, cy, THUMB_SIZE / 2.0 + THUMB_HALO_SPREAD);
-        app.vg.fill_color(crate::draw::nvg_color(mv_theme::plate(
-            theme,
-            mv_theme::Token::Primary,
-        )));
+        app.vg.fill_color(crate::draw::nvg_color([
+            primary[0],
+            primary[1],
+            primary[2],
+            primary[3] * 0.26,
+        ]));
         app.vg.fill();
     }
     if slider_focused(app) && app.input.focus_visible {
@@ -761,8 +767,12 @@ fn paint_thumb(
         app.vg
             .circle(cx, cy, THUMB_SIZE / 2.0 + THUMB_RING_WIDTH / 2.0);
         app.vg.stroke_width(THUMB_RING_WIDTH);
-        app.vg
-            .stroke_color(crate::draw::nvg_color(mv_theme::ring(theme)));
+        app.vg.stroke_color(crate::draw::nvg_color([
+            primary[0],
+            primary[1],
+            primary[2],
+            primary[3] * 0.32,
+        ]));
         app.vg.stroke();
     }
     let side = parked(value, range);
