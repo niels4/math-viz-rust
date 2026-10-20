@@ -1,15 +1,14 @@
-//! Scroll containers ported from `scroll.odin` (`Scroller`, `SCROLLER_IDS`,
-//! `Scroll`, `scrolled`, `scroll_container`, `update_scroll`, `snap_px`,
-//! `scroll_wheel`, `scroll_into_view`, `scroll_target`, `inside`).
+//! Scroll containers (`Scroller`, `SCROLLER_IDS`, `Scroll`, `scrolled`,
+//! `scroll_container`, `update_scroll`, `snap_px`, `scroll_wheel`,
+//! `scroll_into_view`, `scroll_target`, `grow_box`, `inside`).
 //!
 //! The math and region matching are pure. [`update_scroll`] replays Clay's
-//! scroll-container data through `mv-clay`'s free element functions; the
-//! sibling `app-surface` milestone owns the `App.scroll` field it writes.
+//! scroll-container data through `mv-clay`'s free element functions.
 
 use mv_sys::clay;
 
 use crate::app::App;
-use crate::input::{HitKind, Region, hit_at};
+use crate::input::Region;
 
 /// The page's scroll containers: the panel, and in the stacked layout the
 /// page itself. Ported from `Scroller`; order matches the Odin declaration.
@@ -101,11 +100,8 @@ fn snap_px(v: f32) -> f32 {
 
 /// The wheel over `pos`, `delta` the page's pixels (+y down): the innermost
 /// container under the pointer that can go that way takes it. True when
-/// something moved. Ported from `scroll_wheel`.
+/// something moved.
 pub fn scroll_wheel(app: &mut App, pos: [f32; 2], delta: [f32; 2]) -> bool {
-    if hit_at(&app.input.regions, pos).kind == HitKind::Plane {
-        return false;
-    }
     for s in [Scroller::Panel, Scroller::Page] {
         let sc = &mut app.scroll[s];
         if !sc.active || !inside(sc.r#box, pos) {
@@ -143,7 +139,7 @@ pub fn scroll_into_view(app: &mut App, r: Region) -> bool {
     if !sc.active {
         return false;
     }
-    let view = crate::effects::grow_box(sc.r#box, -sc.border);
+    let view = grow_box(sc.r#box, -sc.border);
     let to = scroll_target(
         sc.offset,
         sc.max,
@@ -177,9 +173,21 @@ pub fn scroll_target(offset: f32, max: f32, view: [f32; 2], part: [f32; 2]) -> f
     clamp((offset + delta + 0.5).floor(), 0.0, max)
 }
 
-/// Whether `pos` falls inside `box`. Ported from `inside`.
+/// Whether `pos` falls inside `box`.
 pub fn inside(b: clay::BoundingBox, pos: [f32; 2]) -> bool {
     pos[0] >= b.x && pos[0] < b.x + b.width && pos[1] >= b.y && pos[1] < b.y + b.height
+}
+
+/// Grows a box by `by` on every side. Moved here from the deleted
+/// `effects.rs`: the scroll-container clip is this geometry, and this is its
+/// only kept user.
+pub fn grow_box(b: clay::BoundingBox, by: f32) -> clay::BoundingBox {
+    clay::BoundingBox {
+        x: b.x - by,
+        y: b.y - by,
+        width: b.width + 2.0 * by,
+        height: b.height + 2.0 * by,
+    }
 }
 
 fn clamp(v: f32, lo: f32, hi: f32) -> f32 {

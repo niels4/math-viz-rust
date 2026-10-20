@@ -187,7 +187,7 @@ impl Clay {
                     chars: chars as *mut c_char,
                 },
                 *config,
-            )
+            );
         }
     }
 

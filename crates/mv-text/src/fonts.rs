@@ -175,7 +175,7 @@ pub fn init(fonts: &mut Fonts) -> bool {
     if fonts.ctx.is_none() {
         return false;
     }
-    for (file, data) in FONT_DATA.iter() {
+    for (file, data) in &FONT_DATA {
         fonts.kb[file] = font_from_memory(data, 0);
         if !font_is_valid(&mut fonts.kb[file]) {
             fonts.ctx = None;
@@ -203,7 +203,7 @@ pub fn destroy(fonts: &mut Fonts) {
     use mv_sys::kb_safe::free_font;
 
     forget_words(fonts);
-    for (_, font) in fonts.kb.iter_mut() {
+    for (_, font) in &mut fonts.kb {
         free_font(font);
     }
     fonts.ctx = None;
@@ -211,7 +211,7 @@ pub fn destroy(fonts: &mut Fonts) {
 
 /// Creates the NanoVG handles for the loaded fonts.
 pub fn load_into(fonts: &mut Fonts, vg: &mut mv_nvg::Context) {
-    for (file, data) in FONT_DATA.iter() {
+    for (file, data) in &FONT_DATA {
         fonts.vg[file] = vg.create_font_mem(FONT_NAMES[file], data, false);
     }
 }

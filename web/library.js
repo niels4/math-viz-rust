@@ -177,13 +177,25 @@ addToLibrary({
     style.textContent = `#canvas { cursor: ${UTF8ToString(name, len)} !important; }`;
   },
 
-  // The prefs in localStorage, under the port's own key: the stored text's
-  // length in bytes (copied to buf when cap holds it and its terminator), or
-  // -1 when nothing is stored or storage throws, as it does in a private
-  // window. From the first read on, another tab's write under the key
-  // reaches the app (mv_prefs_stored), as a storage subscription takes it:
-  // its text, checked there as a read is ("" when the key was removed, which
-  // reads as the defaults).
+  // The page's hash query for the URL state: `location.hash` at start
+  // (the app cuts the query part itself), written back through
+  // `history.replaceState`, so no history entry accrues as math-viz2's
+  // debounced URL write lands. Fresh strings cross into wasm, freed there.
+  mv_read_hash__deps: ["$stringToNewUTF8"],
+  mv_read_hash: () => stringToNewUTF8(location.hash),
+  mv_write_hash__deps: ["$UTF8ToString"],
+  mv_write_hash: (hash) => {
+    history.replaceState(null, "", `#${UTF8ToString(hash)}`);
+  },
+
+  // The prefs in localStorage, one value per key, as math-viz2 stores them
+  // (a JSON string per key): the stored text's length in bytes (copied to
+  // buf when cap holds it and its terminator), or -1 when nothing is stored
+  // or storage throws, as it does in a private window. From the first read
+  // of a key on, another tab's write under that key reaches the app
+  // (mv_prefs_stored), as a storage subscription takes it: its text, checked
+  // there as a read is ("" when the key was removed, which reads as the
+  // defaults). Each key is watched on its own first read.
   mv_prefs_load__deps: [
     "$UTF8ToString",
     "$stringToUTF8",
@@ -194,8 +206,9 @@ addToLibrary({
   ],
   mv_prefs_load: (key, keyLen, buf, cap) => {
     const name = UTF8ToString(key, keyLen);
-    if (!Module.prefsWatched) {
-      Module.prefsWatched = true;
+    if (!Module.prefsWatched) Module.prefsWatched = {};
+    if (!Module.prefsWatched[name]) {
+      Module.prefsWatched[name] = true;
       window.addEventListener("storage", (event) => {
         if (event.storageArea !== localStorage || event.key !== name) return;
         const text = stringToNewUTF8(event.newValue ?? "");

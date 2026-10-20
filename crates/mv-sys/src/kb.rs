@@ -987,7 +987,7 @@ pub unsafe fn ShapeUtf32WithUserId(
             Utf32.len() as c_int,
             UserId,
             UserIdIncrement,
-        )
+        );
     }
 }
 
@@ -1007,7 +1007,7 @@ pub unsafe fn ShapeUtf8(
             Utf8.as_ptr() as *mut u8,
             Utf8.len() as c_int,
             UserIdGenerationMode,
-        )
+        );
     }
 }
 
@@ -1029,7 +1029,7 @@ pub unsafe fn ShapeUtf8WithUserId(
             Utf8.len() as c_int,
             UserId,
             UserIdGenerationMode,
-        )
+        );
     }
 }
 
@@ -1237,7 +1237,7 @@ pub unsafe fn BreakEntireString(
             BreakFlags.as_mut_ptr(),
             BreakFlags.len() as c_int,
             BreakFlagCount,
-        )
+        );
     }
 }
 
@@ -1272,7 +1272,7 @@ pub unsafe fn BreakEntireStringUtf32(
             BreakFlags.as_mut_ptr(),
             BreakFlags.len() as c_int,
             BreakFlagCount,
-        )
+        );
     }
 }
 
@@ -1307,7 +1307,7 @@ pub unsafe fn BreakEntireStringUtf8(
             BreakFlags.as_mut_ptr(),
             BreakFlags.len() as c_int,
             BreakFlagCount,
-        )
+        );
     }
 }
 
