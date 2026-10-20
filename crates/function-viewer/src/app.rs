@@ -74,6 +74,33 @@ pub struct App {
     /// The settings menu's own state (open flag and keyboard focus); h1-settings
     /// appends it here, h1-frame's `ThemeState` holds the theme picks.
     pub settings: crate::settings::SettingsMenuState,
+    /// The Cartesian plane's camera: drag to pan, flick to glide, wheel to
+    /// zoom (h2-input; `camera.rs` owns the state machine).
+    pub camera: crate::camera::Camera,
+    /// The `center` page param: the live value, its debounce and its flush
+    /// (h2-input; `url.rs` owns the state machine).
+    pub center_param: crate::url::QueryParam<[f64; 2]>,
+    /// The `scale` page param, as above.
+    pub scale_param: crate::url::QueryParam<f64>,
+    /// When the camera last stepped, on the app's clock; 0 when it is still
+    /// (h2-input; the next step's `dt` measures from here).
+    pub camera_frame_at: crate::app_loop::Time,
+    /// The plotted function switch: the shown and fading functions with the
+    /// ms since the switch began (h3; `plot.rs` owns the state machine).
+    pub shown: crate::plot::Shown,
+    /// The `func` page param: the live value with its flush (h3; `url.rs`
+    /// owns the state machine; the pick writes it at once, as the hook's
+    /// `setFunc` with `{ flush: true }` does).
+    pub func_param: crate::url::QueryParam<crate::functions::FunctionSlug>,
+    /// When the switch last stepped, on the app's clock; `None` while at
+    /// rest and on a switch-from-rest's own turn (h3; the turn draws the
+    /// render-phase curves, the loop steps from the turn after).
+    pub plot_frame_at: Option<crate::app_loop::Time>,
+    /// Skip the plot step on a mid-switch re-pick's own turn, keeping the
+    /// running clock (h3; the hook's loop is keyed on `switching`, so a
+    /// re-pick never restarts it: the turn draws the reset curves, the next
+    /// frame diffs from the last callback, not the click).
+    pub plot_hold: bool,
 }
 
 impl App {
@@ -200,6 +227,25 @@ impl App {
             theme: crate::theme_state::ThemeState::default(),
             transition: crate::transition::Transition::default(),
             settings: crate::settings::SettingsMenuState::closed(),
+            // The plane's camera at the URL defaults; each `build()` re-seeds
+            // camera and params from the real page query
+            // (`plane_input::init_camera_from_url`).
+            camera: crate::camera::Camera::new(
+                crate::camera::DEFAULT_CENTER,
+                crate::camera::DEFAULT_SCALE,
+            ),
+            center_param: crate::url::QueryParam::new(&crate::plane_input::CENTER_DEF, ""),
+            scale_param: crate::url::QueryParam::new(&crate::plane_input::SCALE_DEF, ""),
+            camera_frame_at: 0,
+            // The picker graphs x at the URL default; each `build()`
+            // re-seeds the param and the shown function from the real page
+            // query (`selector::init_func_from_url`).
+            func_param: crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, ""),
+            shown: crate::plot::Shown::new(crate::functions::base(
+                crate::functions::FunctionSlug::X1,
+            )),
+            plot_frame_at: None,
+            plot_hold: false,
         }
     }
 }

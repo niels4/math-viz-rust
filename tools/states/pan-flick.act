@@ -1,0 +1,16 @@
+# pan-flick (h2-input): a fast 200 px drag released at speed, then the glide.
+# Frames through 800 ms after release: the plane keeps moving right-to-left
+# (center x falling, never stepping back) and slows to rest; the URL lands
+# only at settle (no query mid-glide). Behaviour per frame against the
+# reference's label frames at the same times.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 728 490
+down
+move 928 490 over 128
+up
+frames pan-flick every 100 for 800

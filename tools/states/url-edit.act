@@ -1,0 +1,14 @@
+# url-edit (h2-input): the hash edited while the page runs.
+# After opening at rest, the hash becomes center=7,-8&scale=4: on ref/web the
+# page's own hashchange path runs, natively the harness syncs and frames; the
+# params sync and the still camera adopts, so the camera follows (behaviour:
+# views camera line center [7,-8] scale 4, url line center=7,-8&scale=4).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+hash center=7,-8&scale=4
+wait 800
+shot url-edit

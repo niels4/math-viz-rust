@@ -51,6 +51,12 @@ pub enum Type {
     MenuHelp,
     /// A selected theme row's label: Work Sans 600, 16 px.
     StrongBody,
+    /// The sidebar Function card's legend: Work Sans 700, 17 px.
+    Heading,
+    /// The function picker's option runs: STIX Two Text 400, 20 px.
+    Maths,
+    /// The picker's italic `x` runs: STIX Two Text italic 400, 20 px.
+    MathsItalic,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -118,6 +124,26 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 19.0,
         },
+        // The card legend's 28 px line box, measured on the reference.
+        Type::Heading => TypeStyle {
+            face: Face::WorkSans700,
+            size: 17.0,
+            tracking: 0.0,
+            line_height: 28.0,
+        },
+        // The option runs' 25 px line box, measured on the reference.
+        Type::Maths => TypeStyle {
+            face: Face::Stix400,
+            size: 20.0,
+            tracking: 0.0,
+            line_height: 25.0,
+        },
+        Type::MathsItalic => TypeStyle {
+            face: Face::Stix400Italic,
+            size: 20.0,
+            tracking: 0.0,
+            line_height: 25.0,
+        },
     }
 }
 
@@ -131,6 +157,9 @@ fn type_from_id(id: u16) -> Type {
         5 => Type::OptionText,
         6 => Type::MenuHelp,
         7 => Type::StrongBody,
+        8 => Type::Heading,
+        9 => Type::Maths,
+        10 => Type::MathsItalic,
         _ => unreachable!("clay font id names a text style"),
     }
 }
@@ -274,6 +303,9 @@ mod tests {
             (Type::OptionText, "System"),
             (Type::MenuHelp, "Always dark."),
             (Type::StrongBody, "Arctic Ice"),
+            (Type::Heading, "Function"),
+            (Type::Maths, "sin "),
+            (Type::MathsItalic, "x"),
         ];
         app.clay
             .as_mut()
