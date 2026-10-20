@@ -505,11 +505,6 @@ pub fn retarget(app: &mut App) {
     } else {
         Hit::default()
     };
-    let mut hit = if over {
-        hit_at(app.input.regions.as_slice(), pointer)
-    } else {
-        Hit::default()
-    };
     if captures(pressed.kind) {
         hit = pressed;
     }
