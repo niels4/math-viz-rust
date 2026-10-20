@@ -58,6 +58,45 @@ native() {
 
 # The web build is always `--release` (plan 1.6): a debug wasm is slow to
 # load and the harness drives the web build at speed.
+release_flags() {
+	# The remaps that keep this machine's paths out of a shipped binary: the repo,
+	# the cargo home (where the registry sources live), the home directory and emsdk.
+	# CARGO_HOME is derived from the cargo binary when the environment doesn't set it,
+	# because the default $HOME/.cargo is not where every machine keeps it.
+	: "${CARGO_HOME:=$(cd "$(dirname "$(command -v cargo)")/.." && pwd)}"
+	# The home remap comes first: with several matching prefixes rustc and clang apply
+	# the last one given, so the more specific cargo home, emsdk and repo remaps follow
+	# it (measured 2026-10-20: the other order left home/.local/share/cargo/... in the wasm).
+	RELEASE_RUSTFLAGS="--remap-path-prefix=$HOME=home --remap-path-prefix=$CARGO_HOME=cargo-home --remap-path-prefix=$EMSDK_DIR=emsdk --remap-path-prefix=$PWD=."
+	RELEASE_CFLAGS="-ffile-prefix-map=$HOME=home -ffile-prefix-map=$CARGO_HOME=cargo-home -ffile-prefix-map=$EMSDK_DIR=emsdk -ffile-prefix-map=$PWD=."
+}
+
+release_web_build() {
+	# The release wasm build into the target dir $1 (its own, so the check builds'
+	# artifacts are not invalidated by the different flags).
+	emsdk_env
+	release_flags
+	RUSTFLAGS="$RELEASE_RUSTFLAGS" CFLAGS="$RELEASE_CFLAGS" CXXFLAGS="$RELEASE_CFLAGS" \
+		cargo build -p function-viewer --release --target wasm32-unknown-emscripten --target-dir "$1"
+}
+
+pages() {
+	# The GitHub Pages site: the web build copied into docs/ at the repo root, which
+	# the user hosts (Settings > Pages > main, /docs). Every URL in the bundle is
+	# relative, so it serves from a subpath (https://<user>.github.io/<repo>/);
+	# .nojekyll keeps Pages from running Jekyll over it. Rebuilt whole, like build/web,
+	# as a release build: a published wasm carries no path of this machine (release_paths checks).
+	release_web_build target/pages
+	rm -rf docs
+	mkdir -p docs
+	cp target/pages/wasm32-unknown-emscripten/release/function-viewer.js docs/function-viewer.js
+	cp target/pages/wasm32-unknown-emscripten/release/function_viewer.wasm docs/function_viewer.wasm
+	cp web/index.html docs/index.html
+	touch docs/.nojekyll
+	release_paths docs/index.html docs/function-viewer.js docs/function_viewer.wasm
+	echo "built docs/ (the GitHub Pages site: index.html, function-viewer.js, function_viewer.wasm, .nojekyll; release build, no paths of this machine)"
+}
+
 web() {
 	emsdk_env
 	echo "build.sh web: cargo build -p function-viewer --release --target wasm32-unknown-emscripten"
@@ -98,9 +137,7 @@ tests() {
 # is printed with why it is allowed.
 release() {
 	echo "build.sh release (native): bundled SDL3, rpath, remapped paths"
-	: "${CARGO_HOME:=$HOME/.cargo}"
-	RELEASE_RUSTFLAGS="--remap-path-prefix=$PWD=. --remap-path-prefix=$CARGO_HOME=cargo-home --remap-path-prefix=$HOME=home --remap-path-prefix=$EMSDK_DIR=emsdk"
-	RELEASE_CFLAGS="-ffile-prefix-map=$PWD=. -ffile-prefix-map=$CARGO_HOME=cargo-home -ffile-prefix-map=$HOME=home -ffile-prefix-map=$EMSDK_DIR=emsdk"
+		release_flags
 	RUSTFLAGS="-C link-args=-Wl,-rpath,@loader_path $RELEASE_RUSTFLAGS" \
 		CFLAGS="$RELEASE_CFLAGS" CXXFLAGS="$RELEASE_CFLAGS" \
 		cargo build --release -p function-viewer --features bundled-sdl
@@ -133,7 +170,7 @@ release() {
 # Emscripten's in-browser file system.
 release_paths() {
 	local file path found=() roots=("$PWD" "$HOME" "${CARGO_HOME:-$HOME/.cargo}" "$EMSDK_DIR") root load=""
-	if [[ $(uname -s) == Darwin ]]; then
+	if [[ $(uname -s) == Darwin && -f build/release/native/function-viewer ]]; then
 		load=$(otool -L build/release/native/function-viewer | tail -n +2 | awk '{print $1}')
 		load+=$'\n/usr/lib/dyld'
 	fi
@@ -143,6 +180,11 @@ release_paths() {
 			[[ -z $root ]] && continue
 			if LC_ALL=C grep -a -q -F "$root" "$file"; then
 				found+=("$file: holds $root")
+			fi
+		done
+		for leak in "home/.local/" "home/.cargo/" "home/emsdk/"; do
+			if LC_ALL=C grep -a -q -F "$leak" "$file"; then
+				found+=("$file: holds $leak (a cargo-home or emsdk path remapped as home: fix the remap order)")
 			fi
 		done
 		while IFS= read -r path; do
@@ -163,7 +205,7 @@ release_paths() {
 		echo "release: paths of this machine in the outputs (above)" >&2
 		return 1
 	fi
-	echo "release: no path of this machine in build/release/ ($total absolute paths, each the dynamic linker's, a device's or Emscripten's in-browser file system's)"
+	echo "release: no path of this machine in the outputs ($total absolute paths, each the dynamic linker's, a device's or Emscripten's in-browser file system's)"
 }
 
 check() {
@@ -194,6 +236,7 @@ check() {
 case "${1:-all}" in
 native) native ;;
 web) web ;;
+pages) pages ;;
 test) tests ;;
 release) release ;;
 check) check ;;
