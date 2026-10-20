@@ -677,6 +677,37 @@ no new tokens (all eight tabled).
   (1730,817) at 40, both single AA pixels on drifted dash ends, 0 flat),
   the h7-plane-recorded (d) family (their 2 px at 41; h6 accepted to 33).
 
+### h8-points-row (the Points card's rows)
+
+- The readout's x slot is the closed field's input, not a span: the input
+  is only the value's chars wide (`--chars: max(1, text.length)`,
+  unrounded) and the lead right-aligns the whole [open paren + input]
+  group (`justify-content: flex-end`), so `f(` sits the slot's leftover
+  right of the lead's left edge (11.8 px at the default slots — measured,
+  not eyeballed). The stand-in paints that closed look until
+  h8-points-field swaps its field in.
+- The role slot wraps badge and role to a clipped second line, each whole
+  or not at all: hidden runs declare no scope and take no gap, or an
+  unbreakable fixed run stretches the head past the card (sci showed a
+  392 px card). Shown widths come from one `slot_shown` predicate shared
+  by layout and paint.
+- The badge's pill is primary pre-blended opaque over the card (the
+  framebuffer blends linear while the reference composites gamma: a
+  translucent fill reads ~30 levels light, measured). The linger needs a
+  `Timer::MovedLinger` keep-awake: shots photograph the buffer without
+  drawing, so without it the app sleeps after the release's URL flush and
+  the badge never clears. Feed `MovedBy` the frame clock (`clock_now`),
+  never `input.time`, which is 0 outside input handling.
+- The first frame always lays out stale (no plane box yet): refresh the
+  cached range in the paint and dirty on change, or query states
+  photograph `p = 2` forever. P's `p` rides the shared param plumbing
+  (`init_params_from_url`, `params_step`, `external_params_synced`,
+  `params_pending`).
+- Playwright's `add_init_script` takes a program, not a function value —
+  an arrow-function wrapper silently never runs (two probe rounds kept
+  Arctic Ice). Seed each theme in its own slot; the three-key model reads
+  `dark-theme` in dark mode.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

@@ -163,6 +163,9 @@ pub fn init_params_from_url(app: &mut App) {
     app.b_param = crate::url::QueryParam::new(&B_PARAM, &query);
     app.h_param = crate::url::QueryParam::new(&H_PARAM, &query);
     app.k_param = crate::url::QueryParam::new(&K_PARAM, &query);
+    // P's x starts from the page query with the transform params
+    // (h8-points-row; the slider and the field write it through the same
+    // param at their merges).
     app.p_param = crate::url::QueryParam::new(&crate::functions::P_PARAM, &query);
 }
 

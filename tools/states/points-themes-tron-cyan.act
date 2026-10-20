@@ -1,0 +1,9 @@
+# points-themes-tron-cyan (h8-points-row): the Points card in tron-cyan (point_p and
+# point_q per theme).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme tron-cyan
+wait 2000
+shot points-themes-tron-cyan

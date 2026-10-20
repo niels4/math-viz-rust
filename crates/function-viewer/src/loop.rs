@@ -73,6 +73,9 @@ pub enum Timer {
     /// The return-to-centre tooltip: the pointer's 400 ms hover is over
     /// (h6-handles).
     OverlayTip,
+    /// The moved badge's linger: a frame is due so the badge can clear
+    /// (h8-points-row).
+    MovedLinger,
 }
 
 /// One deadline per timer.
@@ -232,6 +235,7 @@ pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
     match timer {
         Timer::ScrubRest => crate::scrub_value::rest_fired(app),
         Timer::OverlayTip => crate::overlay::tip_fired(app),
+        Timer::MovedLinger => crate::points_section::moved_linger_fired(app),
     }
 }
 

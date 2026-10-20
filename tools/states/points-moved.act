@@ -1,0 +1,15 @@
+# points-moved (h8-points-row): a coarse drag of k's box by +25 px, held:
+# the badge "moved +0.50" before "pinned". k's box centre is 331.5 485.5
+# at 1440x900 (ruler-k-30's probe).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 485.5
+down
+move 356.5 485.5 over 80
+shot points-moved
+up
+wait 1200
