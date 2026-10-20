@@ -1,19 +1,19 @@
-//! The transform applied to the plane's curves, and the shift and scale
-//! handles and the lit-parameter lines that go with it.
+//! The transform applied to the plane's curves, and the lit-parameter lines
+//! that go with it.
 //!
-//! Ported from math-viz2 at `5cef052`:
+//! Ported from math-viz2 at `251c080`:
 //!
 //! - `src/components/views/FunctionViewer/transformCurves.ts`:
-//!   [`Transform`], [`transform_curves`], [`transform_handles`],
-//!   [`transform_lines`].
+//!   [`Transform`], [`transform_curves`], [`unit_point`], [`transform_lines`]
+//!   (`transformHandles` is gone at this hash: the plane builds its own
+//!   handles from the same points).
 //! - `src/components/views/FunctionViewer/baseFunctions.ts` (`unitX`):
 //!   the `u` argument stays a plain `f64` the caller passes;
 //!   `crate::functions::unit_x` is the value the caller reads.
 //!
-//! The params type is `crate::state::TransformParam` (h4's `state.rs`).
+//! The params type is `crate::state::TransformParam`.
 
-use crate::functions::{FunctionSlug, base};
-use crate::plot::{HandleKind, LineKind, PlotCurve, PlotFunction, PlotHandle, PlotLine, PlotPoint};
+use crate::plot::{LineKind, PlotCurve, PlotFunction, PlotLine, PlotPoint};
 use crate::state::TransformParam;
 
 /// The four transform values (`Transform` in `transformCurves.ts`): a
@@ -138,33 +138,14 @@ pub fn transform_curves(curves: &[PlotCurve], transform: Transform) -> Vec<Trans
         .collect()
 }
 
-/// The plane x where a base function shows its scale handle: 1 for the
-/// monomials, π/2 (the peak) for `sin x`. Used here through the `u`
-/// argument the caller passes.
-fn unit_point(g: PlotFunction, u: f64, transform: Transform) -> PlotPoint {
+/// The plane point a parameter value puts the scale handle on: `x = h + b·u`
+/// and `y = a·g(u) + k` (`unitPoint`).
+#[must_use]
+pub fn unit_point(g: PlotFunction, u: f64, transform: Transform) -> PlotPoint {
     PlotPoint {
         x: transform.h + transform.b * u,
         y: transform.a * g(u) + transform.k,
     }
-}
-
-/// The shift handle (a diamond on the vertex) and the scale handle (a
-/// square on the curve at `u`) for one function (`transformHandles`).
-#[must_use]
-pub fn transform_handles(slug: FunctionSlug, u: f64, transform: Transform) -> Vec<PlotHandle> {
-    vec![
-        PlotHandle {
-            kind: HandleKind::Diamond,
-            at: PlotPoint {
-                x: transform.h,
-                y: transform.k,
-            },
-        },
-        PlotHandle {
-            kind: HandleKind::Square,
-            at: unit_point(base(slug), u, transform),
-        },
-    ]
 }
 
 /// The dashed box joining the shift handle to the unit point (`dashedBox`).
@@ -187,14 +168,17 @@ fn dashed_box(from: PlotPoint, to: PlotPoint) -> Vec<PlotLine> {
         .collect()
 }
 
-/// The lines while a parameter is lit (`transformLines`): an arrow from the
-/// axis for a shift, a dashed box with one measured side for a scale,
-/// nothing while nothing is lit. `label` stays `None` (the TypeScript
-/// carries no label); h6-handles decides what, if anything, fills it.
+/// The lines while parameters are lit (`transformLines`): the dashed box
+/// once while a or b is lit, then one line per lit parameter in the list's
+/// order — the k arrow up from the x-axis, the h arrow in from the y-axis,
+/// the a side measured from the corner up to the unit point, the b side
+/// measured from the shift handle along to the corner. `label` stays `None`
+/// (the TypeScript carries no label); h6-handles decides what, if anything,
+/// fills it.
 #[must_use]
 pub fn transform_lines(
-    lit: Option<TransformParam>,
-    slug: FunctionSlug,
+    lit: &[TransformParam],
+    g: PlotFunction,
     u: f64,
     transform: Transform,
 ) -> Vec<PlotLine> {
@@ -202,16 +186,10 @@ pub fn transform_lines(
         x: transform.h,
         y: transform.k,
     };
-    let unit = unit_point(base(slug), u, transform);
+    let unit = unit_point(g, u, transform);
     let corner = PlotPoint {
         x: unit.x,
         y: shift.y,
-    };
-    let arrow = |from: PlotPoint| PlotLine {
-        kind: LineKind::Arrow,
-        from,
-        to: shift,
-        label: None,
     };
     let measured = |from: PlotPoint, to: PlotPoint| PlotLine {
         kind: LineKind::Measured,
@@ -219,27 +197,34 @@ pub fn transform_lines(
         to,
         label: None,
     };
-    match lit {
-        None => Vec::new(),
-        Some(TransformParam::K) => vec![arrow(PlotPoint { x: shift.x, y: 0.0 })],
-        Some(TransformParam::H) => vec![arrow(PlotPoint { x: 0.0, y: shift.y })],
-        Some(TransformParam::A) => {
-            let mut lines = dashed_box(shift, unit);
-            lines.push(measured(corner, unit));
-            lines
-        }
-        Some(TransformParam::B) => {
-            let mut lines = dashed_box(shift, unit);
-            lines.push(measured(shift, corner));
-            lines
-        }
-    }
+    let mut lines = if lit.contains(&TransformParam::A) || lit.contains(&TransformParam::B) {
+        dashed_box(shift, unit)
+    } else {
+        Vec::new()
+    };
+    lines.extend(lit.iter().map(|param| match param {
+        TransformParam::K => PlotLine {
+            kind: LineKind::Arrow,
+            from: PlotPoint { x: shift.x, y: 0.0 },
+            to: shift,
+            label: None,
+        },
+        TransformParam::H => PlotLine {
+            kind: LineKind::Arrow,
+            from: PlotPoint { x: 0.0, y: shift.y },
+            to: shift,
+            label: None,
+        },
+        TransformParam::A => measured(corner, unit),
+        TransformParam::B => measured(shift, corner),
+    }));
+    lines
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::functions::unit_x;
+    use crate::functions::{FunctionSlug, base, unit_x};
 
     fn square() -> PlotCurve {
         PlotCurve {
@@ -335,27 +320,22 @@ mod tests {
     }
 
     #[test]
-    fn with_no_values_set_shift_handle_at_origin_and_scale_handle_at_1_1() {
+    fn with_no_values_set_y_equals_x2_has_its_scale_handle_at_1_1() {
         assert_eq!(
-            transform_handles(FunctionSlug::X2, unit_x(FunctionSlug::X2), untouched()),
-            vec![
-                PlotHandle {
-                    kind: HandleKind::Diamond,
-                    at: PlotPoint { x: 0.0, y: 0.0 },
-                },
-                PlotHandle {
-                    kind: HandleKind::Square,
-                    at: PlotPoint { x: 1.0, y: 1.0 },
-                },
-            ]
+            unit_point(
+                base(FunctionSlug::X2),
+                unit_x(FunctionSlug::X2),
+                untouched()
+            ),
+            PlotPoint { x: 1.0, y: 1.0 }
         );
     }
 
     #[test]
-    fn scaled_and_shifted_curve_has_its_handles_on_the_vertex_and_on_the_curve() {
+    fn scaled_and_shifted_x2_has_its_scale_handle_on_the_curve_at_2_5() {
         assert_eq!(
-            transform_handles(
-                FunctionSlug::X2,
+            unit_point(
+                base(FunctionSlug::X2),
                 unit_x(FunctionSlug::X2),
                 Transform {
                     a: 2.0,
@@ -364,58 +344,43 @@ mod tests {
                     k: 3.0,
                 },
             ),
-            vec![
-                PlotHandle {
-                    kind: HandleKind::Diamond,
-                    at: PlotPoint { x: 1.0, y: 3.0 },
-                },
-                PlotHandle {
-                    kind: HandleKind::Square,
-                    at: PlotPoint { x: 2.0, y: 5.0 },
-                },
-            ]
+            PlotPoint { x: 2.0, y: 5.0 }
         );
     }
 
     #[test]
     fn sinx_scale_handle_sits_on_its_peak_which_b_2_moves_to_pi() {
-        let handles =
-            transform_handles(FunctionSlug::SinX, unit_x(FunctionSlug::SinX), untouched());
         assert_eq!(
-            handles[1],
-            PlotHandle {
-                kind: HandleKind::Square,
-                at: PlotPoint {
-                    x: std::f64::consts::FRAC_PI_2,
-                    y: 1.0,
-                },
+            unit_point(
+                base(FunctionSlug::SinX),
+                unit_x(FunctionSlug::SinX),
+                untouched()
+            ),
+            PlotPoint {
+                x: std::f64::consts::FRAC_PI_2,
+                y: 1.0,
             }
         );
-
-        let wide = transform_handles(
-            FunctionSlug::SinX,
-            unit_x(FunctionSlug::SinX),
-            Transform {
-                b: 2.0,
-                ..untouched()
-            },
-        );
         assert_eq!(
-            wide[1],
-            PlotHandle {
-                kind: HandleKind::Square,
-                at: PlotPoint {
-                    x: std::f64::consts::PI,
-                    y: 1.0,
+            unit_point(
+                base(FunctionSlug::SinX),
+                unit_x(FunctionSlug::SinX),
+                Transform {
+                    b: 2.0,
+                    ..untouched()
                 },
+            ),
+            PlotPoint {
+                x: std::f64::consts::PI,
+                y: 1.0,
             }
         );
     }
 
-    fn lines_on_square(lit: Option<TransformParam>) -> Vec<PlotLine> {
+    fn lines_on_square(lit: &[TransformParam]) -> Vec<PlotLine> {
         transform_lines(
             lit,
-            FunctionSlug::X2,
+            base(FunctionSlug::X2),
             unit_x(FunctionSlug::X2),
             Transform {
                 a: 2.0,
@@ -450,7 +415,7 @@ mod tests {
     #[test]
     fn while_k_is_lit_an_arrow_rises_from_the_x_axis_to_the_shift_handle() {
         assert_eq!(
-            lines_on_square(Some(TransformParam::K)),
+            lines_on_square(&[TransformParam::K]),
             vec![PlotLine {
                 kind: LineKind::Arrow,
                 from: PlotPoint { x: 1.0, y: 0.0 },
@@ -463,7 +428,7 @@ mod tests {
     #[test]
     fn while_h_is_lit_an_arrow_runs_from_the_y_axis_to_the_shift_handle() {
         assert_eq!(
-            lines_on_square(Some(TransformParam::H)),
+            lines_on_square(&[TransformParam::H]),
             vec![PlotLine {
                 kind: LineKind::Arrow,
                 from: PlotPoint { x: 0.0, y: 3.0 },
@@ -482,7 +447,7 @@ mod tests {
             to: PlotPoint { x: 2.0, y: 5.0 },
             label: None,
         });
-        assert_eq!(lines_on_square(Some(TransformParam::A)), expected);
+        assert_eq!(lines_on_square(&[TransformParam::A]), expected);
     }
 
     #[test]
@@ -494,11 +459,53 @@ mod tests {
             to: PlotPoint { x: 2.0, y: 3.0 },
             label: None,
         });
-        assert_eq!(lines_on_square(Some(TransformParam::B)), expected);
+        assert_eq!(lines_on_square(&[TransformParam::B]), expected);
+    }
+
+    #[test]
+    fn while_h_and_k_are_lit_both_arrows_meet_at_the_shift_handle_h_first() {
+        assert_eq!(
+            lines_on_square(&[TransformParam::H, TransformParam::K]),
+            vec![
+                PlotLine {
+                    kind: LineKind::Arrow,
+                    from: PlotPoint { x: 0.0, y: 3.0 },
+                    to: PlotPoint { x: 1.0, y: 3.0 },
+                    label: None,
+                },
+                PlotLine {
+                    kind: LineKind::Arrow,
+                    from: PlotPoint { x: 1.0, y: 0.0 },
+                    to: PlotPoint { x: 1.0, y: 3.0 },
+                    label: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn while_a_and_b_are_lit_one_dashed_box_shows_with_both_measured_sides_a_first() {
+        let mut expected = line_box();
+        expected.push(PlotLine {
+            kind: LineKind::Measured,
+            from: PlotPoint { x: 2.0, y: 3.0 },
+            to: PlotPoint { x: 2.0, y: 5.0 },
+            label: None,
+        });
+        expected.push(PlotLine {
+            kind: LineKind::Measured,
+            from: PlotPoint { x: 1.0, y: 3.0 },
+            to: PlotPoint { x: 2.0, y: 3.0 },
+            label: None,
+        });
+        assert_eq!(
+            lines_on_square(&[TransformParam::A, TransformParam::B]),
+            expected
+        );
     }
 
     #[test]
     fn while_nothing_is_lit_no_line_shows() {
-        assert_eq!(lines_on_square(None), Vec::new());
+        assert_eq!(lines_on_square(&[]), Vec::new());
     }
 }

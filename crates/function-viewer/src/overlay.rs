@@ -8,9 +8,11 @@
 //! hover and the click. The click resets through [`App::reset_view`], which
 //! h2-input wires to its live camera.
 //!
-//! At this hash the button renders on every view: `HtmlOverlay.tsx` holds no
-//! visibility conditional (the reference shows it at the default camera too,
-//! probed at `.local/probe/default.json`). `button_visible` records that.
+//! At this hash the button renders only off the default camera
+//! (`HtmlOverlay.tsx`'s `moved`: the centre or scale off its default;
+//! `HtmlOverlay.test.tsx`'s one test). `button_visible` records that, and
+//! the tooltip beside it (`Reset view to origin`, shown on hover past its
+//! 400 ms delay and on keyboard focus).
 
 use mv_sys::clay;
 
@@ -91,9 +93,113 @@ pub fn overlay_button_box(plane: &clay::BoundingBox) -> clay::BoundingBox {
     }
 }
 
-/// Whether the button shows: always at this hash (see the module docs).
-pub fn button_visible() -> bool {
-    true
+/// Whether the button shows: off the default camera only (`moved`: the
+/// live centre or scale off its default, as `HtmlOverlay.tsx` reads them).
+pub fn button_visible(center: [f64; 2], scale: f64) -> bool {
+    center != crate::camera::DEFAULT_CENTER || scale != crate::camera::DEFAULT_SCALE
+}
+
+/// The tooltip's text (`aria-hidden`, never read).
+pub const TIP_TEXT: &str = "Reset view to origin";
+
+/// The tooltip's text size and line height (`font: 400 13px/15px
+/// var(--font-sans)`).
+pub const TIP_FONT_SIZE: f32 = 13.0;
+
+/// The tooltip's vertical padding (`padding: 7px 10px`).
+pub const TIP_PAD_Y: f64 = 7.0;
+
+/// The tooltip's horizontal padding (`padding: 7px 10px`).
+pub const TIP_PAD_X: f64 = 10.0;
+
+/// The tooltip's gap past the button (`right: calc(100% + 8px)`).
+pub const TIP_GAP: f64 = 8.0;
+
+/// The tooltip's border, rimming the plate (`border: 1px solid var(--border)`).
+pub const TIP_BORDER: f64 = 1.0;
+
+/// How long the pointer rests on the button before the tip shows (the CSS
+/// `transition: visibility 0s 400ms`, gated by `@media (hover: hover)`,
+/// which is always true natively and in every harness engine).
+pub const TIP_DELAY_MS: i64 = 400;
+
+/// Whether the tooltip shows: past [`TIP_DELAY_MS`] of hover, or on keyboard
+/// focus at once (`:focus-visible`; the port's `focus_visible` flag).
+/// `hovered_since` is the app-clock time the hover began (the page slot
+/// keeps it); `None` while the pointer is elsewhere.
+pub fn tip_visible(
+    hovered_since: Option<crate::app_loop::Time>,
+    focused: bool,
+    focus_visible: bool,
+    now: crate::app_loop::Time,
+) -> bool {
+    if focused && focus_visible {
+        return true;
+    }
+    hovered_since.is_some_and(|since| now - since >= TIP_DELAY_MS * crate::app_loop::MS)
+}
+
+/// Fires the tooltip's delay: the pointer rested on the button past
+/// [`TIP_DELAY_MS`], so the next draw shows the tip. Leaving early cancels
+/// the timer in the page slot, so a fired timer always means a showing tip.
+pub fn tip_fired(app: &mut crate::app::App) {
+    if app.input.hover.kind == crate::input::HitKind::ReturnToCenter {
+        app.dirty = true;
+    }
+}
+
+/// The tooltip's box from the button's: its right edge sits [`TIP_GAP`] past
+/// the button's padding box (the 1 px border back in), it centres on the
+/// button, and it wraps the measured text with [`TIP_PAD_X`]/[`TIP_PAD_Y`]
+/// inside its border. `text_width` is the label's measured advance.
+pub fn tip_geometry(button: &clay::BoundingBox, text_width: f64) -> [f64; 4] {
+    let pad_right = f64::from(button.x + button.width) - TIP_BORDER;
+    let right = pad_right - (f64::from(button.width) - 2.0 * TIP_BORDER + TIP_GAP);
+    let width = text_width + 2.0 * TIP_PAD_X + 2.0 * TIP_BORDER;
+    let height = 15.0 + 2.0 * TIP_PAD_Y + 2.0 * TIP_BORDER;
+    let middle = f64::from(button.y) + f64::from(button.height) / 2.0;
+    [right - width, middle - height / 2.0, width, height]
+}
+
+/// The tooltip's text style: the sans face at 13 px (`--font-sans`).
+pub fn tip_style() -> mv_text::Style {
+    mv_text::Style {
+        face: mv_text::Face::WorkSans400,
+        size: TIP_FONT_SIZE,
+        tracking: 0.0,
+        features: mv_text::Features::new(),
+    }
+}
+
+/// Paints the tooltip: the card plate with its border rim and the label
+/// (Canvas `textBaseline: "top"`: the em box's top on the padded top, so the
+/// baseline sits one ascent below it).
+pub fn paint_tip(
+    fonts: &mut mv_text::Fonts,
+    vg: &mut mv_nvg::Context,
+    button: &clay::BoundingBox,
+    colors: &OverlayColors,
+) {
+    let style = tip_style();
+    let text_width = f64::from(mv_text::measure(fonts, style, TIP_TEXT));
+    let [x, y, w, h] = tip_geometry(button, text_width);
+    vg.begin_path();
+    vg.rounded_rect(x as f32, y as f32, w as f32, h as f32, BUTTON_RADIUS);
+    vg.fill_color(colors.button);
+    vg.fill();
+    vg.stroke_color(colors.button_rim);
+    vg.stroke_width(1.0);
+    vg.stroke();
+    let ascent = mv_text::metrics(fonts, style.face).ascent * style.size;
+    mv_text::draw(
+        fonts,
+        vg,
+        style,
+        (x + TIP_BORDER + TIP_PAD_X) as f32,
+        (y + TIP_BORDER + TIP_PAD_Y) as f32 + ascent,
+        TIP_TEXT,
+        colors.button_ink,
+    );
 }
 
 /// The overlay's colours: the brackets (`foreground-muted`), the button's
@@ -273,11 +379,55 @@ mod tests {
         );
     }
 
-    /// At this hash the button shows on every view, including the default
-    /// camera (probed: the button's box exists in all fourteen states).
+    /// At this hash the button shows only off the default camera
+    /// (`HtmlOverlay.test.tsx`: absent at rest, back after the click).
     #[test]
-    fn button_shows_on_every_view() {
-        assert!(button_visible());
+    fn button_shows_only_off_the_default_view() {
+        assert!(!button_visible([0.0, 0.0], 0.5));
+        assert!(button_visible([2.0, 3.0], 0.5));
+        assert!(button_visible([0.0, 0.0], 1.0));
+        assert!(button_visible([0.0, 0.0], 2.0));
+    }
+
+    /// The tooltip's box against the probe (button 1359.5, 780.5, 36, 36;
+    /// tip 1205.875, 783, 146.625, 31 with the label advancing 124.625).
+    #[test]
+    fn tip_box_matches_probe() {
+        let button = overlay_button_box(&plane());
+        let [x, y, w, h] = tip_geometry(&button, 124.625);
+        for (got, want) in [(x, 1205.875), (y, 783.0), (w, 146.625), (h, 31.0)] {
+            assert!((got - want).abs() <= 0.5, "tip {got} against {want}");
+        }
+    }
+
+    /// The fired delay dirties the frame while the pointer is still on the
+    /// button, and does nothing after it left.
+    #[test]
+    fn tip_fired_dirties_while_hovered() {
+        let mut app = crate::fixture::headless_app();
+        app.input.hover = crate::input::Hit {
+            kind: crate::input::HitKind::ReturnToCenter,
+            index: 0,
+        };
+        tip_fired(&mut app);
+        assert!(app.dirty);
+        app.dirty = false;
+        app.input.hover = crate::input::Hit::default();
+        tip_fired(&mut app);
+        assert!(!app.dirty);
+    }
+
+    /// The tip shows past 400 ms of hover, or on keyboard focus at once.
+    #[test]
+    fn tip_waits_out_its_hover_delay() {
+        const MS: i64 = crate::app_loop::MS;
+        assert!(!tip_visible(None, false, false, 10_000 * MS));
+        assert!(!tip_visible(Some(0), false, false, 399 * MS));
+        assert!(tip_visible(Some(0), false, false, 400 * MS));
+        assert!(tip_visible(Some(0), false, false, 10_000 * MS));
+        assert!(!tip_visible(None, false, false, 10_000 * MS));
+        assert!(tip_visible(None, true, true, 0));
+        assert!(!tip_visible(None, true, false, 0));
     }
 
     /// The click clears the camera's keys, deleting them at their defaults,

@@ -1,0 +1,11 @@
+# lines-none (H6): x2 at a=2, h=1, k=-3 with the pointer parked top-left: no line shows.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 2000
+move 0 0
+wait 1000
+shot lines-none

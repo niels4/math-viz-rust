@@ -1,0 +1,11 @@
+# overlay-tip (H6): off the default camera, the pointer on the return-to-centre button: the tooltip shows.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=2,3&scale=1
+wait 2000
+move 1377.5 798.5
+wait 1000
+shot overlay-tip

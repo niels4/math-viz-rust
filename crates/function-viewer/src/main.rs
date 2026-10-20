@@ -23,6 +23,7 @@ pub mod camera;
 pub mod draw;
 pub mod fixture;
 pub mod flex;
+pub mod flip;
 pub mod functions;
 pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
