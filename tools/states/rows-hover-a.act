@@ -1,11 +1,14 @@
-# rows-hover-a (H4): the pointer on a's row (216, 432: row a's centre at
-# 1440x900) — a lit in the row and in both readout lines through the sync.
+# rows-hover-a (H4): the pointer on a's row (216, 299: row a's centre
+# in this tree) — a lit in the row (and, after h4-readout, the form).
+# Coordinates are this tree's (the function card is 104 tall without
+# the readout): row a/k/b/h at y 277/321/382/426. h4-readout grows the
+# function card by 133.5, landing rows at the reference y; flip back then.
 size 1440 900
 density 2
 scheme dark
 mode dark
 theme arctic-ice
 wait 2000
-move 216 432
+move 216 299
 wait 200
 shot rows-hover-a

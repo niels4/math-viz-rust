@@ -1,10 +1,14 @@
-# rows-focus-k (H4): k's field focused by click (331, 476: field k's centre).
+# rows-focus-k (H4): k's field focused by click (331, 343: field k's
+# centre in this tree).
+# Coordinates are this tree's (the function card is 104 tall without
+# the readout): row a/k/b/h at y 277/321/382/426. h4-readout grows the
+# function card by 133.5, landing rows at the reference y; flip back then.
 size 1440 900
 density 2
 scheme dark
 mode dark
 theme arctic-ice
 wait 2000
-click 331 476
+click 331 343
 wait 200
 shot rows-focus-k

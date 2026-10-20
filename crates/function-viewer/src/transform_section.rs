@@ -231,7 +231,7 @@ mod tests {
                 "Horizontal shift"
             ]
         );
-        assert_eq!(ROW_ORDER.map(TransformParam::wire), ["a", "k", "b", "h"]);
+        assert_eq!(ROW_ORDER.map(TransformParam::as_str), ["a", "k", "b", "h"]);
     }
 
     #[test]

@@ -132,6 +132,35 @@ One block per milestone, appended in merge order; empty until the first mileston
   holding zero scripts (git keeps no empty directory); `tools/states/`
   scripts need no such guard while they hold states.
 
+### h4-rows (the Transform card's rows)
+
+- The 9.5 px box side padding is fractional (Clay's padding and gaps are
+  whole px): 3.5 px edge spacers plus the 6 px gap hold each side, as the
+  picker's dividers hold its 1 px. Lay the card out and read every element's
+  box before painting anything: the layout test decides, not the eye.
+- A missing inset ring is a paint-order bug, not a missing stroke: CSS
+  paints the inset shadow inside the border (two full border rows plus one
+  ring row, measured), so the ring path sits a border inside the box. And a
+  snapped hairline rect is a moved hairline: snapping quarter-device offsets
+  drags the stroke half a device pixel off its row — snap the box, keep the
+  ring rect exact.
+- Later declarations win `hit_at` ties: declare a row's region before its
+  children so the field's region wins their overlap.
+- A refused commit still repaints: taking the draft always dirties, or the
+  rejected text sits stranded until the next interaction redraws.
+- Text input runs on SDL_StartTextInput while a field holds the focus
+  (native and web; the harness's `tap` only queues `Text` while it is
+  active); headless tests guard the window. Ctrl/Command+A is a `selected`
+  flag the next text replaces; the first text starts the draft from the
+  shown value.
+- The hover highlight syncs in `retarget` on a hover change (leave then
+  enter, as the DOM fires them; moves within one parameter skip so the
+  touch never re-stamps); the focus side syncs at its explicit setters.
+  One sync aware of every producer hit beats two partial syncs that fight.
+- Eyeballing downscaled screenshots misleads (a correct pair once read
+  swapped): md5 identity of reruns plus DOM reads settle it. Measure, don't
+  eyeball.
+
 ### h2-input: the plane's input wiring
 
 `plane_input.rs` routes the plane's SDL facts into `camera.rs` and the URL

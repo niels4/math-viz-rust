@@ -186,6 +186,17 @@ pub fn row(app: &mut App, param: TransformParam) {
     }
     decl.cornerRadius = crate::ui::corner_radius_all(ROW_RADIUS);
     let index = param_index(param) as u32;
+    // Declared before the children: `hit_at` prefers later declarations at
+    // equal depth, so the field's region (declared inside) wins their overlap.
+    crate::input::region(
+        app,
+        mv_clay::id(ROW_ID, index),
+        row_hit(param),
+        Cursor::Default,
+        Cursor::Default,
+        false,
+        crate::ui::corner_radius_all(ROW_RADIUS),
+    );
     crate::ui::ui_scope(app, mv_clay::id(ROW_ID, index), &decl, |app| {
         chip(app, param, param_ink, index);
         crate::typography::text(
@@ -198,15 +209,6 @@ pub fn row(app: &mut App, param: TransformParam) {
         );
         value_box(app, param, &shown, param_ink, field_ink, index);
     });
-    crate::input::region(
-        app,
-        mv_clay::id(ROW_ID, index),
-        row_hit(param),
-        Cursor::Default,
-        Cursor::Default,
-        false,
-        crate::ui::corner_radius_all(ROW_RADIUS),
-    );
 }
 
 /// The chip: the parameter's letter on its colour.
@@ -228,7 +230,7 @@ fn chip(app: &mut App, param: TransformParam, param_ink: clay::Color, index: u32
             app,
             mv_clay::id("TransformChipLetter", index),
             crate::typography::Type::ChipLetter,
-            param.wire(),
+            param.as_str(),
             crate::ui::ink(&theme, mv_theme::Token::Background),
             false,
         );
@@ -354,7 +356,10 @@ pub fn paint_rows(app: &mut App) {
             continue;
         };
         let ink = crate::draw::nvg_color(crate::ui::ink(&theme, param.colour_token()));
-        // The inset ring: 1 px while lit or focused, 0.5 px at rest.
+        // The inset ring: 1 px while lit or focused, 0.5 px at rest. CSS
+        // paints the inset shadow inside the border (the reference holds two
+        // full border rows plus one ring row), so the path sits a border
+        // inside the box, not on its edge.
         let lit = app.state.is_lit(param);
         let focused = app.input.focus == field_hit(param);
         let ring = if lit || focused {
@@ -362,19 +367,21 @@ pub fn paint_rows(app: &mut App) {
         } else {
             BOX_RING_REST
         };
+        let edge = BOX_BORDER + ring / 2.0;
+        // The frame snaps first (as the Border arm snaps); the ring rect
+        // itself stays exact — snapping its quarter-device offsets would drag
+        // the hairline half a device pixel off its row.
+        let frame = crate::draw::snap_box(frame, density);
         app.vg.begin_path();
         crate::draw::rounded_rect(
             &mut app.vg,
-            crate::draw::snap_box(
-                clay::BoundingBox {
-                    x: frame.x + ring / 2.0,
-                    y: frame.y + ring / 2.0,
-                    width: frame.width - ring,
-                    height: frame.height - ring,
-                },
-                density,
-            ),
-            crate::ui::corner_radius_all(BOX_RADIUS - ring / 2.0),
+            clay::BoundingBox {
+                x: frame.x + edge,
+                y: frame.y + edge,
+                width: frame.width - 2.0 * edge,
+                height: frame.height - 2.0 * edge,
+            },
+            crate::ui::corner_radius_all(BOX_RADIUS - edge),
         );
         app.vg.stroke_color(ink);
         app.vg.stroke_width(ring);
@@ -586,6 +593,12 @@ pub fn commit_param(app: &mut App, param: TransformParam) {
         field.selected = false;
         field.take()
     };
+    // Taking the draft always repaints: the box falls back to the value
+    // whether the parse takes (the value moves) or refuses (the old value
+    // comes back) — without this a refused Enter leaves its text stranded.
+    if draft.is_some() {
+        app.dirty = true;
+    }
     let next = commit_value(&draft, crate::transform_section::param_def(param).parse);
     if let Some(value) = next {
         match param {
@@ -649,7 +662,7 @@ mod tests {
                 TransformParam::H,
                 TransformParam::K
             ]
-            .map(TransformParam::wire),
+            .map(TransformParam::as_str),
             ["a", "b", "h", "k"]
         );
     }

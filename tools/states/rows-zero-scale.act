@@ -1,5 +1,8 @@
 # rows-zero-scale (H4): 0 typed into b's field with a=2 set — Enter puts the
 # old value back ("1.00") and the URL keeps a=2 with no b.
+# Coordinates are this tree's (the function card is 104 tall without
+# the readout): row a/k/b/h at y 277/321/382/426. h4-readout grows the
+# function card by 133.5, landing rows at the reference y; flip back then.
 size 1440 900
 density 2
 scheme dark
@@ -7,7 +10,7 @@ mode dark
 theme arctic-ice
 query a=2
 wait 2000
-click 331 537
+click 331 404
 wait 150
 key a ctrl
 wait 100
