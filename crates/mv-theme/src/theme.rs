@@ -450,6 +450,7 @@ mod tests {
         p3
     }
 
+    // The regenerated Token set (themes.rs): every token the theme files define.
     const ALL_TOKENS: [Token; Token::LENGTH] = [
         Token::Background,
         Token::BackgroundMuted,
@@ -470,15 +471,6 @@ mod tests {
         Token::ChartLine,
         Token::ChartAccent,
         Token::ChartGlow,
-        Token::ParamA,
-        Token::ParamK,
-        Token::ParamB,
-        Token::ParamH,
-        Token::ParamA18,
-        Token::ParamK18,
-        Token::ParamB18,
-        Token::ParamH18,
-        Token::Section,
         Token::Ordinal01,
         Token::Ordinal02,
         Token::Ordinal03,
@@ -491,34 +483,15 @@ mod tests {
         Token::Ordinal10,
         Token::Ordinal11,
         Token::Ordinal12,
-        Token::ChartPoint1,
-        Token::ChartPoint2,
-        Token::ChartAxis,
-        Token::ChartGridMajor,
-        Token::SigCurveGlow,
     ];
 
     #[test]
     fn every_colour_in_display_p3_is_the_browsers_colour() {
         use crate::color::Space;
         let fixture = load_fixture();
-        let outside = [
-            Outside {
-                slug: Slug::ArcticIce,
-                names: ["--param-a", "--param-a-18", "plate-param-a"],
-                p3: [251, 177, 144],
-            },
-            Outside {
-                slug: Slug::CleanTeal,
-                names: ["--param-k", "--param-k-18", "plate-param-k"],
-                p3: [119, 104, 0],
-            },
-            Outside {
-                slug: Slug::SageEditorial,
-                names: ["--param-k", "--param-k-18", "plate-param-k"],
-                p3: [115, 68, 13],
-            },
-        ];
+        // Every colour of the six themes at this pin lies inside sRGB (linear sRGB of each
+        // fixture oklch within -0.0005..1.0005); nothing is named outside.
+        let outside: &[Outside] = &[];
         let mut tokens = P3Tally {
             inside: 0,
             very: 0,
@@ -549,7 +522,7 @@ mod tests {
                 let name = css_name(token);
                 check_p3(
                     &mut tokens,
-                    &outside,
+                    outside,
                     slug,
                     &name,
                     theme.colors[token],
@@ -557,13 +530,9 @@ mod tests {
                     &taken.colors[&name],
                 );
             }
-            let cases: [(&str, Color, Token); 8] = [
+            let cases: [(&str, Color, Token); 4] = [
                 ("ring", ring(&theme), Token::Primary),
                 ("plate", plate(&theme, Token::Primary), Token::Primary),
-                ("plate-param-a", plate(&theme, Token::ParamA), Token::ParamA),
-                ("plate-param-k", plate(&theme, Token::ParamK), Token::ParamK),
-                ("plate-param-b", plate(&theme, Token::ParamB), Token::ParamB),
-                ("plate-param-h", plate(&theme, Token::ParamH), Token::ParamH),
                 ("badge-accent", badge(&theme, Token::Accent), Token::Accent),
                 (
                     "badge-warning",
@@ -574,7 +543,7 @@ mod tests {
             for (name, ours, ink) in cases {
                 check_p3(
                     &mut mixes,
-                    &outside,
+                    outside,
                     slug,
                     name,
                     ours,
@@ -583,12 +552,12 @@ mod tests {
                 );
             }
         }
-        // The expected count: 265 tokens with a colour, 259 inside sRGB and 6
-        // outside; 5 transparent.
-        assert_eq!(tokens.inside, 259);
-        assert_eq!(tokens.outside, 6);
-        assert_eq!(tokens.transparent, 5);
-        assert_eq!(mixes.outside, 3);
+        // The expected count: 186 tokens with a colour, all inside sRGB, none
+        // transparent; the 24 mixes inside too.
+        assert_eq!(tokens.inside, 186);
+        assert_eq!(tokens.outside, 0);
+        assert_eq!(tokens.transparent, 0);
+        assert_eq!(mixes.outside, 0);
         for (what, tally) in [("tokens", &tokens), ("the page's mixes", &mixes)] {
             eprintln!(
                 "{what} in Display P3: {} inside sRGB within 1/255 of the browser's \
@@ -662,13 +631,9 @@ mod tests {
             let name = SLUG_WORDS[slug];
             let taken = &fixture.themes[name];
             let theme = resolve(slug, Space::Srgb);
-            let cases: [(&str, Color); 8] = [
+            let cases: [(&str, Color); 4] = [
                 ("ring", ring(&theme)),
                 ("plate", plate(&theme, Token::Primary)),
-                ("plate-param-a", plate(&theme, Token::ParamA)),
-                ("plate-param-k", plate(&theme, Token::ParamK)),
-                ("plate-param-b", plate(&theme, Token::ParamB)),
-                ("plate-param-h", plate(&theme, Token::ParamH)),
                 ("badge-accent", badge(&theme, Token::Accent)),
                 ("badge-warning", badge(&theme, Token::Warning)),
             ];
@@ -687,22 +652,6 @@ mod tests {
                     theirs.rgb,
                     theirs.alpha,
                 );
-            }
-            // A row's band is the themes' own --param-<p>-18.
-            let bands = [
-                (Token::ParamA, Token::ParamA18),
-                (Token::ParamK, Token::ParamK18),
-                (Token::ParamB, Token::ParamB18),
-                (Token::ParamH, Token::ParamH18),
-            ];
-            for (param, token) in bands {
-                let (ours, theirs) = (band(&theme, param), theme.colors[token]);
-                for (o, t) in ours.iter().zip(theirs.iter()) {
-                    assert!(
-                        (o - t).abs() < 1e-6,
-                        "{name} {param:?}: {ours:?} and {theirs:?}"
-                    );
-                }
             }
         }
     }

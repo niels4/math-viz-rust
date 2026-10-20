@@ -1,19 +1,24 @@
-"""The theme fixture (`tools/run tokens`, plan section 4 M3): every colour token of the six themes
-as the reference resolves and draws it, the page's own mixes with transparent, and the themes'
-other values, written to crates/mv-theme/testdata/tokens.json, which `cargo test -p mv-theme`
-checks the port's colour maths against.
+"""The theme fixture (`tools/run tokens`): every colour token of the six themes as the
+reference resolves and draws it, written to crates/mv-theme/testdata/tokens.json, which
+`cargo test -p mv-theme` checks the port's colour maths against.
 
 The reference opens once per theme and engine, showing that theme (its class is on <body>). A
-probe element under the body reads each colour's computed value, as React's own canvas code does
-(useAppTheme.ts readVarsForClass); a swatch of the colour at full alpha (relative colour syntax)
-is painted in the page and read back from a screenshot, which is the pixel the engine draws, and
-the same colour filled into a 1x1 sRGB canvas must give the same pixel. WebKit's values are the
-fixture (the harness's default engine; the engines agree within 1/255, plan census 8); Chromium's
-and Firefox's pixels are kept beside them."""
+probe element under the body reads each colour's computed value; a swatch of the colour at full
+alpha (relative colour syntax) is painted in the page and read back from a screenshot, which is
+the pixel the engine draws, and the same colour filled into a 1x1 sRGB canvas must give the same
+pixel. WebKit's values are the fixture (the harness's default engine); Chromium's and Firefox's
+pixels are kept beside them.
+
+The page's mixes are the port's own recurring mixes (theme.rs's ring, plate and badges): every
+token they fade exists in the theme files, so the browser resolves them. The themes' other
+values (radius, the card, the shadow, the glow, the HUD ticks, the label tracking, the readout
+font) have no source in math-viz2's theme files: the fixture carries them from the previous
+file, and the tests pin them there until the milestone that draws them re-sources them."""
 
 import io
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -28,15 +33,11 @@ from themes import SLUGS, Theme, react_ref, read_themes
 OUT = REPO / "crates" / "mv-theme" / "testdata" / "tokens.json"
 FIXTURE_ENGINE = "webkit"
 
-# The page's mixes with transparent (its stylesheets at 0f4bdab), by the name of the function
-# that makes each in crates/mv-theme/src/theme.rs. A mix at 18 % is a token already (--param-<p>-18).
+# The port's recurring mixes with transparent (theme.rs's ring, plate and badges), by the name
+# of the function that makes each. Every token they fade exists in the theme files.
 MIXES = {
     "ring": "color-mix(in oklch, var(--primary) 32%, transparent)",
     "plate": "color-mix(in oklch, var(--primary) 26%, transparent)",
-    "plate-param-a": "color-mix(in oklch, var(--param-a) 26%, transparent)",
-    "plate-param-k": "color-mix(in oklch, var(--param-k) 26%, transparent)",
-    "plate-param-b": "color-mix(in oklch, var(--param-b) 26%, transparent)",
-    "plate-param-h": "color-mix(in oklch, var(--param-h) 26%, transparent)",
     "badge-accent": "color-mix(in oklch, var(--accent) 24%, transparent)",
     "badge-warning": "color-mix(in oklch, var(--warning) 24%, transparent)",
 }
@@ -79,22 +80,9 @@ PROBE_JS = r"""
     const d = ctx.getImageData(0, 0, 1, 1).data;
     out.push({ computed, canvas: [d[0], d[1], d[2]] });
   }
-  const css = (property, value) => {
-    probe.style.cssText = `position:absolute;visibility:hidden;${property}:${value}`;
-    return getComputedStyle(probe).getPropertyValue(property);
-  };
   const body = getComputedStyle(document.body);
-  const values = {
-    '--radius': css('border-top-left-radius', 'var(--radius)'),
-    '--sig-card-radius': css('border-top-left-radius', 'var(--sig-card-radius)'),
-    '--sig-card-shadow': css('box-shadow', 'var(--sig-card-shadow)'),
-    '--sig-glow-radius': body.getPropertyValue('--sig-glow-radius').trim(),
-    '--sig-hud-ticks': css('opacity', 'var(--sig-hud-ticks)'),
-    '--sig-label-tracking': css('letter-spacing', 'var(--sig-label-tracking)'),
-    '--sig-readout-font': css('font-family', 'var(--sig-readout-font)'),
-  };
   probe.remove();
-  return { out, values, background: body.getPropertyValue('--background').trim() };
+  return { out, background: body.getPropertyValue('--background').trim() };
 }
 """
 
@@ -132,8 +120,11 @@ def parse_computed(text: str) -> tuple[list[float], float]:
 
 
 def theme_prefs(slug: str) -> dict[str, str]:
+    """The storage seeding that shows `slug`: both shapes, since the reference reads the single
+    `mathviz-theme` key before h1 and the three keys after (each reference reads its own)."""
     scheme = "dark" if SLUGS.index(slug) < 3 else "light"
     return {
+        "theme": slug,
         "mode": scheme,
         "dark": slug if scheme == "dark" else "arctic-ice",
         "light": slug if scheme == "light" else "clean-teal",
@@ -145,8 +136,6 @@ class Taken:
     """One theme in one engine."""
 
     colours: dict[str, Colour]
-    values: dict[str, str]
-    shadow_colour: Colour | None
 
 
 def take(page: Page, theme: Theme, expressions: dict[str, str]) -> Taken:
@@ -173,42 +162,7 @@ def take(page: Page, theme: Theme, expressions: dict[str, str]) -> Taken:
         colours[name] = Colour(
             str(raw["computed"]), oklch, alpha, list(pixel), cast(list[int], raw["canvas"])
         )
-    values = {k: str(v) for k, v in cast(dict[str, object], found["values"]).items()}
-    shadow_colour = None
-    if (shadow := values["--sig-card-shadow"]) != "none":
-        colour = COMPUTED.search(shadow)
-        if colour is None:
-            raise SystemExit(f"{theme.slug}: a shadow the fixture can't read: {shadow}")
-        shadow_colour = take_one(page, colour[0])
-    return Taken(colours, values, shadow_colour)
-
-
-def take_one(page: Page, expression: str) -> Colour:
-    found = cast(
-        dict[str, object],
-        page.evaluate(PROBE_JS, {"colours": [expression], "size": SWATCH, "columns": COLUMNS}),
-    )
-    raw = cast(list[dict[str, object]], found["out"])[0]
-    shot = Image.open(io.BytesIO(page.screenshot())).convert("RGB")
-    # The probe appends a new grid each call; the latest sits on top at the same place.
-    pixel = cast(tuple[int, int, int], shot.getpixel((SWATCH // 2, SWATCH // 2)))
-    oklch, alpha = parse_computed(str(raw["computed"]))
-    return Colour(str(raw["computed"]), oklch, alpha, list(pixel), cast(list[int], raw["canvas"]))
-
-
-def shadow_entry(text: str, colour: Colour | None) -> dict[str, object]:
-    if text == "none" or colour is None:
-        return {"computed": text}
-    lengths = [float(v) for v in re.findall(r"(-?[\d.]+)px", COMPUTED.sub("", text))]
-    if len(lengths) < 3:
-        raise SystemExit(f"a shadow the fixture can't read: {text}")
-    return {
-        "computed": text,
-        "offset": lengths[:2],
-        "blur": lengths[2],
-        "spread": lengths[3] if len(lengths) > 3 else 0,
-        "color": colour.entry(),
-    }
+    return Taken(colours)
 
 
 def run_tokens(engines: list[str], out: Path = OUT) -> int:
@@ -232,14 +186,21 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
                         color_scheme="dark" if prefs["mode"] == "dark" else "light",
                     )
                     context.add_init_script(
-                        "localStorage.setItem('mathviz-fv-tour', 'true');"
-                        f"localStorage.setItem('mathviz-appearance', {json.dumps(json.dumps(prefs))});"
+                        "localStorage.setItem('mathviz-theme', "
+                        f"{json.dumps(json.dumps(prefs['theme']))});"
+                        "localStorage.setItem('mathviz-light-dark', "
+                        f"{json.dumps(json.dumps(prefs['mode']))});"
+                        "localStorage.setItem('mathviz-dark-theme', "
+                        f"{json.dumps(json.dumps(prefs['dark']))});"
+                        "localStorage.setItem('mathviz-light-theme', "
+                        f"{json.dumps(json.dumps(prefs['light']))});"
                     )
                     page = context.new_page()
                     log = PageLog()
                     log.watch(page)
                     page.goto(url, wait_until="load")
-                    page.wait_for_selector("canvas")
+                    # React has mounted once the theme class is on the body (no canvas yet).
+                    page.wait_for_function("() => document.body.className.length > 0")
                     taken.setdefault(engine, {})[theme.slug] = take(page, theme, expressions)
                     problems += [f"{engine} {theme.slug}: {p}" for p in log.problems()]
                     context.close()
@@ -249,6 +210,13 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
                 f"{engine} {versions[engine]}: {len(themes)} themes, {len(expressions)} colours each"
             )
 
+    try:
+        carried = cast(
+            dict[str, dict[str, object]],
+            cast(dict[str, object], json.loads(OUT.read_text()))["themes"],
+        )
+    except (FileNotFoundError, KeyError, ValueError):
+        sys.exit(f"{OUT} holds no themes to carry the values from")
     fixture_themes: dict[str, object] = {}
     spread: list[str] = []
     for theme in themes:
@@ -269,24 +237,21 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
                     )
         colours = {n: c.entry() for n, c in base.colours.items() if n not in MIXES}
         mixes = {n: base.colours[n].entry() for n in MIXES}
-        values: dict[str, object] = dict(base.values)
-        values["--sig-card-shadow"] = shadow_entry(
-            base.values["--sig-card-shadow"], base.shadow_colour
-        )
+        # No source in math-viz2's theme files: carried from the previous file, pinned until
+        # the milestone that draws them re-sources them.
+        try:
+            values = carried[theme.slug]["values"]
+        except KeyError:
+            sys.exit(f"{OUT} holds no values for {theme.slug}")
         fixture_themes[theme.slug] = {"colors": colours, "mixes": mixes, "values": values}
-        for engine in order[1:]:
-            for key, value in taken[engine][theme.slug].values.items():
-                if key != "--sig-card-shadow" and value != base.values[key]:
-                    spread.append(
-                        f"{theme.slug} {key}: {FIXTURE_ENGINE} {base.values[key]!r}, {engine} {value!r}"
-                    )
 
     fixture: dict[str, object] = {
         "about": (
-            "Every colour token of math-viz's six themes as the reference computes and draws it "
-            "(tools/src/tokens.py; `tools/run tokens` writes this file). computed: getComputedStyle's "
-            "colour; oklch: it parsed; rgb: the pixel the page draws for the colour at full alpha; "
-            "engines: the other engines' pixels."
+            "Every colour token of math-viz2's six themes as the reference computes and draws "
+            "it (tools/src/tokens.py; `tools/run tokens` writes this file). computed: "
+            "getComputedStyle's colour; oklch: it parsed; rgb: the pixel the page draws for the "
+            "colour at full alpha; engines: the other engines' pixels. The themes' other values "
+            "are carried, unsourced in math-viz2's files."
         ),
         "engine": FIXTURE_ENGINE,
         "browsers": versions,
