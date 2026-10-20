@@ -1,0 +1,13 @@
+# reduced-reset (H7): with reduced motion, resetting a=3 shows a=1 at once:
+# no spring, no frames to run.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+query func=x2&a=3
+wait 2000
+click 254 450.5
+wait 500
+shot reduced-reset

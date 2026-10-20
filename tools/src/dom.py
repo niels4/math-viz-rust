@@ -177,6 +177,9 @@ FIXTURE_STATES = (
     # fixture also runs overlay-tip (off default, pointer on the button).
     "overlay-visible",
     "overlay-tip",
+    # h7-sidebar: the h and k rulers only exist mid-drag, so the fixture runs
+    # rows-lit-hk-drag (the shift handle held).
+    "rows-lit-hk-drag",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

@@ -664,6 +664,47 @@ mod tests {
         }
     }
 
+    /// The port's boxes against `testdata/page.json` at the held shift-handle
+    /// drag (the reference at this hash): the h and k rulers under their lit
+    /// rows, within the plan's 0.5 CSS px.
+    #[test]
+    fn held_handle_rulers_match_the_fixture() {
+        const SLACK: f64 = 0.5;
+        let fixture: serde_json::Value =
+            serde_json::from_str(crate::fixture::PAGE_FIXTURE).expect("page fixture parses");
+        let boxes = &fixture["shots"]["rows-lit-hk-drag"]["webkit"]["boxes"];
+        let read = |name: &str| -> [f64; 4] {
+            let got = boxes[name].as_array().expect("box");
+            [
+                got[0].as_f64().expect("x"),
+                got[1].as_f64().expect("y"),
+                got[2].as_f64().expect("w"),
+                got[3].as_f64().expect("h"),
+            ]
+        };
+        for (row_name, want_name) in [("row_h", "ruler_h"), ("row_k", "ruler_k")] {
+            let row = read(row_name);
+            let ruler = ruler_box(&clay::BoundingBox {
+                x: row[0] as f32,
+                y: row[1] as f32,
+                width: row[2] as f32,
+                height: row[3] as f32,
+            });
+            let want = read(want_name);
+            for (got, want) in [
+                (f64::from(ruler.x), want[0]),
+                (f64::from(ruler.y), want[1]),
+                (f64::from(ruler.width), want[2]),
+                (f64::from(ruler.height), want[3]),
+            ] {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{want_name} {got} against {want}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn scale_marks_match_the_probed_drag() {
         // `a` held 30 px in: `scrubbed(1.0, 30.0, scale, coarse)` is 1.06,

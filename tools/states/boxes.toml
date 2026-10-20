@@ -89,3 +89,8 @@ flip_b = "div[data-param=\"b\"] [aria-pressed]"
 # box, and the tape is the ruler's first div child.
 ruler_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"]"
 tape_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"] > div"
+# H7 at 251c080: the rulers under the h and k rows while a shift-handle drag
+# holds them (rows-lit-hk-drag keeps the press held at its shot), same shape
+# as h5's ruler_a.
+ruler_h = "div[data-param=\"h\"] > div[aria-hidden=\"true\"]"
+ruler_k = "div[data-param=\"k\"] > div[aria-hidden=\"true\"]"

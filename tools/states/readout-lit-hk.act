@@ -1,0 +1,12 @@
+# readout-lit-hk (H7): the pointer on the shift diamond lights both h and k
+# terms in the readout's value and form lines (and the h and k rows).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&h=1&k=-2&scale=0.5
+wait 500
+move 980 592
+wait 300
+shot readout-lit-hk
