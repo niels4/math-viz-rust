@@ -180,8 +180,13 @@ pub fn iterate(app: &mut App) -> bool {
     crate::selector::external_func_synced(app);
     // The transform params' debounce and external sync (h4-rows): a pending
     // write fires, an outside edit flows into the live values. Before the
-    // draw, so the frame draws what the values moved to.
+    // draw, so the frame draws what the values moved to. A fired write
+    // repaints: the readout reads the URL, so without this it would keep
+    // showing the pre-debounce values on a quiet page.
     if crate::transform_section::params_step(app, (now / MS) as u64) {
+        app.dirty = true;
+        #[cfg(target_os = "emscripten")]
+        crate::platform_web::platform_write_hash(&app.url.full_hash());
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
     }
