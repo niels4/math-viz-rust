@@ -221,7 +221,11 @@ impl XField {
                 let delta = if key == XKey::ArrowUp { NUDGE } else { -NUDGE };
                 let next = rounded(read(&text).unwrap_or(value) + delta);
                 let shown = crate::point_format::format_number(next);
-                self.field.set_text(shown);
+                self.field.set_text(shown.clone());
+                // React's value write collapses the selection (the caret
+                // goes to the end), so an arrow nudge never keeps the
+                // open's highlight.
+                collapse_end(&mut self.field, &shown);
                 self.invalid = false;
                 vec![XEffect::Value(next)]
             }
@@ -1132,6 +1136,20 @@ mod tests {
             vec![XEffect::ValueFlush(3.256), XEffect::End(FieldEnd::Blur)]
         );
         assert_eq!(field.display(3.256), "3.26");
+    }
+
+    // An arrow nudge reformats the text, collapsing the selection to the
+    // end as the browser does on React's value write.
+    #[test]
+    fn arrows_collapse_the_selection() {
+        let mut field = open();
+        assert!(field.field.is_selected("2.00"));
+        assert_eq!(
+            field.key_down(XKey::ArrowUp, 2.0),
+            vec![XEffect::Value(2.01)]
+        );
+        assert!(!field.field.is_selected("2.01"));
+        assert_eq!(field.field.caret, [4, 4]);
     }
 
     // Arrows nudge from the parsed text when it parses, else from the value.
