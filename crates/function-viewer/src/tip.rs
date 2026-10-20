@@ -119,11 +119,14 @@ pub struct TipPlace {
 
 /// Lays out the shared tip plate under its anchor: the tone's border on the
 /// card, the cells in a wrapping row. Call at the end of the anchor's scope,
-/// as the scrub tip does in the box's.
+/// as the scrub tip does in the box's. The plate takes `tip`'s id; the cells
+/// take `first + k`, so callers with their own id stride (the scrub tip's
+/// 16 per parameter) keep it.
 pub fn layout_tip(
     app: &mut App,
     ids: &TipIds,
-    index: u32,
+    tip: u32,
+    first: u32,
     place: &TipPlace,
     tone: TipTone,
     cells: &[TipCell],
@@ -176,9 +179,9 @@ pub fn layout_tip(
         attachTo: clay::FloatingAttachToElement::ElementWithId,
         clipTo: clay::FloatingClipToElement::None,
     };
-    crate::ui::ui_scope(app, mv_clay::id(ids.tip, index), &decl, |app| {
+    crate::ui::ui_scope(app, mv_clay::id(ids.tip, tip), &decl, |app| {
         for (k, cell) in cells.iter().enumerate() {
-            tip_cell(app, ids, index + k as u32, tone, cell);
+            tip_cell(app, ids, first + k as u32, tone, cell);
         }
     });
 }
@@ -276,7 +279,10 @@ pub fn arrow_strokes(up: bool) -> (ArrowChevron, ArrowShaft) {
     // `M4 8L9 2L14 8` up / `M4 8L9 14L14 8` down, then `M9 2V14` / `M9 14V2`.
     let mid = if up { 2.0 } else { 14.0 };
     let end = if up { 14.0 } else { 2.0 };
-    ([(4.0, 8.0), (9.0, mid), (14.0, 8.0)], [(9.0, mid), (9.0, end)])
+    (
+        [(4.0, 8.0), (9.0, mid), (14.0, 8.0)],
+        [(9.0, mid), (9.0, end)],
+    )
 }
 
 /// Paints the arrow glyphs after the command walk (paths, not text, as the
@@ -367,7 +373,10 @@ mod tests {
     fn arrow_strokes_follow_the_svg_paths() {
         assert_eq!(
             arrow_strokes(true),
-            ([(4.0, 8.0), (9.0, 2.0), (14.0, 8.0)], [(9.0, 2.0), (9.0, 14.0)])
+            (
+                [(4.0, 8.0), (9.0, 2.0), (14.0, 8.0)],
+                [(9.0, 2.0), (9.0, 14.0)]
+            )
         );
         assert_eq!(
             arrow_strokes(false),

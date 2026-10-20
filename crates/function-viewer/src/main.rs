@@ -65,6 +65,7 @@ pub mod sidebar;
 pub mod state;
 pub mod svgpath;
 pub mod theme_state;
+pub mod tip;
 pub mod top_bar;
 pub mod transform_curves;
 pub mod transform_row;

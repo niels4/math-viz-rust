@@ -26,8 +26,9 @@
 //! half stays as [`Effect::Capture`] (a repaint; the shell already recorded
 //! the press).
 //!
-//! Layout constants live here for the box's own chrome (chevrons, tip, key
-//! caps); the 107×32 box geometry stays in [`crate::transform_row`].
+//! Layout constants live here for the box's own chrome; the tip's look
+//! moved to [`crate::tip`] (h8-points-field), which this module's tip calls
+//! into; the 107×32 box geometry stays in [`crate::transform_row`].
 
 use mv_sys::clay;
 
@@ -52,38 +53,8 @@ pub const REST_MS: u64 = 400;
 pub const CHEVRON_WIDTH: f32 = 6.0;
 /// The box's chevron height.
 pub const CHEVRON_HEIGHT: f32 = 12.0;
-/// The chevron and tip-arrow stroke width (1.6 px).
-pub const CHEVRON_STROKE: f32 = 1.6;
-
-/// The tip under the box: `top: calc(100% + 11px)`, `right: -1px`.
+/// The tip under the box: `top: calc(100% + 11px)`, right-flush.
 pub const TIP_BELOW_PX: f32 = 11.0;
-/// The tip's right overhang past the box's border (`right: -1px`).
-pub const TIP_RIGHT_PX: f32 = -1.0;
-/// The tip's inner gap (4 px) and padding (7 px 10 px).
-pub const TIP_GAP: f32 = 4.0;
-/// The tip's vertical padding.
-pub const TIP_PAD_Y: f32 = 7.0;
-/// The tip's horizontal padding.
-pub const TIP_PAD_X: f32 = 10.0;
-/// The tip's text: sans 400 13 px/15 px.
-pub const TIP_FONT_SIZE: f32 = 13.0;
-/// The tip's line height.
-pub const TIP_LINE_HEIGHT: f32 = 15.0;
-
-/// A key cap in the typing tip: 21 px tall, mono 600 12 px/16 px, padding
-/// 1 px 6 px 2 px, 2 px bottom border.
-pub const KEY_HEIGHT: f32 = 21.0;
-/// A key cap's font size.
-pub const KEY_FONT_SIZE: f32 = 12.0;
-/// A key cap's line height.
-pub const KEY_LINE_HEIGHT: f32 = 16.0;
-/// A key cap's horizontal padding.
-pub const KEY_PAD_X: f32 = 6.0;
-
-/// The typing tip's arrow glyphs (`Arrow`): 18×14.
-pub const TIP_ARROW_WIDTH: f32 = 18.0;
-/// The typing tip's arrow height.
-pub const TIP_ARROW_HEIGHT: f32 = 14.0;
 
 /// Whether the parameter multiplies (`a`, `b`) or adds (`h`, `k`).
 ///
@@ -1227,207 +1198,90 @@ fn mirror_scrub(app: &mut App, param: TransformParam) {
 /// (`position: absolute; top: calc(100% + 11px); right: -1px`), so it takes
 /// no part in the row's layout; pointer-transparent (no regions declared).
 /// Call at the end of the box's scope, as the chevrons' elements are.
+/// The tip's shared element ids ([`crate::tip::TipIds`]).
+fn tip_ids() -> crate::tip::TipIds {
+    crate::tip::TipIds {
+        tip: TIP_ID,
+        text: TIP_TEXT_ID,
+        key: TIP_KEY_ID,
+        arrow: TIP_ARROW_ID,
+    }
+}
+
+/// The tip's shared placement ([`crate::tip::TipPlace`]): right-flush under
+/// the box, 10 px below it.
+fn tip_place(index: u32) -> crate::tip::TipPlace {
+    crate::tip::TipPlace {
+        parent: mv_clay::id(crate::transform_row::BOX_ID, index).id,
+        drop: TIP_DROP,
+        z: 1,
+    }
+}
+
+/// A tip part as the shared tip's cell.
+fn tip_cell(part: TipPart) -> crate::tip::TipCell {
+    match part {
+        TipPart::Key(label) => crate::tip::TipCell::Key(label),
+        TipPart::KeyIcon(ArrowDir::Up) => crate::tip::TipCell::Arrow(crate::tip::ArrowDir::Up),
+        TipPart::KeyIcon(ArrowDir::Down) => crate::tip::TipCell::Arrow(crate::tip::ArrowDir::Down),
+        TipPart::Words(words) => crate::tip::TipCell::Words(words),
+    }
+}
+
+/// Lays out the tip under the box: the rest words once the pointer rested,
+/// the key help while typed into. A floating sibling of the box's content
+/// (`position: absolute; top: calc(100% + 11px)`), so it takes no part in
+/// the row's layout; pointer-transparent (no regions declared). The paint
+/// lives in [`crate::tip`]; this only maps the content over. Call at the
+/// end of the box's scope, as the chevrons' elements are.
 pub fn tip(app: &mut App, param: TransformParam, index: u32) {
     let typing = app.drafts[param].typing_from.is_some();
     let resting = app.scrub_resting == Some(param);
     if !typing && !resting {
         return;
     }
-    let theme = crate::ui::current_theme(app).clone();
-    let ink = |token| crate::ui::ink(&theme, token);
-    let mut decl = crate::ui::empty_decl();
-    decl.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
-        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
-    };
-    decl.layout.padding = clay::Padding {
-        // The 1 px border takes no layout space, so it joins the padding
-        // (the menu's `bordered` rule).
-        left: TIP_PAD_X as u16 + 1,
-        right: TIP_PAD_X as u16 + 1,
-        top: TIP_PAD_Y as u16 + 1,
-        bottom: TIP_PAD_Y as u16 + 1,
-    };
-    decl.layout.childGap = TIP_GAP as u16;
-    decl.layout.childAlignment = clay::ChildAlignment {
-        x: clay::LayoutAlignmentX::Left,
-        y: clay::LayoutAlignmentY::Center,
-    };
-    decl.backgroundColor = ink(mv_theme::Token::Card);
-    decl.border = clay::BorderElementConfig {
-        color: ink(mv_theme::Token::Border),
-        width: mv_clay::border_outside(1),
-    };
-    decl.cornerRadius = crate::ui::corner_radius_all(crate::transform_row::BOX_RADIUS);
-    decl.floating = clay::FloatingElementConfig {
-        offset: [0.0, TIP_DROP],
-        expand: clay::Dimensions {
-            width: 0.0,
-            height: 0.0,
-        },
-        parentId: mv_clay::id(crate::transform_row::BOX_ID, index).id,
-        zIndex: 1,
-        attachment: clay::FloatingAttachPoints {
-            element: clay::FloatingAttachPointType::RightTop,
-            parent: clay::FloatingAttachPointType::RightBottom,
-        },
-        pointerCaptureMode: clay::PointerCaptureMode::Passthrough,
-        attachTo: clay::FloatingAttachToElement::ElementWithId,
-        clipTo: clay::FloatingClipToElement::None,
-    };
     let base = crate::transform_row::param_index(param) as u32 * 16;
-    crate::ui::ui_scope(app, mv_clay::id(TIP_ID, index), &decl, |app| {
-        if typing {
-            for (k, part) in typing_parts().into_iter().enumerate() {
-                tip_part(app, part, base + k as u32);
-            }
-        } else {
-            let default = crate::transform_section::param_def(param).default;
-            for (k, word) in tip_words(default).into_iter().enumerate() {
-                crate::typography::text(
-                    app,
-                    mv_clay::id(TIP_TEXT_ID, base + k as u32),
-                    crate::typography::Type::TipText,
-                    &word,
-                    ink(mv_theme::Token::Foreground),
-                    false,
-                );
-            }
-        }
-    });
-}
-
-/// One typing-tip part: a key cap (label or arrow glyph) or plain words.
-fn tip_part(app: &mut App, part: TipPart, id: u32) {
-    let theme = crate::ui::current_theme(app).clone();
-    let ink = |token| crate::ui::ink(&theme, token);
-    match part {
-        TipPart::Words(words) => {
-            crate::typography::text(
-                app,
-                mv_clay::id(TIP_TEXT_ID, id),
-                crate::typography::Type::TipText,
-                &words,
-                ink(mv_theme::Token::Foreground),
-                false,
-            );
-        }
-        TipPart::Key(label) => {
-            key_cap(app, id, &ink, |app| {
-                crate::typography::text(
-                    app,
-                    mv_clay::id(TIP_TEXT_ID, id),
-                    crate::typography::Type::KeyText,
-                    &label,
-                    ink(mv_theme::Token::Foreground),
-                    false,
-                );
-            });
-        }
-        TipPart::KeyIcon(_) => {
-            key_cap(app, id, &ink, |app| {
-                let mut glyph = crate::ui::empty_decl();
-                glyph.layout.sizing = clay::Sizing {
-                    width: mv_clay::sizing_fixed(TIP_ARROW_WIDTH),
-                    height: mv_clay::sizing_fixed(TIP_ARROW_HEIGHT),
-                };
-                crate::ui::ui_scope(app, mv_clay::id(TIP_ARROW_ID, id), &glyph, |_| {});
-            });
-        }
-    }
-
-    /// A key cap: the Secondary plate with a 1 px border under the label.
-    fn key_cap(
-        app: &mut App,
-        id: u32,
-        ink: &impl Fn(mv_theme::Token) -> clay::Color,
-        child: impl FnOnce(&mut App),
-    ) {
-        let mut cap = crate::ui::empty_decl();
-        cap.layout.sizing = clay::Sizing {
-            width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
-            height: mv_clay::sizing_fixed(KEY_HEIGHT),
-        };
-        cap.layout.padding = clay::Padding {
-            // The 1 px side borders join the horizontal padding; the fixed
-            // 21 px height already holds the vertical ones, as CSS
-            // `box-sizing` does.
-            left: KEY_PAD_X as u16 + 1,
-            right: KEY_PAD_X as u16 + 1,
-            top: 1,
-            bottom: 2,
-        };
-        cap.layout.childAlignment = clay::ChildAlignment {
-            x: clay::LayoutAlignmentX::Center,
-            y: clay::LayoutAlignmentY::Center,
-        };
-        cap.backgroundColor = ink(mv_theme::Token::Secondary);
-        cap.border = clay::BorderElementConfig {
-            color: ink(mv_theme::Token::Border),
-            width: mv_clay::border_outside(1),
-        };
-        cap.cornerRadius = crate::ui::corner_radius_all(crate::transform_row::BOX_RADIUS);
-        crate::ui::ui_scope(app, mv_clay::id(TIP_KEY_ID, id), &cap, child);
+    if typing {
+        let cells: Vec<crate::tip::TipCell> = typing_parts().into_iter().map(tip_cell).collect();
+        crate::tip::layout_tip(
+            app,
+            &tip_ids(),
+            index,
+            base,
+            &tip_place(index),
+            crate::tip::TipTone::Default,
+            &cells,
+        );
+    } else {
+        let default = crate::transform_section::param_def(param).default;
+        let cells: Vec<crate::tip::TipCell> = tip_words(default)
+            .into_iter()
+            .map(crate::tip::TipCell::Words)
+            .collect();
+        crate::tip::layout_tip(
+            app,
+            &tip_ids(),
+            index,
+            base,
+            &tip_place(index),
+            crate::tip::TipTone::Default,
+            &cells,
+        );
     }
 }
 
 /// Paints the typing tip's arrow glyphs after the command walk (paths, not
-/// text, as the chevrons are). Call from `paint_rows`, as the chevrons are.
+/// text, as the chevrons are). The paint lives in [`crate::tip`]. Call from
+/// `paint_rows`, as the chevrons are.
 pub fn paint_extras(app: &mut App) {
-    let theme = crate::ui::current_theme(app).clone();
-    let density = density_of(app);
-    let ink = crate::draw::nvg_color(crate::ui::ink(&theme, mv_theme::Token::Foreground));
     for param in crate::transform_section::ROW_ORDER {
         if app.drafts[param].typing_from.is_none() {
             continue;
         }
         let base = crate::transform_row::param_index(param) as u32 * 16;
         // `typing_parts` order: Enter, apply, Esc, cancel, up, down, nudge.
-        let parts = typing_parts();
-        for (k, part) in parts.iter().enumerate() {
-            let dir = match part {
-                TipPart::KeyIcon(ArrowDir::Up) => Some(true),
-                TipPart::KeyIcon(ArrowDir::Down) => Some(false),
-                _ => None,
-            };
-            let Some(up) = dir else {
-                continue;
-            };
-            let data = app
-                .clay
-                .as_ref()
-                .expect("clay context initialised")
-                .get_element_data(mv_clay::id(TIP_ARROW_ID, base + k as u32));
-            if !data.found {
-                continue;
-            }
-            let at = crate::draw::snap_box(data.boundingBox, density);
-            // `M4 8L9 2L14 8M9 2V14` (up) / `M4 8L9 14L14 8M9 14V2` (down).
-            let (mid, end) = if up { (2.0, 14.0) } else { (14.0, 2.0) };
-            app.vg.save();
-            app.vg.translate(at.x, at.y);
-            app.vg.begin_path();
-            app.vg.move_to(4.0, 8.0);
-            app.vg.line_to(9.0, mid);
-            app.vg.line_to(14.0, 8.0);
-            app.vg.move_to(9.0, mid);
-            app.vg.line_to(9.0, end);
-            app.vg.stroke_color(ink);
-            app.vg.stroke_width(CHEVRON_STROKE);
-            app.vg.line_cap(mv_nvg::LineCapType::ROUND);
-            app.vg.line_join(mv_nvg::LineCapType::ROUND);
-            app.vg.stroke();
-            app.vg.restore();
-        }
-    }
-}
-
-/// The density the frame draws at (the rows' `paint_rows` rule).
-fn density_of(app: &App) -> f32 {
-    if app.size[0] > 0.0 {
-        app.pixels[0] as f32 / app.size[0]
-    } else {
-        1.0
+        let cells: Vec<crate::tip::TipCell> = typing_parts().into_iter().map(tip_cell).collect();
+        crate::tip::paint_arrows(app, &tip_ids(), base, &cells);
     }
 }
 
