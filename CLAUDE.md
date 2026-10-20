@@ -31,6 +31,7 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - **function-viewer** (test-app): unit tests build `App` with `fixture::headless_app()` (the zeroed `App`: `window`/`gl_context`/`gl` are `None`, `vg` is `Context::null()`) and never open a window — a `cargo test` thread cannot start SDL video (measured 2026-10-18: `sdl3::init()` refuses off the main thread, and with one thread SDL answers "No available video device"). Window readers go through `App::window()`/`window_mut()`, which panic on `None`; `platform_refresh_rate` returns 0.0 headless.
 - function-viewer (h2-p-url): the URL query codec is hand-rolled (no new dependency): `application/x-www-form-urlencoded` encode/decode as `URLSearchParams` does (space `+`, stray `%` literal, lossy UTF-8), pairs in a `Vec` so key order matches, then the literal-comma restore (`%2C`/`%2c` back to `,`) applied after the whole search string is built, exactly where the TS `replaceAll` sits; `trim_slashes` is split/filter/join (the regex's three alternatives remove exactly the empty segments — the 13 cases pin it); the debounce is one pending write per param armed in whole ms on the app's frame clock (callers pass `(now / MS) as u64`), fired by an explicit `step`, absorbed by an explicit `sync` with the `lastRaw` skip; test serialises print `to_fixed(v, N)` (exact JS `toFixed`, ASCII `-`; never `format_number`'s U+2212); the `hashchange` listener calls the `mv_hash_changed` export (on `EXPORTED_FUNCTIONS`; `replaceState` fires no `hashchange`, so our own writes never loop back), which pushes `UserCode::Hash` for the main thread to re-read.
 - function-viewer (h3-p-plot): the plot switch keeps the hook's shape as data (`Shown { func, old: Option, elapsed }`, `PlotCurve { func, alpha, draw_to }` — the TS field `fn` is renamed `func`, a keyword); graphed functions are plain `fn(f64) -> f64` pointers and identity is address comparison through `std::ptr::fn_addr_eq` (plain `==` on fn pointers is compiler-linted, including inside a derived `PartialEq`, so `PlotCurve` implements it by hand); the rAF loop is `switch_to` (the render-phase transition, `canAnimate()` in as a `bool` the coder wires) plus `step` (first frame carries `FIRST_FRAME_MS`, as `camera.rs`'s `first_frame`, but only on a rest-to-switch transition — a mid-switch change keeps the running clock, as the hook's loop is keyed on `switching`); `sample_curve` is `drawCurve`'s sampling without the paint (per-column points, `insideShare`, cumulative inside-length, interpolated stop), taking the canvas dims beside the grid, which stores none; vitest `toBeCloseTo(x, 2)` is `|diff| < 0.005`, and frame-driven tests accumulate time and diff it exactly like the hook's `now - last` so `elapsed` sums bit-identically.
+- function-viewer (h5-p-scrub): the scrub maths keep the TS shapes (`ScrubMode` enum, `scrub_mode`/`wheel_dx` plain args since h4's rows are unmerged); `quantize` is `mv-numfmt::quantize` exactly (the TS rounds `|v|` then re-applies the sign — including negative exact halves — which is what that helper does, so no local rounding); `shown` formats via `round_to` plus a plain print (the field shows the keyboard hyphen, never `format_number`'s U+2212), `-0` normalised to `0`; the tape is an enum (`Shift`/`Scale`, never a `kind` field), `multiples` keeps an f64 counter exactly like the TS loop (the `1e20` case falls out empty through identical float ops), and label text is `String(Number(toFixed))` including the ECMA-262 exponential rule outside `[1e-6, 1e21)` and the first-hyphen-only true-minus replace (`−5e-7` keeps its exponent hyphen).
 
 ## Harness notes
 
@@ -132,6 +133,35 @@ One block per milestone, appended in merge order; empty until the first mileston
   holding zero scripts (git keeps no empty directory); `tools/states/`
   scripts need no such guard while they hold states.
 
+### h4-rows (the Transform card's rows)
+
+- The 9.5 px box side padding is fractional (Clay's padding and gaps are
+  whole px): 3.5 px edge spacers plus the 6 px gap hold each side, as the
+  picker's dividers hold its 1 px. Lay the card out and read every element's
+  box before painting anything: the layout test decides, not the eye.
+- A missing inset ring is a paint-order bug, not a missing stroke: CSS
+  paints the inset shadow inside the border (two full border rows plus one
+  ring row, measured), so the ring path sits a border inside the box. And a
+  snapped hairline rect is a moved hairline: snapping quarter-device offsets
+  drags the stroke half a device pixel off its row — snap the box, keep the
+  ring rect exact.
+- Later declarations win `hit_at` ties: declare a row's region before its
+  children so the field's region wins their overlap.
+- A refused commit still repaints: taking the draft always dirties, or the
+  rejected text sits stranded until the next interaction redraws.
+- Text input runs on SDL_StartTextInput while a field holds the focus
+  (native and web; the harness's `tap` only queues `Text` while it is
+  active); headless tests guard the window. Ctrl/Command+A is a `selected`
+  flag the next text replaces; the first text starts the draft from the
+  shown value.
+- The hover highlight syncs in `retarget` on a hover change (leave then
+  enter, as the DOM fires them; moves within one parameter skip so the
+  touch never re-stamps); the focus side syncs at its explicit setters.
+  One sync aware of every producer hit beats two partial syncs that fight.
+- Eyeballing downscaled screenshots misleads (a correct pair once read
+  swapped): md5 identity of reruns plus DOM reads settle it. Measure, don't
+  eyeball.
+
 ### h2-input: the plane's input wiring
 
 `plane_input.rs` routes the plane's SDL facts into `camera.rs` and the URL
@@ -159,6 +189,79 @@ reads `app.clay` in place). The return-to-centre release routes to
 (settings.rs ruling). `default_equals` is `Object.is` (`-0` ≠ `0`);
 `write_pair` set collapses duplicate keys. Don't run repo-wide
 `tools/format` (pinned versions only).
+
+### h3: the sidebar's function picker and the plotted switch
+
+`selector.rs` lays out the Function card (`function_card(app, current)`:
+state as a param, the settings segmented-cell precedent): legend
+(`Type::Heading`, WS700 17/28), the 36 px bordered grid of four 83 px cells
+(`Type::Maths`/`MathsItalic`, STIX 20/25, x italic, literal ²/³ as
+`\u{00B2}`/`\u{00B3}` escapes, `sin x` as three runs with the font's own
+space advance — no cross-run kerning, so separate runs are exact). Cells 2-4
+carry their divider as a nested 1 px `--border` child (the shared Border arm
+strokes uniform top-width borders only; a one-sided border paints nothing —
+NanoVG drops moveto-less paths and zero-width strokes alike). Checked beats
+hover and active on background (probed specificity); active mixes primary at
+26% over the base; cursor stays Default (no CSS rule); stop is the checked
+cell only (the DOM's one tab stop per group). `sidebar.rs` opens the column
+(`CARD_GAP` 12, h4-rows' `--space-inset` measurement; unobservable with one
+card). `pick_function` flushes `func` at once (`set_flushed`, default stays
+out), switches unless reduced motion shows it whole; arrows wrap and check;
+`plot_step` holds the switch's own turn (render-phase curves) and a
+mid-switch re-pick's turn keeping the running clock (the hook's loop is keyed
+on `switching`: the next frame diffs from the last callback, not the click —
+a re-anchor loses the 8 ms the click turn consumed, measured at 2922 flat px
+before the fix); `external_func_synced` adopts hash edits the same way.
+`App` appends `shown`, `func_param`, `plot_frame_at`, `plot_hold`; the loop
+stays awake while switching; `paint_curves` (width 3, round joins, chartLine
+at the curve's alpha, move-to first) runs between labels and legend in
+`paint_plane` (the TS draw order). The sidebar has the bar's `--shadow-card`
+shape and radius 4 (`--radius-card` is defined at this hash, unlike h1's
+`--radius-lg`). No new views.json line (the function rides the URL line) and
+no new tokens (all eight tabled).
+
+### h4-readout (from its progress file; merges after h3, before h4-rows)
+
+- `state.rs` owns `TransformParam` (A B H K + `as_str`, `colour_token` to the
+  `--param-*` tokens); h4-rows' and h6-p-transform's copies delete at their
+  merges and use this one. `HighlightState{hover, focus}` holds
+  `Touch{param, at}` records with an internal move sequence; `lit()` is the
+  present touch with the greater `at` (equals the source's lead/fallback
+  rules); `set_hover/set_focus(None)` clears unconditionally (the input layer
+  sends it only when its side is on no parameter).
+- `readout.rs` builds the value and form lines as token runs (`Part`: plain
+  text, parameter term, stacked fraction, sup digit; reader-only spans feed
+  `spoken()` only). Values print through `mv_numfmt::to_fixed(v, 2)` with the
+  ASCII minus swapped for U+2212 (exact binary toFixed; the never-`-0`
+  `format_number` diverges on ties). The fit is `min(1, (outer-1)/inner)`
+  on whole-px inputs, about the line's left centre.
+- Layout is Clay spacers for geometry plus a post-pass paint: one spacer per
+  run (frac rows carry the row spans' 4 px side padding; the column 3 px),
+  term outers with `ReadoutTerm` regions (text cursor), paint from the same
+  model accumulating advances, scaled by the fit through a NanoVG transform
+  about the span's left centre. Baselines hang from a centred strut
+  (half the frac overflow above the 35/25 px line box, else the top); sup
+  rises 0.58em, stacked parens sink 0.0775em; tint and bars are exact rects
+  from the run boxes. The readout row is fixed 350 px wide so an unscaled
+  span overflows it the way the browser's block row does (a grow row would
+  stretch the card).
+- A lit term's tint paints opaque and pre-blended (ink at 18% over the
+  section backdrop, in the encoded space): the framebuffer blends linear
+  while the reference composites gamma, so a translucent fill reads ~30
+  levels light (measured 107 vs 74). Backdrop is always the opaque card.
+- The Function card paints `--section` (added to the themes at 5714319 by
+  the inner-background fix), the grid `--card`; sidebar padding is 12+1
+  (the selector split changed it from 20+1); option cells are 87 px on the
+  374 px card. `views.json` gains a `lit` line (null or the letter) whenever
+  the highlight moves; `sync_hover` runs at the end of `retarget`. Text runs
+  note their ink boxes for the I-beam (the reference reports text under the
+  pointer); the port's `note_text` had no callers.
+- Reference forensics that paid: DOM boxes inside a scaled line need
+  unscaling before comparing advances (the 0.98 fit masquerades as a
+  per-run shortfall); term boxes extend 3 px above the text runs (inline
+  block) and 1 px below (padding), rows with terms are 36/26 px; the form
+  frac is always 57.5 px; `div:has(> [data-testid=...])` selects the card
+  through CSS-module hashes.
 
 ## Long runs
 

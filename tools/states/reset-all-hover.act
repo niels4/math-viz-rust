@@ -1,0 +1,12 @@
+# reset-all-hover (H5): the pointer on Reset all (349, 402: the button's
+# centre) with a=2&h=3 — ink foreground on secondary.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2&h=3
+wait 2000
+move 349 402
+wait 300
+shot reset-all-hover

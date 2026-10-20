@@ -1,0 +1,9 @@
+# rows-values (H4): each row showing the value a link sets (a=2, h=1, k=-3, b=2).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2&h=1&k=-3&b=2
+wait 2000
+shot rows-values

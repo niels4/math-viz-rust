@@ -1,0 +1,11 @@
+# flip-pressed (H5): a=-2 — a's toggle pressed (background ink on row-ink),
+# box -2.00, a's reset shown; b's toggle at rest. Behaviour: the URL keeps
+# a=-2.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=-2
+wait 2000
+shot flip-pressed

@@ -185,6 +185,51 @@ pub fn paint_axes(
     vg.stroke();
 }
 
+/// The plotted curves' look: solid, 3 px (`drawCurve` at `3560eb2`).
+pub const CURVE_WIDTH: f32 = 3.0;
+
+/// Paints the frame's curves over the canvas: each curve's sampled polyline
+/// (`plot::sample_curve`: the `drawCurve` sampling, one point per px column
+/// with the partial segment of a draw-on), stroked in `line` (`chartLine`)
+/// at the curve's alpha with round joins, in order so each draws over the
+/// ones before it. Canvas 2D defaults to butt caps and the grid paint sets
+/// `BUTT`, which persists here as there.
+pub fn paint_curves(
+    vg: &mut mv_nvg::Context,
+    width: f32,
+    height: f32,
+    grid: &GridLayout,
+    curves: &[crate::plot::PlotCurve],
+    line: [f32; 4],
+) {
+    for curve in curves {
+        let points = crate::plot::sample_curve(
+            curve.func,
+            grid,
+            f64::from(width),
+            f64::from(height),
+            curve.draw_to,
+        );
+        // NanoVG drops a path with no move-to (its points never join one),
+        // where Canvas 2D reads the first line-to as one: the explicit move
+        // strokes the same pixels on both.
+        vg.begin_path();
+        for (i, [x, y]) in points.iter().enumerate() {
+            if i == 0 {
+                vg.move_to(*x as f32, *y as f32);
+            } else {
+                vg.line_to(*x as f32, *y as f32);
+            }
+        }
+        vg.global_alpha(curve.alpha as f32);
+        vg.stroke_color(line);
+        vg.stroke_width(CURVE_WIDTH);
+        vg.line_join(mv_nvg::LineCapType::ROUND);
+        vg.stroke();
+        vg.global_alpha(1.0);
+    }
+}
+
 /// Paints laid-out labels: right-aligned at `right`, Canvas `textBaseline:
 /// "top"` (the em box's top on `top`, so the baseline sits one ascent below).
 pub fn paint_labels(
@@ -283,8 +328,12 @@ pub fn plane_texts(
     texts
 }
 
-/// Paints the plane over the canvas's content box: the grid, the axes, and,
-/// once the font has loaded, the labels and the scale legend.
+/// Paints the plane over the canvas's content box: the grid, the axes, the
+/// curves, and, once the font has loaded, the labels and the scale legend
+/// (the `drawCartesianPlane` order: grid, curves, legend).
+// Nine paint inputs (the plane's six plus the frame's curves with their
+// ink): a bundle struct would hide the draw order this signature documents.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_plane(
     fonts: &mut mv_text::Fonts,
     vg: &mut mv_nvg::Context,
@@ -293,6 +342,8 @@ pub fn paint_plane(
     scale: f64,
     colors: &PlaneColors,
     font_ready: bool,
+    curves: &[crate::plot::PlotCurve],
+    line: [f32; 4],
 ) {
     let width = f64::from(content.width);
     let height = f64::from(content.height);
@@ -304,7 +355,10 @@ pub fn paint_plane(
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     paint_grid(vg, content.width, content.height, &grid, colors);
     paint_axes(vg, content.width, content.height, &grid, colors);
-    if font_ready {
+    // The labels and the legend wait for their font; the curves draw either
+    // way, between them in draw order (as `drawCartesianPlane` draws the
+    // curves before the font-gated legend).
+    let legend = if font_ready {
         let style = label_style();
         // `layout_labels` takes a shared measure while shaping borrows the
         // fonts mutably: the cell lends them out call by call, which is sound
@@ -318,9 +372,15 @@ pub fn paint_plane(
         let labels = layout_labels(&grid, width, height, PLANE_FONT_SIZE, &measure);
         let legend_label = crate::scale_legend::legend_text(scale);
         let legend_width = measure(&legend_label);
+        let geometry = legend_geometry(width, height, legend_width, scale);
         let fonts = cell.into_inner();
         paint_labels(fonts, vg, &labels, colors.label);
-        let geometry = legend_geometry(width, height, legend_width, scale);
+        Some((fonts, geometry))
+    } else {
+        None
+    };
+    paint_curves(vg, content.width, content.height, &grid, curves, line);
+    if let Some((fonts, geometry)) = legend {
         paint_legend(fonts, vg, &geometry, &colors.legend);
     }
     vg.reset_scissor();

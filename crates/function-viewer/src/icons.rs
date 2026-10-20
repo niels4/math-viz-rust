@@ -22,6 +22,9 @@ pub const SNOWFLAKE_PATHS: [&str; 2] = [
 /// `GearIcon`) and `TopBar/icons.tsx` (`SystemIcon`, `LightIcon`,
 /// `DarkIcon`, `CheckIcon`): the flake's two stroke groups are the
 /// favicon's mark above; the gear is a 3.2 hub with its toothed ring path.
+/// h5-buttons adds the Transform card's reset and flip marks
+/// (`ResetIcon.tsx`, `FlipIcon.tsx`): a stroked arc with a filled head, and
+/// a stroked shaft with filled heads, one per axis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IconKind {
     Logo,
@@ -30,6 +33,9 @@ pub enum IconKind {
     Sun,
     Moon,
     Check,
+    Reset,
+    FlipVertical,
+    FlipHorizontal,
 }
 
 /// An icon to paint: its kind and its ink, already resolved to a colour.
@@ -75,6 +81,22 @@ pub const MOON_PATH: &str = "M13.6 8.54A6 6 0 1 1 7.46 2.4 4.6 4.6 0 0 0 13.6 8.
 /// The check icon's tick, from `CheckIcon`.
 pub const CHECK_PATH: &str = "M2.5 7.5L5.5 10.5L11.5 3.5";
 
+/// The reset icon's viewBox (`ResetIcon.tsx`, 16). The arc strokes 1.75
+/// round; the head fills.
+pub const RESET_VIEWBOX: f32 = 16.0;
+pub const RESET_ARC: &str = "M12.213 4.465A5.5 5.5 0 1 1 4.465 3.787";
+pub const RESET_ARC_STROKE: f32 = 1.75;
+pub const RESET_HEAD: &str = "M9.013 0.865L14.813 2.065L11.813 6.865Z";
+
+/// The flip icon's viewBox (`FlipIcon.tsx`, 14). Each axis pairs a 1.6 round
+/// shaft stroke with two filled heads.
+pub const FLIP_VIEWBOX: f32 = 14.0;
+pub const FLIP_SHAFT_STROKE: f32 = 1.6;
+pub const FLIP_SHAFT_VERTICAL: &str = "M7 2V12";
+pub const FLIP_HEAD_VERTICAL: &str = "M3.5 5L7 0.5L10.5 5ZM3.5 9L7 13.5L10.5 9Z";
+pub const FLIP_SHAFT_HORIZONTAL: &str = "M2 7H12";
+pub const FLIP_HEAD_HORIZONTAL: &str = "M5 3.5L0.5 7L5 10.5ZM9 3.5L13.5 7L9 10.5Z";
+
 /// Paints an icon in a `size` box at `at`: the kind's viewBox scaled to the
 /// box, stroked round in its ink.
 pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon) {
@@ -82,6 +104,8 @@ pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon)
         IconKind::Logo | IconKind::Gear => (ICON_VIEWBOX, ICON_STROKE),
         IconKind::System | IconKind::Sun | IconKind::Moon => (OPTION_VIEWBOX, OPTION_STROKE),
         IconKind::Check => (CHECK_VIEWBOX, CHECK_STROKE),
+        IconKind::Reset => (RESET_VIEWBOX, RESET_ARC_STROKE),
+        IconKind::FlipVertical | IconKind::FlipHorizontal => (FLIP_VIEWBOX, FLIP_SHAFT_STROKE),
     };
     vg.save();
     vg.translate(at[0], at[1]);
@@ -152,6 +176,37 @@ pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon)
                 eprintln!("math-viz2-rust: icon path NanoVG can't draw: {CHECK_PATH:?}");
             }
             vg.stroke();
+        }
+        IconKind::Reset => {
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, RESET_ARC) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {RESET_ARC:?}");
+            }
+            vg.stroke();
+            vg.fill_color(icon.ink);
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, RESET_HEAD) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {RESET_HEAD:?}");
+            }
+            vg.fill();
+        }
+        IconKind::FlipVertical | IconKind::FlipHorizontal => {
+            let (shaft, heads) = if icon.kind == IconKind::FlipVertical {
+                (FLIP_SHAFT_VERTICAL, FLIP_HEAD_VERTICAL)
+            } else {
+                (FLIP_SHAFT_HORIZONTAL, FLIP_HEAD_HORIZONTAL)
+            };
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, shaft) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {shaft:?}");
+            }
+            vg.stroke();
+            vg.fill_color(icon.ink);
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, heads) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {heads:?}");
+            }
+            vg.fill();
         }
     }
     vg.restore();

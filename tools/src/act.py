@@ -788,7 +788,9 @@ def check_views(out: Path) -> list[str]:
     string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
     frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
-    camera, written whenever it changes (h2-input)."""
+    camera, written whenever it changes (h2-input). A line holding only `lit` ("a", "b", "h",
+    "k" or null) is the highlighted parameter, written whenever the highlight moves
+    (h4-readout; h4-rows reuses it for its rows)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -825,6 +827,11 @@ def check_views(out: Path) -> list[str]:
                 problems.append(f"views.json line {number}: 'camera.scale' is not above 0")
             if not isinstance(camera.get("animating"), bool):
                 problems.append(f"views.json line {number}: 'camera.animating' is not a bool")
+            continue
+        if set(view) == {"lit"}:
+            lit: object = view.get("lit")
+            if lit is not None and lit not in ("a", "b", "h", "k"):
+                problems.append(f"views.json line {number}: 'lit' is not a parameter or null")
             continue
         for key in VIEW_KEYS:
             if key not in view:

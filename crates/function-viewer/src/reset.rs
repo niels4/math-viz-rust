@@ -7,47 +7,31 @@
 //! row keeps whether or not the button shows (so the flip toggle holds
 //! still); the two scale rows carry a flip toggle showing its pressed state
 //! while the value is negative; the card's head shows Reset all while any
-//! value is off its default. The readout's reserved 78 px row (`2e6069e`) and
-//! the shortened labels (`999e0a0`) live in [`crate::readout`] and
-//! [`crate::transform_section`]; the drag that hides a reset
-//! (`.row:has([data-mode])`) reads h5-box's drag state at the wiring.
+//! value is off its default.
 //!
-//! This module is the pure core: the defaults, the changed rule, the labels,
-//! the visibility rules, and the button and icon geometry. Layout and paint
-//! wire into the rows in phase 2 (h4-rows's `transform_row.rs`/
-//! `transform_section.rs` as merged); the icon paths move to [`crate::icons`]
-//! as `Reset`/`Flip` kinds then.
+//! This module is the pure core: the changed rule, the labels, the
+//! visibility rules, and Reset all's geometry. The row's buttons geometry
+//! lives with the row's layout ([`crate::transform_row`]); the icons paint
+//! through [`crate::icons`] (`Reset`, `FlipVertical`, `FlipHorizontal`).
+//! Layout, paint and input route through `transform_row.rs` /
+//! `transform_section.rs`.
 
 use enum_map::EnumMap;
 
-use crate::functions::{A_PARAM, B_PARAM, H_PARAM, K_PARAM};
-use crate::transform_row::TransformParam;
-use crate::url::QueryParamDef;
+use crate::state::TransformParam;
 
-/// The parameter's page-param def (`transformParams[param]`): the record as a
-/// match. `useReset` reads its `defaultValue` off this def.
-#[must_use]
-pub fn def_of(param: TransformParam) -> &'static QueryParamDef<f64> {
-    match param {
-        TransformParam::A => &A_PARAM,
-        TransformParam::K => &K_PARAM,
-        TransformParam::B => &B_PARAM,
-        TransformParam::H => &H_PARAM,
-    }
-}
-
-/// Whether the row shows its reset button's condition (`changed` in
-/// `useReset`): the value is not the default. Exact float equality, as the
-/// TS `!==` is.
+/// Whether the row's reset condition holds (`changed` in `useReset`): the
+/// value is not the parameter's default. Exact float equality, as the TS
+/// `!==` is.
 #[must_use]
 pub fn is_changed(param: TransformParam, value: f64) -> bool {
-    value != def_of(param).default
+    value != crate::transform_section::param_def(param).default
 }
 
 /// The value the reset puts back (`reset`: `setValue(defaultValue, flush)`).
 #[must_use]
 pub fn reset_value(param: TransformParam) -> f64 {
-    def_of(param).default
+    crate::transform_section::param_def(param).default
 }
 
 /// How a default prints in the reset's name (`Reset y scale to 1`): JS
@@ -95,6 +79,16 @@ pub fn flip_axis(param: TransformParam) -> FlipAxis {
     }
 }
 
+/// The toggle's icon kind by row.
+#[must_use]
+pub fn flip_icon(param: TransformParam) -> crate::icons::IconKind {
+    if param == TransformParam::A {
+        crate::icons::IconKind::FlipVertical
+    } else {
+        crate::icons::IconKind::FlipHorizontal
+    }
+}
+
 /// The toggle's accessible name.
 #[must_use]
 pub fn flip_label(param: TransformParam) -> &'static str {
@@ -119,11 +113,20 @@ pub fn flipped(value: f64) -> f64 {
 
 /// Whether the reset button paints: shown while the value is off its default
 /// and hidden while the row's box is dragged (`.row:has([data-mode])` —
-/// `dragged` is whether h5-box's `ScrubDrag` names this parameter). The slot
-/// keeps its 24 px either way (`8261442`).
+/// `dragged` is whether h5-box's drag names this parameter; see
+/// [`dragged_param`]). The slot keeps its 24 px either way (`8261442`).
 #[must_use]
 pub fn reset_shown(changed: bool, dragged: bool) -> bool {
     changed && !dragged
+}
+
+/// The parameter whose box h5-box's drag holds, if any. h5-box owns the drag
+/// state (`App.scrub`, plan's `ScrubDrag`); until it merges this answers
+/// `None`, so the wiring stays green and the rule stays unit-tested pure
+/// above. Replace the body with the `App.scrub` read at h5-box's merge.
+#[must_use]
+pub fn dragged_param(_app: &crate::app::App) -> Option<TransformParam> {
+    None
 }
 
 /// Whether the head shows Reset all: any of the four values off its default.
@@ -134,10 +137,6 @@ pub fn any_changed(values: &EnumMap<TransformParam, f64>) -> bool {
         .any(|(param, value)| is_changed(param, *value))
 }
 
-/// The reset button's size, the slot's kept width and the flip toggle's size
-/// live with the row's layout ([`crate::transform_row::RESET_SIZE`],
-/// [`crate::transform_row::RESET_SLOT_WIDTH`],
-/// [`crate::transform_row::FLIP_SIZE`]).
 /// Reset all in the card's head: flex, gap 5, 20 px tall, margin-top 4,
 /// padding 2×4, 13 px/15 px strong, `--radius-card` corners.
 pub const RESET_ALL_HEIGHT: f32 = 20.0;
@@ -148,26 +147,17 @@ pub const RESET_ALL_PAD_X: f32 = 4.0;
 pub const RESET_ALL_PAD_Y: f32 = 2.0;
 pub const RESET_ALL_MARGIN_TOP: f32 = 4.0;
 
-/// The reset icon's viewBox (`ResetIcon.tsx`, 16). The arc's stroke is 1.75
-/// round; the head fills.
-pub const RESET_VIEWBOX: f32 = 16.0;
-pub const RESET_ARC: &str = "M12.213 4.465A5.5 5.5 0 1 1 4.465 3.787";
-pub const RESET_ARC_STROKE: f32 = 1.75;
-pub const RESET_HEAD: &str = "M9.013 0.865L14.813 2.065L11.813 6.865Z";
-
-/// The flip icon's viewBox (`FlipIcon.tsx`, 14 in the 24 px toggle). Each
-/// axis pairs a 1.6 round shaft stroke with two filled heads.
-pub const FLIP_VIEWBOX: f32 = 14.0;
+/// Reset all's copy.
+pub const RESET_ALL_LABEL: &str = "Reset all";
+/// The reset icon's svg size in the 24 px buttons (`ResetIcon.tsx`, 16).
+pub const RESET_ICON_SIZE: f32 = 16.0;
+/// The flip icon's svg size in the 24 px toggles (`FlipIcon.tsx`, 14).
 pub const FLIP_ICON_SIZE: f32 = 14.0;
-pub const FLIP_SHAFT_STROKE: f32 = 1.6;
-pub const FLIP_SHAFT_VERTICAL: &str = "M7 2V12";
-pub const FLIP_HEAD_VERTICAL: &str = "M3.5 5L7 0.5L10.5 5ZM3.5 9L7 13.5L10.5 9Z";
-pub const FLIP_SHAFT_HORIZONTAL: &str = "M2 7H12";
-pub const FLIP_HEAD_HORIZONTAL: &str = "M5 3.5L0.5 7L5 10.5ZM9 3.5L13.5 7L9 10.5Z";
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::functions::A_PARAM;
     use crate::transform_row::{FLIP_SIZE, RESET_SIZE, RESET_SLOT_WIDTH};
     use crate::url::{QueryParam, Url};
 
@@ -228,13 +218,21 @@ mod tests {
     #[test]
     fn flip_toggles_stand_on_the_scale_rows_only() {
         // The section test: exactly the a and b rows carry a toggle, with
-        // their own axis and name; k and h carry none.
+        // their own axis, icon and name; k and h carry none.
         assert!(is_scale(TransformParam::A));
         assert!(is_scale(TransformParam::B));
         assert!(!is_scale(TransformParam::K));
         assert!(!is_scale(TransformParam::H));
         assert_eq!(flip_axis(TransformParam::A), FlipAxis::Vertical);
         assert_eq!(flip_axis(TransformParam::B), FlipAxis::Horizontal);
+        assert_eq!(
+            flip_icon(TransformParam::A),
+            crate::icons::IconKind::FlipVertical
+        );
+        assert_eq!(
+            flip_icon(TransformParam::B),
+            crate::icons::IconKind::FlipHorizontal
+        );
         assert_eq!(flip_label(TransformParam::A), "Flip upside down");
         assert_eq!(flip_label(TransformParam::B), "Mirror left to right");
     }
@@ -244,7 +242,9 @@ mod tests {
         // The section test: a link with a=2&h=3 shows Reset all; clicking it
         // puts every default back, drops both keys, and hides the button.
         let mut url = Url::from_query("a=2&h=3");
-        let mut params = EnumMap::from_fn(|param| *QueryParam::new(def_of(param), "a=2&h=3").get());
+        let mut params = EnumMap::from_fn(|param| {
+            *QueryParam::new(crate::transform_section::param_def(param), "a=2&h=3").get()
+        });
         assert!(any_changed(&params));
         assert!(is_changed(TransformParam::A, params[TransformParam::A]));
         assert!(!is_changed(TransformParam::K, params[TransformParam::K]));
@@ -257,7 +257,8 @@ mod tests {
             TransformParam::B,
             TransformParam::H,
         ] {
-            let mut bound = QueryParam::new(def_of(param), url.query());
+            let mut bound =
+                QueryParam::new(crate::transform_section::param_def(param), url.query());
             bound.set_flushed(&mut url, reset_value(param));
             params[param] = *bound.get();
         }
@@ -283,41 +284,27 @@ mod tests {
             ),
             (20.0, 13.0, 15.0, 5.0, 4.0, 2.0, 4.0)
         );
-        assert_eq!((RESET_VIEWBOX, RESET_ARC_STROKE), (16.0, 1.75));
-        assert_eq!(RESET_ARC, "M12.213 4.465A5.5 5.5 0 1 1 4.465 3.787");
-        assert_eq!(RESET_HEAD, "M9.013 0.865L14.813 2.065L11.813 6.865Z");
-        assert_eq!(
-            (FLIP_VIEWBOX, FLIP_ICON_SIZE, FLIP_SHAFT_STROKE),
-            (14.0, 14.0, 1.6)
-        );
-        assert_eq!(
-            (FLIP_SHAFT_VERTICAL, FLIP_HEAD_VERTICAL),
-            ("M7 2V12", "M3.5 5L7 0.5L10.5 5ZM3.5 9L7 13.5L10.5 9Z")
-        );
-        assert_eq!(
-            (FLIP_SHAFT_HORIZONTAL, FLIP_HEAD_HORIZONTAL),
-            ("M2 7H12", "M5 3.5L0.5 7L5 10.5ZM9 3.5L13.5 7L9 10.5Z")
-        );
+        assert_eq!(RESET_ALL_LABEL, "Reset all");
+        assert_eq!((RESET_ICON_SIZE, FLIP_ICON_SIZE), (16.0, 14.0));
     }
 
     #[test]
     fn buttons_keep_the_rows_layout() {
         // The keeps-place test's arithmetic: the flip stands at
-        // pad + chip + gap + name, where the name takes what the flip, the
-        // slot, the box and the fixed chrome leave — so showing or hiding
+        // pad + chip + gap + name + gap, where the name takes what the flip,
+        // the slot, the box and the fixed chrome leave — so showing or hiding
         // the reset (or the drag hiding it) never moves the flip.
-        // Row: 8 + 26 + 12 + name + 24 + 12 + 24 + 12 + 107 + 6 = 350.
+        // Five children, four gaps: 8 + 26 + 12 + name + 12 + 24 + 12 + 24
+        // + 12 + 107 + 6 = 350.
         let name = 350.0
             - (crate::transform_row::ROW_PAD_LEFT
                 + crate::transform_row::CHIP_SIZE
-                + crate::transform_row::ROW_GAP
                 + FLIP_SIZE
-                + crate::transform_row::ROW_GAP
                 + RESET_SLOT_WIDTH
-                + crate::transform_row::ROW_GAP
                 + crate::transform_row::BOX_WIDTH
-                + crate::transform_row::ROW_PAD_RIGHT);
-        assert_eq!(name, 119.0);
+                + crate::transform_row::ROW_PAD_RIGHT
+                + 4.0 * crate::transform_row::ROW_GAP);
+        assert_eq!(name, 107.0);
         assert_eq!(RESET_SIZE, FLIP_SIZE);
         assert_eq!(RESET_SLOT_WIDTH, RESET_SIZE);
     }

@@ -1,0 +1,10 @@
+# flip-rest (H5): a=2 — a's flip toggle at rest (218, 450), pressed false,
+# ink row-ink on background-muted; b's toggle likewise on its row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+shot flip-rest

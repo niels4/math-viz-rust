@@ -170,6 +170,18 @@ pub fn iterate(app: &mut App) -> bool {
     // debounce and external sync, the web hash mirror. Before the draw, so
     // the frame draws what the camera moved to.
     crate::plane_input::frame_step(app, now);
+    // The picker's plot step (h3): the switch's frame, then an outside edit
+    // flowing in. Before the draw, so the frame draws what the switch drew
+    // to.
+    crate::selector::plot_step(app, now);
+    crate::selector::external_func_synced(app);
+    // The transform params' debounce and external sync (h4-rows): a pending
+    // write fires, an outside edit flows into the live values. Before the
+    // draw, so the frame draws what the values moved to.
+    if crate::transform_section::params_step(app, (now / MS) as u64) {
+        #[cfg(target_os = "emscripten")]
+        crate::platform_web::platform_write_hash(&app.url.full_hash());
+    }
     let mut drawn = false;
     // The theme fade redraws until done: no timer arms its frames, so the
     // turn does while one is in flight (its last frame clears the active).
@@ -198,8 +210,11 @@ pub fn schedule(app: &mut App, _now: Time) {
     // one clears the active and lets the app sleep again. A camera in flight
     // does the same (h2-input): each turn steps it, and the settle stops the
     // loop — without this a glide stalls after its first step, since the draw
-    // consumes the dirty its step set.
-    app.r#loop.awake = app.dirty || app.transition.active.is_some() || app.camera.animating();
+    // consumes the dirty its step set. A plot switch does the same (h3).
+    app.r#loop.awake = app.dirty
+        || app.transition.active.is_some()
+        || app.camera.animating()
+        || app.shown.is_switching();
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

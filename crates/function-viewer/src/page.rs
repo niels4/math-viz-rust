@@ -1,13 +1,13 @@
-//! The page: the top bar over an empty body, as `FunctionViewer` mounts it.
+//! The page: the top bar over the sidebar and the plane, as `FunctionViewer`
+//! mounts it.
 //!
 //! Ported from `FunctionViewer/FunctionViewer.tsx` and
-//! `FunctionViewer.module.css` at `adb0534`: the page grid (16 px padding,
+//! `FunctionViewer.module.css` at `3560eb2`: the page grid (16 px padding,
 //! 16 px gaps, title row over content row, 400 px sidebar column), the top
-//! bar spanning it, and the sidebar stub the later milestones replace. The
-//! body cell holds the plane's canvas (h2-plane's slot: the bordered box,
-//! the grid paint and the overlay). The frame paint walks Clay's commands
-//! through NanoVG; the theme cross-fade paints the last stable frame's
-//! snapshot over the new one.
+//! bar spanning it, the sidebar column with the Function card (h3's
+//! `sidebar.rs`), and the plane's canvas. The frame paint walks Clay's
+//! commands through NanoVG; the theme cross-fade paints the last stable
+//! frame's snapshot over the new one.
 
 use mv_sys::clay;
 
@@ -20,8 +20,8 @@ pub const PAGE_PAD: f32 = 16.0;
 pub const PAGE_GAP: f32 = 16.0;
 pub const SIDEBAR_WIDTH: f32 = 400.0;
 
-/// The sidebar's stub copy at this hash.
-pub const SIDEBAR_TEXT: &str = "Sidebar!";
+/// The sidebar's radius (`--radius-card`).
+pub const SIDEBAR_RADIUS: f32 = 4.0;
 
 /// The page's sidebar box, for the settings menu's later use and tests.
 pub const SIDEBAR_ID: &str = "Sidebar";
@@ -68,13 +68,14 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_fixed(SIDEBAR_WIDTH),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
-            // `--space-card` inside the 1 px border: Clay's border takes no
-            // layout space, the browser's `border-box` does.
+            // `--space-inset` (12) inside the 1 px border at the h4 hash
+            // (`--space-card` before): Clay's border takes no layout space,
+            // the browser's `border-box` does.
             side.layout.padding = clay::Padding {
-                left: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                right: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                top: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                bottom: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                left: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                right: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                top: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                bottom: (crate::sidebar::SIDE_PAD + 1.0) as u16,
             };
             side.backgroundColor = crate::ui::ink(
                 crate::ui::current_theme(app),
@@ -84,15 +85,12 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 color: crate::ui::ink(crate::ui::current_theme(app), mv_theme::Token::Border),
                 width: mv_clay::border_outside(1),
             };
+            side.cornerRadius = crate::ui::corner_radius_all(SIDEBAR_RADIUS);
             crate::ui::ui_scope(app, mv_clay::id(SIDEBAR_ID, 0), &side, |app| {
-                crate::typography::text(
-                    app,
-                    mv_clay::id("SidebarText", 0),
-                    crate::typography::Type::Body,
-                    SIDEBAR_TEXT,
-                    crate::ui::ink(crate::ui::current_theme(app), mv_theme::Token::Foreground),
-                    false,
-                );
+                // The sidebar's cards (h3's Function card; h4's Transform
+                // card joins it here).
+                let current = *app.func_param.get();
+                crate::sidebar::sidebar(app, current);
             });
             let mut body = crate::ui::empty_decl();
             body.layout.sizing = clay::Sizing {
@@ -169,6 +167,10 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // `cur` at publish, which the React draw reads as props).
     let (center, scale) = (app.camera.center, app.camera.scale);
     let colors = crate::plane::plane_colors(theme);
+    // The plotted function from the picker's switch state (h3's curves,
+    // through `plot.rs`): the whole curve at rest, the old fading under the
+    // drawing new one mid-switch.
+    let curves = crate::plot::curves(&app.shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -179,6 +181,8 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         scale,
         &colors,
         true,
+        &curves,
+        theme.colors[mv_theme::Token::ChartLine],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -220,6 +224,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     declare_plane_button(app);
     crate::input::collect_regions(app);
     paint_bar_shadow(app, &theme);
+    paint_sidebar_shadow(app, &theme);
     paint_menu_shadow(app, &theme);
     let fading = app
         .transition
@@ -230,6 +235,12 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
+    // The readout's two lines, scaled to fit where the equation is long.
+    crate::readout::paint_readout(app);
+    // The transform rows' inset rings, focus rings and chevrons (h4-rows),
+    // and Reset all's focus ring (h5-buttons).
+    crate::transform_row::paint_rows(app);
+    crate::transform_section::paint_head(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }
@@ -255,6 +266,19 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         return;
     };
     paint_shadow(app, b, crate::top_bar::TOPBAR_RADIUS, ink);
+}
+
+/// Paints the sidebar's shadow: 0 6 px 18 px in the shadow colour
+/// (`--shadow-card`), skipped where transparent (the dark themes).
+fn paint_sidebar_shadow(app: &mut App, theme: &mv_theme::Theme) {
+    let ink = theme.colors[mv_theme::Token::ShadowColor];
+    if ink[3] <= 0.0 {
+        return;
+    }
+    let Some(b) = element_box(app, mv_clay::id(SIDEBAR_ID, 0)) else {
+        return;
+    };
+    paint_shadow(app, b, SIDEBAR_RADIUS, ink);
 }
 
 /// Paints the settings menu's shadow: 0 6 px 18 px in the shadow colour,
