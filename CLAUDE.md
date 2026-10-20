@@ -1136,3 +1136,9 @@ no new tokens (all eight tabled).
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
+
+## h11-hero
+- Hero link: region over `WelcomeHeroPlane` (box 840x520), HitKind::WelcomeHero appended, Cursor::Pointer, never a focus stop (tabIndex -1). click() navigates on WelcomeHero too. welcome_key unchanged. The region follows CTA's path under the fit.
+- Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
+- Test: opens_the_function_viewer_from_the_animated_graph.
+- Ref-against-ref: welcome-default on ref-h11 vs ref-h10 in WebKit: 0 flat pixels apart outside welcome_dev_link's box (inline anchor round a block canvas makes no line box); count inside box is (f).
