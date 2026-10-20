@@ -814,8 +814,7 @@ pub fn click(app: &mut App, down: Hit) {
     match down.kind {
         HitKind::TransformFlip => {
             if let Some(param) = index_param(down.index) {
-                let value = crate::transform_section::param_value(app, param);
-                store_param(app, param, crate::reset::flipped(value));
+                crate::flip::flip_press(app, param);
                 blur_button(app);
             }
         }
@@ -866,8 +865,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
         match focus.kind {
             HitKind::TransformFlip => {
                 if let Some(param) = index_param(focus.index) {
-                    let value = crate::transform_section::param_value(app, param);
-                    store_param(app, param, crate::reset::flipped(value));
+                    crate::flip::flip_press(app, param);
                 }
             }
             _ => {
@@ -979,8 +977,9 @@ pub fn text(app: &mut App, text: &str) {
 }
 
 /// Stores a parameter's value, flushed to the URL at once (the hook's `set`
-/// with `{ flush: true }`).
-fn store_param(app: &mut App, param: TransformParam, value: f64) {
+/// with `{ flush: true }`). `pub(crate)` for the flip toggle's press
+/// ([`crate::flip::flip_press`], which stores the negated value).
+pub(crate) fn store_param(app: &mut App, param: TransformParam, value: f64) {
     match param {
         TransformParam::A => app.a_param.set_flushed(&mut app.url, value),
         TransformParam::K => app.k_param.set_flushed(&mut app.url, value),

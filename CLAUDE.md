@@ -415,6 +415,69 @@ no new tokens (all eight tabled).
   port matches on every target, so the union's gold-vs-peach claim does not
   reproduce and there is no defect and no new quirk; the only engine split
   stays the known WebKit Tab quirk (focuses b's box, buttons skipped).
+### h6-curve (the transform's wiring)
+
+- The flip's render phase needs the adoption without the advance: the
+  press's own turn must draw the jump at elapsed 0 (a=2.00), so
+  `ShownTransform` splits `adopt` (render-phase, called from the press)
+  from `step` (adopt + advance, called from the frame loop). Without the
+  split the press turn draws one frame in (a≈1.96), a 4-device-px curve
+  defect. The loop's first step after the press carries `FIRST_FRAME_MS`
+  through the jump's `first_frame` flag, as the hook's first rAF callback
+  carries no measured gap.
+- A transformed curve cannot stay a `fn` pointer: `plot::sample_curve`
+  takes `impl Fn(f64) -> f64` (plain curves pass their pointer, transformed
+  ones `|x| curve.func.value(x)`), and the overshoot clamp
+  (`plane_geometry::clamp_curve_y`) sits inside the shared sampler, exactly
+  where `drawCurve` clamps before pushing the point. Identity transforms
+  sample bit-equal through `TransformedFunction::value` (`1.0 * g + 0.0` is
+  exact), so one paint path serves all curves.
+- Canvas dashes emulate by cutting the polyline into on-interval subpaths
+  (`plane::dash_pieces`, the first port's `dash.rs` technique) stroked with
+  the look's caps: Canvas caps each dash, which is what makes round-capped
+  `[6, 6]` from offset 3 match. The pattern phase is the offset into the
+  period (`(d + offset) % period`), not a trimmed first dash.
+- Never pipe a check into a commit chain: `./build.sh check | tail`
+  exits 0 through `tail`, so one commit landed while a test was red. Chain
+  the check and the commit with `&&` only and no pipe.
+- At a new hash, re-read every shared artifact the reference may have
+  renamed: the 5cef052 tooltip commit renamed the overlay button's
+  aria-label (fixture selector) and hid the button at the default camera
+  (fixture shot + box test source). The button's own visibility rule stays
+  its owner's (h6-handles).
+### h6-handles (the shift/scale handles, the lit-parameter lines, the overlay tooltip)
+
+- Handles and lines paint in `theme.primary`, never the parameter colours:
+  the source sets `strokeStyle`/`fillStyle` to primary for every handle and
+  line (probed on every op), with the page colour as the handle fill.
+- NanoVG inherits the context the last painter left, while Canvas 2D
+  `save`/`restores` each curve and line back to butt caps and miter joins:
+  the handle and line painters set butt + round (handles) and butt + miter
+  (lines) explicitly and restore miter after, so the legend's bar strokes as
+  probed whatever the curve painters leave.
+- The dashes are `dash_polyline` pieces, not an API (`mv-nvg` has none):
+  the first port's `dash.rs` technique with its 0.01 px cutoff, one subpath
+  per piece, `lineDashOffset = dash[0] / 2`; solid shafts stroke directly.
+  The shared `pub(crate) dash_pieces` in `plane.rs` is h6-curve's for the
+  dashed original too.
+- The hover redraw lands a task late on the reference (a hover lights the
+  row at once but the canvas repaints after): every hover state is its own
+  fresh page with `wait 1000` after the move, as the user's
+  `transform-lines.mjs` reloads per param. Settled shots are exact.
+- The tooltip needs a timer, not a timestamp: the app sleeps between input
+  turns, so arming `overlay_tip_since` in the draw never fires — the delay
+  is `loop::Timer::OverlayTip` (+400 ms, armed with the hover, cancelled on
+  leave, `tip_fired` dirties while still hovered), mirroring the scrub rest
+  tip. Forgetting the button gate the first time painted it at the default
+  view (a 3335 px max-235 cluster on the button box in every state); the
+  gate covers the region, the paint and the tip together.
+- The fixture's WebKit and Chromium tip boxes disagree by 0.58 px (their
+  shapers differ); the port's stb advance matches Chromium to 0.01. The tip
+  geometry test pins the math from a given advance (the legend precedent),
+  not the port's measure against WebKit.
+- Judge boxes from `judge.json` are CSS px, not device px: a 34x32 "mystery
+  cluster" at (1360, 781) is the button box, and element boxes need the
+  canvas offset (433, 97) added — costs an hour when missed.
 
 ## Long runs
 
