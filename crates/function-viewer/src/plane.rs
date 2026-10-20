@@ -210,9 +210,16 @@ pub fn paint_curves(
             f64::from(height),
             curve.draw_to,
         );
+        // NanoVG drops a path with no move-to (its points never join one),
+        // where Canvas 2D reads the first line-to as one: the explicit move
+        // strokes the same pixels on both.
         vg.begin_path();
-        for [x, y] in &points {
-            vg.line_to(*x as f32, *y as f32);
+        for (i, [x, y]) in points.iter().enumerate() {
+            if i == 0 {
+                vg.move_to(*x as f32, *y as f32);
+            } else {
+                vg.line_to(*x as f32, *y as f32);
+            }
         }
         vg.global_alpha(curve.alpha as f32);
         vg.stroke_color(line);

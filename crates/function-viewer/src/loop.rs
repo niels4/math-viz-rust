@@ -203,8 +203,11 @@ pub fn schedule(app: &mut App, _now: Time) {
     // one clears the active and lets the app sleep again. A camera in flight
     // does the same (h2-input): each turn steps it, and the settle stops the
     // loop — without this a glide stalls after its first step, since the draw
-    // consumes the dirty its step set.
-    app.r#loop.awake = app.dirty || app.transition.active.is_some() || app.camera.animating();
+    // consumes the dirty its step set. A plot switch does the same (h3).
+    app.r#loop.awake = app.dirty
+        || app.transition.active.is_some()
+        || app.camera.animating()
+        || app.shown.is_switching();
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;
