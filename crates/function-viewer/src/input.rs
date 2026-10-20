@@ -600,15 +600,19 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             // The page milestones route their keys from here. The P field
             // runs before the transform rows: its Tab arm commits and walks
             // on, where the rows' arm would walk off with the edit open.
+            // Whoever consumes stops the chain: a commit that moves the
+            // focus to the slider must not fall through to the slider's own
+            // Enter in the same turn (it would reopen the field).
             if !crate::settings::key(app, &event)
                 && !crate::selector::key(app, &event)
                 && !crate::x_field::key(app, &event)
+                && !crate::transform_row::key(app, &event)
             {
-                crate::transform_row::key(app, &event);
+                // The x-of-P slider's own keys (h8-points-slider): arrows,
+                // Home, End and Enter on its focused track; Tab walks on
+                // above.
+                crate::point_slider::key(app, &event);
             }
-            // The x-of-P slider's own keys (h8-points-slider): arrows, Home,
-            // End and Enter on its focused track; Tab walks on above.
-            crate::point_slider::key(app, &event);
             // A modifier anywhere re-reads a held scrub's mode live
             // mid-drag, as the window key hook does (down and up, never a
             // repeat, which cannot change the mode; acts only then).
