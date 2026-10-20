@@ -887,9 +887,11 @@ no new tokens (all eight tabled).
   230.32)`, the file then saying the base default), so a new
   `read_sidebar_theme_points` sources them from there and `read_themes`
   merges them under the base defaults as before. Regen at 68e1c7b on the
-  h9-merged base: all three files headers only (themes.rs + tokens.json +
-  page.json reference lines), every value row equal — committed with the
-  generator change as (2).
+  h9-merged base: themes.rs and page.json reference lines only (header
+  hashes); tokens.json has no header and was byte-identical — committed
+  with the generator change as (2). (`dom --fixture` at 18afa6a had added
+  the 192-line welcome-route block for h10-t-route's fixture state; the
+  h10-page regen below keeps it, so page.json covers the welcome route.)
 - Probe (`.local/probe_params.py`, report in `.local/shots/h10-seam/`):
   welcome `/` vs viewer `/#function-viewer` `--param-a/k/b/h` in all six
   themes equal, 24/24 in WebKit (seeding math-viz2's keys as `act.py` does).
