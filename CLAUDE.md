@@ -753,6 +753,45 @@ no new tokens (all eight tabled).
   focus ring, found by judging slider-focus at 6x and proved by a radial
   profile against the reference).
 
+### h8-points-field (the P x field and the shared tip's P edit tip)
+
+- `x_field.rs` owns the edit (`XField`: `FieldState` text+caret, `base`,
+  `invalid`) with the h4 `number_field` caret model; `tip.rs` owns the
+  shared look (`TipTone`, `TipCell`, `TipIds`/`TipPlace`, `layout_tip`,
+  `paint_arrows`). `scrub_value.rs`'s tip paint moved onto `tip.rs`
+  (content stays there) with byte-identical PNGs pre/post on
+  box-tip-{rest,typing}, box-click-open (native+webkit+firefox at
+  threshold 0).
+- The field's layout: a floating `X_SLOT_ID` box (value-width
+  `chars*ch + 2*pad`, right-aligned in the x run) + hit region, declared
+  from the P readout; the tip floats under `P_HEAD_ID` (drop 4, z 3).
+  The readout width/paint share one `x_slot` formula; the lead
+  right-aligns the group. Layout tests pin field_p + tip_p in
+  rows-default/field-open/field-invalid within 0.5 CSS px.
+- Paint post-pass: card bg + 2 px inset ring (primary/destructive),
+  scheme selection plate over fully selected focused text (field minus
+  pad, less 2 px top/bottom), right-aligned text. Key bug class:
+  `mv_text::draw` takes the style's ink as NanoVG 0..1 — passing the
+  readout's already-converted ink through `nvg_color` again paints
+  near-black (invisible text); pass it straight through.
+- Input: key chain settings > selector > x_field > transform_row, then
+  the slider only if nobody consumed (first-consumer-wins, or a commit
+  that moves focus to the slider falls through to the slider's Enter and
+  reopens the field). A consumed key always dirties (a refused Enter
+  returns no effects; without dirty the loop sleeps and the shot
+  photographs the pre-Enter frame). Arrows collapse the caret to the end
+  (React's value write resets the selection). Slider Enter sets
+  `App.slider_edit`, consumed in `slot()` the same frame.
+- Test-helper rule: never move the `App` after `init_clay` — the measure
+  closure keeps its address, so a `laid_out_page` returning the app by
+  value dangles it and the next measure aborts ("shape needs init").
+  Take `&mut` and build the app in the test.
+- Engine notes: WebKit dark selection (85,125,167) vs Chromium
+  (83,123,165) the port paints (2 levels, accepted); saturated canvas
+  inks shift vs CSS (primary ring (112,192,160) vs (122,190,216)) — the
+  shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
+  for the union `gamut all`, not a defect.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
