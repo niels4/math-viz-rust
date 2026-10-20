@@ -26,9 +26,9 @@ use crate::state::TransformParam;
 use mv_sys::clay;
 
 /// The readout row: flex, vertically centred, at least 78 px tall with the
-/// card's inset above it (`FunctionReadout.module.css`: `.readout`). The 78
-/// px reserves the division bar's height (`2e6069e`, h5-buttons): a stacked
-/// fraction moves nothing below the row.
+/// card's inset above it (`FunctionReadout.module.css`: `.readout` — 78 px
+/// since `2e6069e`, reserving the division bar's space so a horizontal scale
+/// stacking a fraction never moves the row; h5-buttons's named change).
 pub const READOUT_MIN_HEIGHT: f32 = 78.0;
 /// `margin-top: var(--space-inset)`.
 pub const READOUT_MARGIN_TOP: f32 = 12.0;
@@ -764,6 +764,31 @@ fn run_advance(app: &mut App, text: &str, size: f32, italic: bool, tabular: bool
 /// transformParam (finite; a/b never 0); h4-rows switches this source to
 /// their QueryParams at their merge, keeping the default-to-None rule here.
 #[must_use]
+/// The live values for the lines: the rows' page params, not the URL text.
+/// The reference's readout reads the hooks' live values (immediate on every
+/// `setValue`); the URL string lags behind the 200 ms debounce, so reading
+/// it leaves the readout a drag behind — a held scrub would show the
+/// pre-drag values while the box and the reference move on.
+///
+/// Fix-forward context (h5-box, named in its return): h4-readout owns this
+/// file; their states never hold a pending write at shot time, so the two
+/// sources never visibly differed there.
+pub fn live_param_values(app: &crate::app::App) -> ValueTerms {
+    fn live(app: &crate::app::App, param: TransformParam, default: f64) -> Option<f64> {
+        let value = crate::transform_section::param_value(app, param);
+        (value != default).then_some(value)
+    }
+    ValueTerms {
+        a: live(app, TransformParam::A, 1.0),
+        b: live(app, TransformParam::B, 1.0),
+        h: live(app, TransformParam::H, 0.0),
+        k: live(app, TransformParam::K, 0.0),
+    }
+}
+
+/// The live values parsed out of a URL string: `live_param_values` for text
+/// without an app (tests, fixtures). The parse keeps `Number` semantics, so
+/// a scale of 0 and non-numbers read as absent, as the page params do.
 pub fn live_values(url: &crate::url::Url) -> ValueTerms {
     fn live(url: &crate::url::Url, key: &str, default: f64, scale: bool) -> Option<f64> {
         let raw = url.raw(key)?;
@@ -926,7 +951,7 @@ fn frac_height(top: &[Part], bottom: &[Part], form: bool) -> f32 {
 /// part. The card's own gap carries the readout's margin-top above it.
 /// Reads the live values and the highlight from the app.
 pub fn layout_value_line(app: &mut App, func: FunctionSlug, ids: &mut LayoutIds) {
-    let values = live_values(&app.url);
+    let values = live_param_values(app);
     let line = value_line(func, &values);
     let mut row = crate::ui::empty_decl();
     row.layout.sizing = clay::Sizing {
@@ -1146,7 +1171,7 @@ fn laid_out(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
 pub fn paint_readout(app: &mut App) {
     let theme = crate::ui::current_theme(app).clone();
     let func = *app.func_param.get();
-    let values = live_values(&app.url);
+    let values = live_param_values(app);
     paint_line(app, &theme, &value_line(func, &values), false);
     paint_line(app, &theme, &form_line(func), true);
 }
@@ -1533,6 +1558,9 @@ mod layout_tests {
         app.pixels = [2880, 1800];
         app.url = crate::url::Url::from_query("func=x2&a=2&h=1&k=-3&b=2");
         crate::selector::init_func_from_url(&mut app);
+        // The lines read the rows' live params (h5-box), so the params join
+        // the URL in the seed, as each `build()` re-seeds them.
+        crate::transform_section::init_params_from_url(&mut app);
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let fixture = crate::fixture::page_fixture().expect("page fixture parses");

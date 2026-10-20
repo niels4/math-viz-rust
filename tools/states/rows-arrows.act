@@ -1,6 +1,9 @@
-# rows-arrows (H4): the pointer on a's left chevron (291, 450) and clicked —
-# the chevrons are decorative (no handler at this hash), so the card is
-# unchanged and the URL keeps nothing.
+# rows-arrows (H4): the pointer on a's left chevron (291, 450 at b8a0e1d;
+# was 291, 432 at 5714319, and the header's 291, 299 predates h4-readout's
+# card move) and clicked — the chevrons are decorative (no handler at this
+# hash either: the press reaches the scrub box), so at b8a0e1d the click
+# opens the field with its text selected and the typing tip under the box;
+# the URL keeps nothing.
 size 1440 900
 density 2
 scheme dark

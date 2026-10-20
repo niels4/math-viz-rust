@@ -192,6 +192,60 @@ One block per milestone, appended in merge order; empty until the first mileston
   script coordinate in later states goes stale (h4's row clicks missed their
   fields and a Backspace navigated WebKit back). Re-probe, don't trust.
 
+### h5-box (the scrub value box)
+
+- The scrub rebase (`changeMode`) moves the x anchor to the last x and
+  re-reads `from` as the live (pre-snap) value: `scrubbed(0.6, 30, snap)` is
+  1 and `scrubbed(0.6, 50, snap)` is 2. Rebase-then-send is the whole drag;
+  probed live, not just read.
+- `stop()` flushes whenever the press dragged — including the `buttons == 0`
+  move path, which shares the function rather than cancelling silently.
+- The box's whole 107×32 carries the field hit (the DOM field takes no
+  pointer events until it opens); row padding keeps the row hit. Hover syncs
+  treat both as the parameter, so padding-to-box moves never re-stamp.
+- Capture is conditional: a scrub holds the hover, a tap into the focused
+  box never does (the DOM returned early, so hover tracks). `captures()` stays
+  plane-only; the scrub's condition lives beside it in `retarget`.
+- `press()` clears the focus stop before routing, so a tap restores it from
+  the highlight state's still-set focus side; a scrub onto another box
+  commits the old draft first (DOM order: mousedown blurs, then the press).
+- Double clicks synthesize from the up fact's click count (SDL pairs by
+  time and distance on both targets, as the browser pairs `dblclick`): a tap
+  release with clicks == 2 inside a twitch resets, with clicks == 1 it
+  collapses the caret. A scrub release ignores clicks (a drag can end near
+  a paired down).
+- Debounced URL writes need two loop properties, or quiet pages never flush:
+  pending writes keep the loop awake (`params_pending`, as an animating
+  camera does) and a fired write repaints (the readout reads live params,
+  not URL text — h4-readout's `live_values(url)` goes stale mid-drag).
+- The rest tip arms on box-hit transitions (row padding into the box counts,
+  as the DOM fires the box's enter) with `input.time` (never the layout's 0
+  between facts) through `Timer::ScrubRest`, so the harness steps to the
+  deadline itself; a press clears it, and it never surfaces while typing.
+- The tip is a floating Clay sibling (RightTop to the box's RightBottom,
+  offset [0, 10]: the CSS 11 px measured from the padding box minus the 1 px
+  border, right edge flush). Borders take no layout space: fit boxes join
+  the border into the padding (the menu's `bordered` rule), fixed boxes
+  already hold it. Caps nest their label inside the cap scope, or the text
+  lays out as a sibling and the tip runs ~16 px wide.
+- The browser's selection swaps with the colour scheme (dark `(83,123,165)`,
+  light `(173,208,245)`, probed Chromium; Firefox paints `#3399FF` with
+  white text) while the text keeps the focused ink; it paints only while
+  focused (blur keeps the caret, drops the paint). No caret bar appears in
+  headless screenshots (3/3 absent), so none paints.
+- Under the harness's density-2 pages, Chromium under-applies wheel notches
+  (two -100 notches read 1.04 there, 1.06 in every other engine/target pair
+  including dsf-1 Chromium probes; a page-level listener still reports -100
+  everywhere — unrooted, past the page): ref and port agree per engine, so
+  web-chromium judges against ref-chromium directly and native-vs-web-chromium
+  carries the digit as a recorded input quirk, not a defect.
+- A shot never iterates: debounced state needs a wait before the shot, or
+  the framebuffer predates the deadline while the URL line already moved on.
+- The caret is scalar indices (a browser deletes one UTF-16 unit; SDL only
+  delivers whole scalars, and a `String` cannot hold half of one — named,
+  tested with an astral character). Clicks while typing collapse to the end;
+  click-to-caret placement is the accepted gap.
+
 ### h2-input: the plane's input wiring
 
 `plane_input.rs` routes the plane's SDL facts into `camera.rs` and the URL

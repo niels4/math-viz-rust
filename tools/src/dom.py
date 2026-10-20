@@ -165,6 +165,8 @@ FIXTURE_STATES = (
     "rows-enter",
     "rows-zero-scale",
     "rows-arrows",
+    "box-tip-rest",
+    "box-tip-typing",
     "reset-visible",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")

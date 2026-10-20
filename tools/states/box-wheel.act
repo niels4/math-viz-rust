@@ -1,0 +1,13 @@
+# box-wheel (h5-box): two wheel notches over a's box.
+# Each notch is a 15 px drag; a=1 steps multiplicatively, URL debounced.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 450.5
+wheel 0 -100
+wheel 0 -100
+wait 1200
+shot box-wheel

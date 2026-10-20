@@ -175,6 +175,18 @@ pub fn external_params_synced(app: &mut App) -> bool {
     changed
 }
 
+/// Whether any transform param holds a debounced URL write: the loop stays
+/// awake for the deadline, or a typed or nudged value would never reach the
+/// URL on a quiet page (nothing else steps the params once the frame
+/// settles — the wheel only worked by accident of the rest timer).
+#[must_use]
+pub fn params_pending(app: &App) -> bool {
+    app.a_param.has_pending()
+        || app.b_param.has_pending()
+        || app.h_param.has_pending()
+        || app.k_param.has_pending()
+}
+
 /// The card over the sidebar column: the "Transform" legend, the rows in
 /// the source's order, and the rule between the vertical and horizontal
 /// pairs. The column owns the gap between the cards (`sidebar.rs`).

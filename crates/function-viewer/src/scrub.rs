@@ -6,7 +6,7 @@
 //! at b8a0e1d. The drag state machine itself (`ScrubValue.tsx`) is h5-box's;
 //! this module holds every pure function its tests pin by value.
 
-use mv_numfmt::{quantize, round_to};
+use mv_numfmt::{quantize, to_fixed};
 
 /// How far a shift parameter moves per dragged px (`SHIFT_PER_PX`).
 pub const SHIFT_PER_PX: f64 = 0.02;
@@ -110,23 +110,18 @@ pub fn wheel_dx(delta_y: f64, delta_mode: u32) -> f64 {
 /// The box text for a value (`shown`).
 ///
 /// Three decimals while fine or while the value has a third decimal, else
-/// two — through `round_to` plus a plain print (never `format_number`): the
-/// field shows the keyboard hyphen (`toHaveValue("-0.05")`), not the
-/// readout's true minus. `-0` prints as `0.00`, as `(−0).toFixed` does.
+/// two — exact JS `toFixed` through [`mv_numfmt::to_fixed`] (never
+/// `format_number`): the field shows the keyboard hyphen
+/// (`toHaveValue("-0.05")`), not the readout's true minus. `to_fixed`
+/// already prints `-0` as `0.00` and keeps a nonzero input's sign, as
+/// `(−0).toFixed` does, so no special-casing remains.
 pub fn shown(v: f64, fine: bool) -> String {
     let dp = if fine || quantize(v, 0.01) != quantize(v, 0.001) {
         3
     } else {
         2
     };
-    let rounded = round_to(v, dp);
-    // Only an input zero prints as `0.00`: `toFixed` keeps a nonzero
-    // input's sign (`(-0.0004).toFixed(2)` is `"-0.00"`).
-    let plain = if v == 0.0 { 0.0 } else { rounded };
-    match dp {
-        3 => format!("{plain:.3}"),
-        _ => format!("{plain:.2}"),
-    }
+    to_fixed(v, dp)
 }
 
 #[cfg(test)]

@@ -120,13 +120,11 @@ pub fn reset_shown(changed: bool, dragged: bool) -> bool {
     changed && !dragged
 }
 
-/// The parameter whose box h5-box's drag holds, if any. h5-box owns the drag
-/// state (`App.scrub`, plan's `ScrubDrag`); until it merges this answers
-/// `None`, so the wiring stays green and the rule stays unit-tested pure
-/// above. Replace the body with the `App.scrub` read at h5-box's merge.
+/// The parameter whose box h5-box's drag holds, if any (the reset hides
+/// while its own row's box is dragged: `.row:has([data-mode])`).
 #[must_use]
-pub fn dragged_param(_app: &crate::app::App) -> Option<TransformParam> {
-    None
+pub fn dragged_param(app: &crate::app::App) -> Option<TransformParam> {
+    app.scrub.as_ref().map(|drag| drag.param)
 }
 
 /// Whether the head shows Reset all: any of the four values off its default.

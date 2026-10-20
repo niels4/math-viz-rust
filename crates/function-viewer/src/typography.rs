@@ -63,6 +63,10 @@ pub enum Type {
     ChipLetter,
     /// A transform row's number field: Roboto Mono 500, 17 px.
     FieldText,
+    /// A scrub box's tip: Work Sans 400, 13 px.
+    TipText,
+    /// A scrub tip's key cap: Roboto Mono 600, 12 px.
+    KeyText,
     /// The Transform card's Reset all: Work Sans 600, 13 px.
     ResetAll,
 }
@@ -175,6 +179,22 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 22.0,
         },
+        // The tip's 15 px line box under a value box, measured on the
+        // reference (`ScrubValue.module.css .tip`: 400 13 px/15 px).
+        Type::TipText => TypeStyle {
+            face: Face::WorkSans400,
+            size: 13.0,
+            tracking: 0.0,
+            line_height: 15.0,
+        },
+        // A key cap's 16 px line box in the typing tip (`.key`: 600
+        // 12 px/16 px; the 21 px cap height is the layout's).
+        Type::KeyText => TypeStyle {
+            face: Face::RobotoMono600,
+            size: 12.0,
+            tracking: 0.0,
+            line_height: 16.0,
+        },
         // Reset all's 15 px line box (`line-height: 15px`).
         Type::ResetAll => TypeStyle {
             face: Face::WorkSans600,
@@ -201,7 +221,9 @@ fn type_from_id(id: u16) -> Type {
         11 => Type::RowName,
         12 => Type::ChipLetter,
         13 => Type::FieldText,
-        14 => Type::ResetAll,
+        14 => Type::TipText,
+        15 => Type::KeyText,
+        16 => Type::ResetAll,
         _ => unreachable!("clay font id names a text style"),
     }
 }

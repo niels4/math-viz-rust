@@ -120,6 +120,18 @@ pub struct App {
     /// value), `Some` once typed into (h4-rows; `number_field.rs` owns the
     /// display and commit rules).
     pub drafts: EnumMap<crate::state::TransformParam, crate::number_field::FieldState>,
+    /// The drag the ruler draws: while a scrub holds a box, the rebased
+    /// anchor off the row's laid-out box (h5-box mirrors it every drag fact;
+    /// h5-ruler reads it).
+    pub scrub: Option<crate::scrub_value::ScrubDrag>,
+    /// A box press in flight: a scrub or a tap (h5-box; `scrub_value.rs`
+    /// owns the machine).
+    pub scrub_hold: Option<crate::scrub_value::ScrubHold>,
+    /// The rest tip's armed parameter and arming time, on the app's clock
+    /// (h5-box; `loop::Timer::ScrubRest` fires it).
+    pub scrub_rest: Option<(crate::state::TransformParam, crate::app_loop::Time)>,
+    /// The parameter whose rest tip shows (resolved when the timer fires).
+    pub scrub_resting: Option<crate::state::TransformParam>,
 }
 
 impl App {
@@ -224,7 +236,7 @@ impl App {
                 recording: false,
                 turns: Vec::new(),
             },
-            timers: EnumMap::from_array([]),
+            timers: EnumMap::default(),
             prefs: mv_theme::DEFAULT_PREFS,
             space: mv_theme::Space::Srgb,
             themes: EnumMap::from_array([
@@ -277,6 +289,11 @@ impl App {
             h_param: crate::url::QueryParam::new(&crate::functions::H_PARAM, ""),
             k_param: crate::url::QueryParam::new(&crate::functions::K_PARAM, ""),
             drafts: EnumMap::default(),
+            // At rest: no scrub holds a box, no rest tip is armed or showing.
+            scrub: None,
+            scrub_hold: None,
+            scrub_rest: None,
+            scrub_resting: None,
         }
     }
 }

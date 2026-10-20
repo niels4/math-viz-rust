@@ -1,0 +1,16 @@
+# box-drag-shift (h5-box): k's box dragged 30 px with Shift held throughout.
+# Fine mode: a tenth of the rate with three decimals, the accent outline.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+hold Shift
+move 331.5 494.5
+down
+move 361.5 494.5 over 80
+shot box-drag-shift
+up
+release Shift
+wait 1200
