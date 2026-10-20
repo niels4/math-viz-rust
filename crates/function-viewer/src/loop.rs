@@ -215,11 +215,16 @@ pub fn schedule(app: &mut App, _now: Time) {
     // one clears the active and lets the app sleep again. A camera in flight
     // does the same (h2-input): each turn steps it, and the settle stops the
     // loop — without this a glide stalls after its first step, since the draw
-    // consumes the dirty its step set. A plot switch does the same (h3).
+    // consumes the dirty its step set. A plot switch does the same (h3). A
+    // debounced page-param write does the same (h5-box): each turn steps it,
+    // and the write stops the loop — without this a typed or nudged value
+    // never reaches the URL on a quiet page, since nothing else steps the
+    // params once the frame settles.
     app.r#loop.awake = app.dirty
         || app.transition.active.is_some()
         || app.camera.animating()
-        || app.shown.is_switching();
+        || app.shown.is_switching()
+        || crate::transform_section::params_pending(app);
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

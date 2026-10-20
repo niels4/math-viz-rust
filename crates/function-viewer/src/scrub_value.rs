@@ -2234,6 +2234,32 @@ mod tests {
         assert!(app.scrub_resting.is_none());
     }
 
+    // A debounced write keeps the loop awake until its deadline (or a typed
+    // or nudged value would never reach the URL on a quiet page: nothing
+    // else steps the params once the frame settles).
+    #[test]
+    fn app_pending_write_keeps_the_loop_awake() {
+        use sdl3::keyboard::Keycode;
+        let mut app = box_app(TransformParam::K, 278.0, 478.5);
+        open(&mut app, TransformParam::K, 331.5, 494.5);
+        type_text(&mut app, "2.5");
+        let up = crate::input::KeyEvent {
+            key: Keycode::Up,
+            mods: sdl3::keyboard::Mod::empty(),
+            down: true,
+            repeat: false,
+        };
+        assert!(field_key(&mut app, &up));
+        app.dirty = false;
+        crate::app_loop::schedule(&mut app, 0);
+        assert!(app.r#loop.awake);
+        crate::transform_section::params_step(&mut app, 10_000);
+        assert_eq!(app.url.query(), "k=2.6");
+        app.dirty = false;
+        crate::app_loop::schedule(&mut app, 10_000 * crate::app_loop::MS);
+        assert!(!app.r#loop.awake);
+    }
+
     // The window losing focus ends a drag with a flush.
     #[test]
     fn app_blur_ends_the_drag() {
