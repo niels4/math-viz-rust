@@ -30,6 +30,7 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod plane_input;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -947,6 +948,8 @@ impl Main {
         }
         // The page query at start: `--query` (empty without it).
         app.url = crate::url::Url::from_query(&options.query);
+        // The camera and its params start from that query (h2-input).
+        crate::plane_input::init_camera_from_url(&mut app);
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1092,6 +1095,8 @@ impl Main {
         // The page query at start: the hash's query part, if the page was
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
         app.url = crate::url::Url::new(&platform_read_hash());
+        // The camera and its params start from that query (h2-input).
+        crate::plane_input::init_camera_from_url(&mut app);
         println!(
             "function-viewer-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1314,12 +1319,11 @@ impl Main {
                 #[cfg(target_os = "emscripten")]
                 if *code == UserCode::Hash as i32 {
                     // The page's hash changed under the app (an edit in the
-                    // address bar, back/forward): route and query in at once.
-                    // Param live values follow through each param's `sync`,
-                    // which their owners run on the frame step (h2-input adds
-                    // the camera's); with no params yet this is the query the
-                    // harness records.
+                    // address bar, back/forward): route and query in at once,
+                    // then each param's sync with the still camera's adopt
+                    // (h2-input owns the camera's half).
                     app.url.sync_from_hash(&platform_read_hash());
+                    crate::plane_input::external_url_synced(app);
                     return AppResult::Continue;
                 }
                 // Anything else (notably `ReducedMotion`) falls through to

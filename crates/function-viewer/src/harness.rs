@@ -110,6 +110,8 @@ pub struct Harness<'a> {
     pub moving: Vec<String>,
     /// The page query as last written to `views.json`.
     pub url: String,
+    /// The camera as last written to `views.json`.
+    pub camera: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -142,6 +144,7 @@ pub fn run_harness(
         views: Vec::new(),
         moving: Vec::new(),
         url: String::new(),
+        camera: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -454,6 +457,18 @@ fn harness_frame(h: &mut Harness<'_>) {
         h.url = h.app.url.query().to_string();
         h.views.extend_from_slice(url_line(&h.url).as_bytes());
     }
+    // The camera, whenever it changed: center, scale, whether a frame is
+    // scheduled (h2-input; the behaviour checks read these against the
+    // reference's URL and canvas labels).
+    let camera = camera_line(
+        h.app.camera.center,
+        h.app.camera.scale,
+        h.app.camera.animating(),
+    );
+    if camera != h.camera {
+        h.camera = camera;
+        h.views.extend_from_slice(h.camera.as_bytes());
+    }
 }
 
 /// The pointer to `at`. SDL reports no motion that moves nothing.
@@ -733,15 +748,16 @@ fn shot(h: &mut Harness<'_>, name: &str) -> bool {
         return false;
     }
     println!("shot {out}/{name}.png at {} ms", h.time);
-    // The shell has no camera yet: the zoom stays 1 with the view at the
-    // origin, and no layer ever scales. h2-input owns these fields from the
-    // camera it ports; the cursor and the theme are already real.
+    // The camera as drawn: the scale is the zoom, the center the pan (there
+    // is no separate origin in this port). The cursor and the theme are
+    // already real; no layer ever scales, so `scaled` stays empty until a
+    // milestone lays one out.
     let line = views_line(
         name,
         h.time,
-        1.0,
-        0.0,
-        0.0,
+        h.app.camera.scale,
+        h.app.camera.center[0],
+        h.app.camera.center[1],
         0.0,
         0.0,
         crate::input::CURSOR_CSS[h.app.input.cursor],
@@ -785,6 +801,18 @@ fn views_line(
 /// `views_line` above, so the shape is testable without the app.
 fn url_line(url: &str) -> String {
     format!("{{\"url\": {}}}\n", json_string(url))
+}
+
+/// One `camera` line: the plane's center and scale with whether a frame is
+/// scheduled, as the frame left them. Pure, like `views_line` above, so the
+/// shape is testable without the app.
+fn camera_line(center: [f64; 2], scale: f64, animating: bool) -> String {
+    format!(
+        "{{\"camera\": {{\"center\": [{}, {}], \"scale\": {}, \"animating\": {animating}}}}}\n",
+        fmt_g17(center[0]),
+        fmt_g17(center[1]),
+        fmt_g17(scale),
+    )
 }
 
 /// The shots taken mid-motion, as <out>/motion.json when there are any. The
@@ -1163,6 +1191,18 @@ mod tests {
             "{\"url\": \"center=1,2&scale=2\"}\n"
         );
         assert_eq!(url_line(""), "{\"url\": \"\"}\n");
+    }
+
+    #[test]
+    fn camera_line_has_its_shape() {
+        assert_eq!(
+            camera_line([1.5, -2.0], 2.0, false),
+            "{\"camera\": {\"center\": [1.5, -2], \"scale\": 2, \"animating\": false}}\n"
+        );
+        assert_eq!(
+            camera_line([0.0, 0.0], 0.5, true),
+            "{\"camera\": {\"center\": [0, 0], \"scale\": 0.5, \"animating\": true}}\n"
+        );
     }
 
     #[test]

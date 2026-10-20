@@ -166,6 +166,10 @@ pub fn iterate(app: &mut App) -> bool {
             app.input.time = 0;
         }
     }
+    // The plane's camera step (h2-input): the camera's frame, the params'
+    // debounce and external sync, the web hash mirror. Before the draw, so
+    // the frame draws what the camera moved to.
+    crate::plane_input::frame_step(app, now);
     let mut drawn = false;
     if app.dirty {
         app.dirty = false;

@@ -128,12 +128,14 @@ pub struct Hit {
 pub enum HitKind {
     #[default]
     None,
+    /// The Cartesian plane's canvas (h2-input; h2-plane declares the region).
+    Plane,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
 /// nothing; the page milestones name their capturing kinds here.
-pub fn captures(_kind: HitKind) -> bool {
-    false
+pub fn captures(kind: HitKind) -> bool {
+    matches!(kind, HitKind::Plane)
 }
 
 /// The cursor shown.
@@ -375,7 +377,14 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if !event.left {
                 app.input.pointer = event.pos;
             }
-            retarget(app);
+            // A drag the plane holds keeps panning under capture, wherever
+            // the pointer is, as `setPointerCapture` keeps the hook's moves
+            // coming; anything else retargets.
+            if app.input.pressed.kind == HitKind::Plane && !event.left {
+                crate::plane_input::plane_move(app);
+            } else {
+                retarget(app);
+            }
         }
         Input::Button(event) => {
             if crate::trace() {
@@ -390,7 +399,18 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             if event.down {
                 press(app);
+                if app.input.pressed.kind == HitKind::Plane {
+                    // SDL's numbering starts at 1; the camera takes the DOM's,
+                    // where the primary button is 0 (only 0 drags, there).
+                    crate::plane_input::plane_down(
+                        app,
+                        crate::camera::PointerButton::Mouse(u32::from(event.button) - 1),
+                    );
+                }
             } else {
+                if app.input.pressed.kind == HitKind::Plane {
+                    crate::plane_input::plane_up(app);
+                }
                 release(app);
             }
         }
@@ -398,8 +418,18 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if crate::trace() {
                 println!("input {event:?}");
             }
+            // A wheel carries the pointer's position: it is in the window,
+            // as a motion would have it (without this a wheel before any
+            // motion finds no hover and the plane never zooms).
             app.input.pointer = event.pos;
+            app.input.over = true;
             retarget(app);
+            // The plane zooms about the pointer; a held drag keeps the hover
+            // on the plane through capture, so a wheel mid-drag zooms, as the
+            // hook's wheel and drag run on one loop.
+            if app.input.hover.kind == HitKind::Plane {
+                crate::plane_input::plane_wheel(app, event.delta);
+            }
         }
         Input::Pinch(event) => {
             if crate::trace() {
@@ -433,7 +463,12 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                     handle_input(app, Input::ReducedMotion(ReducedMotionEvent { reduced }), 0);
                 }
             } else if app.input.pressed.kind != HitKind::None {
-                // The window's focus left: a held press ends.
+                // The window's focus left: a held press ends. On the plane
+                // that ends the drag first, as `pointercancel` ends the
+                // hook's (its samples are stale by now, so no glide starts).
+                if app.input.pressed.kind == HitKind::Plane {
+                    crate::plane_input::plane_up(app);
+                }
                 app.input.pressed = Hit::default();
                 retarget(app);
             }

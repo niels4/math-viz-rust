@@ -62,6 +62,17 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub gl: Option<glow::Context>,
+    /// The Cartesian plane's camera: drag to pan, flick to glide, wheel to
+    /// zoom (h2-input; `camera.rs` owns the state machine).
+    pub camera: crate::camera::Camera,
+    /// The `center` page param: the live value, its debounce and its flush
+    /// (h2-input; `url.rs` owns the state machine).
+    pub center_param: crate::url::QueryParam<[f64; 2]>,
+    /// The `scale` page param, as above.
+    pub scale_param: crate::url::QueryParam<f64>,
+    /// When the camera last stepped, on the app's clock; 0 when it is still
+    /// (h2-input; the next step's `dt` measures from here).
+    pub camera_frame_at: crate::app_loop::Time,
 }
 
 impl App {
@@ -185,6 +196,16 @@ impl App {
             // Uninitialised shaping fonts; `app_init` runs `mv_text::init`.
             fonts: mv_text::uninit(),
             url: Url::from_query(""),
+            // The plane's camera at the URL defaults; each `build()` re-seeds
+            // camera and params from the real page query
+            // (`plane_input::init_camera_from_url`).
+            camera: crate::camera::Camera::new(
+                crate::camera::DEFAULT_CENTER,
+                crate::camera::DEFAULT_SCALE,
+            ),
+            center_param: crate::url::QueryParam::new(&crate::plane_input::CENTER_DEF, ""),
+            scale_param: crate::url::QueryParam::new(&crate::plane_input::SCALE_DEF, ""),
+            camera_frame_at: 0,
         }
     }
 }
