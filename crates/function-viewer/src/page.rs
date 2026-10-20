@@ -145,6 +145,8 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
 /// Paints the top bar's shadow: 0 6 px 18 px in the shadow colour
 /// (`--shadow-card`), skipped where transparent (the dark themes).
 fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
+    // Theme colours run 0 to 1, as NanoVG takes them; only Clay's 0-to-255
+    // colours go through `nvg_color`.
     let ink = theme.colors[mv_theme::Token::ShadowColor];
     if ink[3] <= 0.0 {
         return;
@@ -158,7 +160,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         return;
     }
     let b = data.boundingBox;
-    let shadow = crate::draw::nvg_color(ink);
+    let shadow = ink;
     let transparent = [shadow[0], shadow[1], shadow[2], 0.0];
     let blur = 18.0;
     let feather = ((blur / 2.0) * (2.0 * std::f32::consts::PI).sqrt()).max(1.0);
