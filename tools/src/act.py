@@ -86,17 +86,29 @@ def port(name: str) -> int:
     return int(value)
 
 
+def web_origin() -> str:
+    """The served web build's origin: `http://localhost:<WEB_PORT><WEB_BASE>` (t-pages:
+    `tools/run pages` serves docs/ from a subpath such as `/math-viz2-rust/`; every
+    served URL goes through here so the app is driven where it is served). `WEB_BASE`
+    defaults to `/` and must start and end with `/`; every URL is unchanged when it is
+    unset. The routed origin (no server) is untouched."""
+    base = os.environ.get("WEB_BASE", "/")
+    if not base.startswith("/") or not base.endswith("/"):
+        sys.exit(f"WEB_BASE is {base!r}: it must start and end with '/'")
+    return f"http://localhost:{port('WEB_PORT')}{base}"
+
+
 def url_for(target: str, route: str, query: str = "") -> str:
     """The page's URL: the reference served on REACT_REF_PORT at the script's route (with ?query
     appended when the script opens with a `query` line), or the web build on WEB_PORT at the same
-    route: the build reads only the hash, so a `?query` search would be dropped. `route` is the
+    route under WEB_BASE: the build reads only the hash, so a `?query` search would be dropped. `route` is the
     hash route (script.hash_route: "" for welcome, "function-viewer" for the viewer); the hash is
     always carried, including the empty route (`/#`) and the no-query case (a bare `/` would open
     the welcome page once h10-page lands, and every existing web state still opens the viewer)."""
     tail = f"?{query}" if query else ""
     if target == "ref":
         return f"http://localhost:{port('REACT_REF_PORT')}/#{route}{tail}"
-    return f"http://localhost:{port('WEB_PORT')}/#{route}{tail}"
+    return f"{web_origin()}#{route}{tail}"
 
 
 def is_web(target: str) -> bool:
