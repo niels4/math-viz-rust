@@ -21,6 +21,7 @@ pub mod app;
 pub mod app_loop;
 pub mod camera;
 pub mod draw;
+pub mod fit_scale;
 pub mod fixture;
 pub mod flex;
 pub mod flip;
@@ -80,6 +81,7 @@ pub mod typography;
 pub mod ui;
 pub mod url;
 pub mod visible_range;
+pub mod welcome_loop;
 pub mod x_field;
 
 use std::sync::Mutex;

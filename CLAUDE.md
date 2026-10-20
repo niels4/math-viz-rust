@@ -792,6 +792,33 @@ no new tokens (all eight tabled).
   shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
   for the union `gamut all`, not a defect.
 
+### h10-p-loop (the welcome loop and the fit-to-window scale)
+
+- `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
+  `STEPS` in source order, 451 frames) with `LOOP_MS` computed as the
+  source computes it (`total_frames * 1000 / FPS` via `const fn`, so a
+  step edit moves the constant). `LoopState` is flat (`func, a, b, h, k`),
+  not `{ func } & Transform`; `Easing` is a four-value struct evaluated
+  by `ease_drag` because a closure is neither const-buildable nor `Copy`
+  (clippy's `double_must_use` also bars `#[must_use]` on
+  `cubic_bezier`, whose `impl Fn` return is already must-use).
+  `dragged` delegates to `scrub::scrubbed` (no re-rounding; the −1.19 /
+  2.44 / 1.74 / 1.15 literals fall out of its `quantize`).
+- JS `%` on a non-negative float is Rust's `%` (both keep the dividend's
+  sign); `loop_at` keeps `%` as the source has it and documents the
+  negative-`ms` case rather than switching to `rem_euclid`.
+- `WelcomeClock` is the rAF accumulator as a step function in the same
+  file (first frame adds `plot::FIRST_FRAME_MS` regardless of the gap,
+  later frames `min(now - last, 50)`); `state(false)` is the still and
+  `is_animating(false)` is false, so the coder's frame loop schedules no
+  frames under reduced motion.
+- `fit_scale.rs`: `fit_scale` returns `1.0` on a non-positive side — the
+  hook instead keeps its previous value, so the caller retains its stored
+  fit and only calls this once laid out (said in the doc). `paper_fit`
+  is the `WelcomePage.tsx` line verbatim, `1e-9` included. Verified
+  against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
+  (53/100); at dpr 1 it is 0.52.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
