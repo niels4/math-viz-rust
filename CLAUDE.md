@@ -371,6 +371,37 @@ no new tokens (all eight tabled).
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
 
+### h6-curve (the transform's wiring)
+
+- The flip's render phase needs the adoption without the advance: the
+  press's own turn must draw the jump at elapsed 0 (a=2.00), so
+  `ShownTransform` splits `adopt` (render-phase, called from the press)
+  from `step` (adopt + advance, called from the frame loop). Without the
+  split the press turn draws one frame in (a≈1.96), a 4-device-px curve
+  defect. The loop's first step after the press carries `FIRST_FRAME_MS`
+  through the jump's `first_frame` flag, as the hook's first rAF callback
+  carries no measured gap.
+- A transformed curve cannot stay a `fn` pointer: `plot::sample_curve`
+  takes `impl Fn(f64) -> f64` (plain curves pass their pointer, transformed
+  ones `|x| curve.func.value(x)`), and the overshoot clamp
+  (`plane_geometry::clamp_curve_y`) sits inside the shared sampler, exactly
+  where `drawCurve` clamps before pushing the point. Identity transforms
+  sample bit-equal through `TransformedFunction::value` (`1.0 * g + 0.0` is
+  exact), so one paint path serves all curves.
+- Canvas dashes emulate by cutting the polyline into on-interval subpaths
+  (`plane::dash_pieces`, the first port's `dash.rs` technique) stroked with
+  the look's caps: Canvas caps each dash, which is what makes round-capped
+  `[6, 6]` from offset 3 match. The pattern phase is the offset into the
+  period (`(d + offset) % period`), not a trimmed first dash.
+- Never pipe a check into a commit chain: `./build.sh check | tail`
+  exits 0 through `tail`, so one commit landed while a test was red. Chain
+  the check and the commit with `&&` only and no pipe.
+- At a new hash, re-read every shared artifact the reference may have
+  renamed: the 5cef052 tooltip commit renamed the overlay button's
+  aria-label (fixture selector) and hid the button at the default camera
+  (fixture shot + box test source). The button's own visibility rule stays
+  its owner's (h6-handles).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
