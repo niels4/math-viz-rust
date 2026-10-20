@@ -174,10 +174,13 @@ pub fn paint_button(
     vg.stroke();
 
     // The target icon, drawn in the svg's units scaled by ICON_SCALE about
-    // the button's centre; strokes scale the same way (1.8 units wide).
+    // the button's centre; strokes scale the same way (1.8 units wide). The
+    // round caps stay inside this save block: the app's strokes are butt
+    // everywhere else, and the next frame's painters inherit the context.
     let cx = button.x + button.width / 2.0;
     let cy = button.y + button.height / 2.0;
     let ring = 6.5 * ICON_SCALE;
+    vg.save();
     vg.stroke_color(colors.button_ink);
     vg.stroke_width(1.8 * ICON_SCALE);
     vg.line_cap(mv_nvg::LineCapType::ROUND);
@@ -200,6 +203,7 @@ pub fn paint_button(
         vg.line_to(cx + (x1 - 12.0) * ICON_SCALE, cy + (y1 - 12.0) * ICON_SCALE);
     }
     vg.stroke();
+    vg.restore();
 }
 
 /// The overlay's colours from the resolved theme.

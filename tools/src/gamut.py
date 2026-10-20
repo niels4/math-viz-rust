@@ -247,6 +247,10 @@ def scaled_boxes(native_out: Path, density: float) -> dict[str, list[tuple[int, 
     shots: dict[str, list[tuple[int, int, int, int]]] = {}
     for line in path.read_text().splitlines():
         view = cast(dict[str, object], json.loads(line))
+        if "shot" not in view:
+            # A standalone `url` line (the shell's contract: written whenever
+            # the page query changes): no frame, no boxes.
+            continue
         boxes: list[tuple[int, int, int, int]] = []
         for b in cast(list[list[float]], view.get("scaled") or []):
             x0, y0 = math.floor(b[0] * density), math.floor(b[1] * density)
