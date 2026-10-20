@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at adb0534 (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at c409aad (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as
@@ -30,6 +30,8 @@ pub enum Token {
     ChartLine,
     ChartAccent,
     ChartGlow,
+    ChartAxis,
+    ChartGridMajor,
     Ordinal01,
     Ordinal02,
     Ordinal03,
@@ -282,6 +284,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0924,
                         h: 166.32,
                         alpha: 0.4,
+                    }),
+                ),
+                (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
                     }),
                 ),
                 (
@@ -587,6 +605,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
+                    }),
+                ),
+                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.8442,
@@ -886,6 +920,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.2189,
                         h: 292.72,
                         alpha: 0.4,
+                    }),
+                ),
+                (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
                     }),
                 ),
                 (
@@ -1191,6 +1241,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                     }),
                 ),
                 (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
+                    }),
+                ),
+                (
                     Token::Ordinal01,
                     Value::Oklch(Oklch {
                         l: 0.5262,
@@ -1489,6 +1555,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.195,
                         h: 276.97,
                         alpha: 0.4,
+                    }),
+                ),
+                (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
                     }),
                 ),
                 (
@@ -1798,6 +1880,22 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                         c: 0.0769,
                         h: 149.96,
                         alpha: 0.4,
+                    }),
+                ),
+                (
+                    Token::ChartAxis,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 75.0,
+                        b: Some(Token::Background),
+                    }),
+                ),
+                (
+                    Token::ChartGridMajor,
+                    Value::Mix(Mix {
+                        a: Token::ForegroundMuted,
+                        p: 35.0,
+                        b: Some(Token::ChartGrid),
                     }),
                 ),
                 (

@@ -6,6 +6,22 @@
 # root's box as the stand-in; h2 adds the canvas once the reference has it.
 canvas = "canvas"
 root = "#root"
+
+# h1-settings: the settings menu's boxes. The menu is a popover div with a
+# generated id; radio inputs are 0x0, so the labels select through :has.
+# option_0..2 are the dark list, option_3..5 the light list (only one list is
+# ever in the DOM); swatch_0 is the first row's swatch.
+menu = 'div[id^="settings-menu-"]'
+radio_system = 'label:has(> input[value="system"])'
+radio_dark = 'label:has(> input[value="dark"])'
+radio_light = 'label:has(> input[value="light"])'
+option_0 = 'label:has(> input[value="arctic-ice"])'
+option_1 = 'label:has(> input[value="tron-cyan"])'
+option_2 = 'label:has(> input[value="midnight-violet"])'
+option_3 = 'label:has(> input[value="clean-teal"])'
+option_4 = 'label:has(> input[value="educational-warm"])'
+option_5 = 'label:has(> input[value="sage-editorial"])'
+swatch_0 = 'label:has(> input[value="arctic-ice"]) svg'
 # H1 at adb0534: still no <canvas> or <header> element (the plane comes at h2), so canvas
 # stays missing and header reads the top bar div structurally: #root's page div's first
 # div child. title is the h1; gear is the first button (the only one while the menu is
@@ -13,3 +29,6 @@ root = "#root"
 header = "#root > div > div"
 title = "h1"
 gear = "button"
+# H2 at c409aad: the return-to-centre button over the canvas (CSS-module hashes
+# make class selectors unusable, so the accessible name selects it).
+overlay_button = "button[aria-label=\"Return to center\"]"

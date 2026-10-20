@@ -1,0 +1,15 @@
+# settings-focus-radio (H1): a radio focused by Tab. From the gear, Tab lands on
+# the checked light-dark cell (system); options carry no :focus-visible style at
+# this hash, so the shot matches settings-open and the check is behavioural
+# (views.json focus / reference activeElement).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+key Tab
+wait 150
+shot settings-focus-radio

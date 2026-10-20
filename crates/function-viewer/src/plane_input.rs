@@ -30,7 +30,7 @@
 use crate::app::App;
 use crate::app_loop::{MS, Time};
 use crate::camera::{self, PointerButton};
-use crate::input::{HitKind, region_of};
+use crate::input::{Cursor, Hit, HitKind, region_kept, region_of};
 use crate::url::{QueryParam, QueryParamDef, default_equals};
 
 /// The SDL mouse pointer's id in camera coordinates. `input.rs` decodes only
@@ -143,6 +143,36 @@ pub fn init_camera_from_url(app: &mut App) {
     let center = *app.center_param.get();
     let scale = *app.scale_param.get();
     app.camera = camera::Camera::new(center, scale);
+}
+
+/// Declares the plane canvas's kept region: the camera's hit target over the
+/// canvas content box, as [`canvas_content_center`] reads it. Runs after the
+/// layout (the box resolves from the Clay context through `PLANE_ID`) and
+/// before the overlay button's region, so the button wins their overlap at
+/// equal z. h2-plane's slot declares only the button; this side owns the
+/// canvas. Not a focus stop (the canvas takes no keyboard focus).
+pub fn declare_plane_region(app: &mut App) {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
+    if !data.found {
+        return;
+    }
+    let content = crate::plane::canvas_content(&data.boundingBox);
+    region_kept(
+        app,
+        Hit {
+            kind: HitKind::Plane,
+            index: 0,
+        },
+        content,
+        Cursor::Default,
+        Cursor::Default,
+        false,
+        crate::ui::corner_radius_all(0.0),
+    );
 }
 
 /// A primary press on the plane: adopt outside values first (above), then the

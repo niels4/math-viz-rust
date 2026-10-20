@@ -29,6 +29,7 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - function-viewer (input-pinch): payloads the safe event enum drops are recovered by an `SDL_AddEventWatch` that records them keyed by the event timestamp (the safe `Unknown` keeps the timestamp: the join key), following the `darwin_watch_wheel` precedent; the store is a `static Mutex` (SDL may call the watch on another thread than the router: a `thread_local!` would hide it); the safe `EventType` lacks pinch and display-scale variants, which is why both arrive as `Unknown`; `SDL_PeepEvents` with a single-type range takes one event type back without disturbing other queued events.
 - **function-viewer** (test-app): unit tests build `App` with `fixture::headless_app()` (the zeroed `App`: `window`/`gl_context`/`gl` are `None`, `vg` is `Context::null()`) and never open a window — a `cargo test` thread cannot start SDL video (measured 2026-10-18: `sdl3::init()` refuses off the main thread, and with one thread SDL answers "No available video device"). Window readers go through `App::window()`/`window_mut()`, which panic on `None`; `platform_refresh_rate` returns 0.0 headless.
 - function-viewer (h2-p-url): the URL query codec is hand-rolled (no new dependency): `application/x-www-form-urlencoded` encode/decode as `URLSearchParams` does (space `+`, stray `%` literal, lossy UTF-8), pairs in a `Vec` so key order matches, then the literal-comma restore (`%2C`/`%2c` back to `,`) applied after the whole search string is built, exactly where the TS `replaceAll` sits; `trim_slashes` is split/filter/join (the regex's three alternatives remove exactly the empty segments — the 13 cases pin it); the debounce is one pending write per param armed in whole ms on the app's frame clock (callers pass `(now / MS) as u64`), fired by an explicit `step`, absorbed by an explicit `sync` with the `lastRaw` skip; test serialises print `format!("{:.N}", round_to(v, N))` for ASCII `-` (never bare `{:.N}` per the numfmt bullet, never `format_number`'s U+2212); the `hashchange` listener calls the `mv_hash_changed` export (on `EXPORTED_FUNCTIONS`; `replaceState` fires no `hashchange`, so our own writes never loop back), which pushes `UserCode::Hash` for the main thread to re-read.
+- function-viewer (h3-p-plot): the plot switch keeps the hook's shape as data (`Shown { func, old: Option, elapsed }`, `PlotCurve { func, alpha, draw_to }` — the TS field `fn` is renamed `func`, a keyword); graphed functions are plain `fn(f64) -> f64` pointers and identity is address comparison through `std::ptr::fn_addr_eq` (plain `==` on fn pointers is compiler-linted, including inside a derived `PartialEq`, so `PlotCurve` implements it by hand); the rAF loop is `switch_to` (the render-phase transition, `canAnimate()` in as a `bool` the coder wires) plus `step` (first frame carries `FIRST_FRAME_MS`, as `camera.rs`'s `first_frame`, but only on a rest-to-switch transition — a mid-switch change keeps the running clock, as the hook's loop is keyed on `switching`); `sample_curve` is `drawCurve`'s sampling without the paint (per-column points, `insideShare`, cumulative inside-length, interpolated stop), taking the canvas dims beside the grid, which stores none; vitest `toBeCloseTo(x, 2)` is `|diff| < 0.005`, and frame-driven tests accumulate time and diff it exactly like the hook's `now - last` so `elapsed` sums bit-identically.
 
 ## Harness notes
 
@@ -87,7 +88,50 @@ The one check: `./build.sh check`.
 
 One block per milestone, appended in merge order; empty until the first milestone lands.
 
-### h2-input: the plane's input wiring (unmerged)
+### h1-frame (from its progress file; its branch merged first)
+
+- The theme change is a 250 ms LINEAR cross-fade, measured on the reference (getAnimations during a click; the plan's §1.4 guessed ease).
+- Clay borders take no layout space (the browser's `border-box` does), so each bordered element's Clay padding is its CSS padding plus its border.
+- `ThemeState`'s setters are pure; the side-effecting `App::set_*` wrappers save through prefs and start the transition.
+- The bar shadow paints from `ShadowColor` at 0/6/18, skipped where transparent (the dark themes).
+
+### h1-settings
+
+- The settings menu is a floating Clay sibling anchored to the gear (RightTop to RightBottom, 8 px below), laid out only while open; the hidden popover takes no part in the layout. The closed menu still matches `display:flex` selectors in the DOM, so the layout test reads the open shots.
+- Hover is positional but sticky-dropped: a pick that changes the theme drops hover until the next pointer move (measured: Chromium does not re-hover without a mouse move after the re-render); a same-value pick keeps it. Enforced by `hover_held` in `retarget`, cleared on pointer (or button-pos) move. Keyboard focus lives separately in `input.focus`.
+- One `HitKind::Gear` region (h1-frame's) serves the click; the menu never declares its own gear region. Theme rows resolve hover/secondary/swatch tokens under the ROW's theme class, not the page theme.
+- Icons take 0-to-1 colours: a settings icon converts its 0-to-255 Clay ink with `nvg_color` at the layout boundary (unconverted inks clamp to white).
+- The transition snapshot must be captured after `end_frame` (mid-frame `read_pixels` reads the unflushed backbuffer), and the loop must keep turns coming + stay awake while a transition is active, or the fade never animates past its first frame.
+- Menu rows/labels hover with their own secondary; the checked row has no background (weight + check only); `:hover` beats `.selected` on rows while `:has(:checked)` beats `:hover` on cells (both measured).
+- Chromium/Firefox don't capture the timed fade under the harness like WebKit: chromium runs ~180 ms ahead of script time, firefox shows all-final frames (engine quirk, measured per-frame). The port's fade is exactly linear-250 on the script clock.
+
+### h2-plane (the Cartesian plane's painters)
+
+- The reference's canvas draw is fully characterised without screenshots: wrap
+  `fillText`/`moveTo`/`lineTo`/`roundRect`/`stroke` in an init script and read
+  every segment with its width+colour and every text with its font+pen
+  (`.local/probe/` pattern). Canvas 2D centres strokes exactly like NanoVG,
+  so grid/axis strokes sit on integer layout px with butt caps, one path per
+  colour+width batch; there is no half-pixel offset at this hash.
+- math-viz2's canvas bitmap is its content box (border-box minus the 1 px
+  border); the CSS radius rounds afterwards. The port scissors the content
+  box, paints, then cuts the four rounded triangles with page-coloured
+  quarter-circle bezier cutouts and strokes the rim on the border box inset
+  half a px (radius 3.5).
+- `layout_labels` takes `&dyn Fn`: the `&mut Fonts` measure adapts through a
+  local `RefCell` (never by touching the merged grid module).
+- Canvas `textBaseline: "top"` puts the em-box top on the pen: baseline =
+  top + face ascent at size; `"middle"` centres the ascent-descent span.
+  Both rest on `mv_text::metrics` and are judged through the harness.
+- The return-to-centre button renders on every view at this hash (probed in
+  all fourteen states); `HtmlOverlay.tsx` holds no conditional.
+- Eyeballing contact PNGs misleads at display scale: the default origin
+  looked bottom-left but measured exactly centred. Measure, don't eyeball.
+- `tools/live/` must exist for `mv-script`'s twin test only as a missing dir
+  holding zero scripts (git keeps no empty directory); `tools/states/`
+  scripts need no such guard while they hold states.
+
+### h2-input: the plane's input wiring
 
 `plane_input.rs` routes the plane's SDL facts into `camera.rs` and the URL
 params into the page URL: `plane_down` adopts outside values BEFORE the
@@ -97,7 +141,8 @@ of `Camera`); `plane_move` dirties only on center change (the hook's publish);
 hash — the skill's ×16 rule belongs to h5's scrub); `frame_step` runs in
 `iterate` before the draw (camera step → publish-vs-live → settle flush →
 param step/sync → adopt → web hash write); the Hash arm shares
-`external_url_synced`; `App.reset_view` flushes both params to defaults (a
+`external_url_synced`; `App.reset_view` (the only copy; h2-plane's
+`overlay.rs` twin deleted at the merge) flushes both params to defaults (a
 mid-glide reset is rewritten by the ongoing glide, as the reference is).
 `HitKind::Plane` captures; a wheel asserts pointer presence; the canvas keeps
 the default cursor (no CSS rule). Wheel px: web ×100 restores DOM px, native
@@ -105,10 +150,14 @@ macOS notch 40 / precise 10 (scripted states queue page px on both targets).
 A fact at script t=0 takes the wall clock (states open with `wait 500`).
 views.json: shot lines carry `zoom=scale, pan=center`; native `camera` lines
 (center/scale/animating) on change (`check_views` allows them); `run_native`
-passes the script's `query` as `--query`. Plane region box convention for
-h2-plane: the canvas CONTENT box. `default_equals` is `Object.is` (`-0` ≠
-`0`); `write_pair` set collapses duplicate keys. Don't run repo-wide
-`tools/format` (version drift reflows unowned files).
+passes the script's `query` as `--query`. The Plane region is declared here
+(`declare_plane_region` over the canvas content box; `collect_regions(app)`
+reads `app.clay` in place). The return-to-centre release routes to
+`reset_view` when the press started and the release lands on
+`ReturnToCenter`; a press on it with the settings menu open closes the menu
+(settings.rs ruling). `default_equals` is `Object.is` (`-0` ≠ `0`);
+`write_pair` set collapses duplicate keys. Don't run repo-wide
+`tools/format` (pinned versions only).
 
 ## Long runs
 

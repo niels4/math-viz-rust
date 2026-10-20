@@ -4,12 +4,15 @@
 //! `FunctionViewer.module.css` at `adb0534`: the page grid (16 px padding,
 //! 16 px gaps, title row over content row, 400 px sidebar column), the top
 //! bar spanning it, and the sidebar stub the later milestones replace. The
-//! frame paint walks Clay's commands through NanoVG; the theme cross-fade
-//! paints the last stable frame's snapshot over the new one.
+//! body cell holds the plane's canvas (h2-plane's slot: the bordered box,
+//! the grid paint and the overlay). The frame paint walks Clay's commands
+//! through NanoVG; the theme cross-fade paints the last stable frame's
+//! snapshot over the new one.
 
 use mv_sys::clay;
 
 use crate::app::App;
+use crate::input::{Cursor, Hit, HitKind};
 use crate::transition::Transition;
 
 /// The page grid: 16 px padding and gaps, 400 px sidebar column.
@@ -96,14 +99,98 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
-            crate::ui::ui_scope(app, mv_clay::id("Body", 0), &body, |_| {});
+            // The plane's canvas (h2-plane's slot): the border box fills the
+            // cell, as the canvas fills its wrapper; the 1 px border and 4 px
+            // radius are the CSS values, and the grid paints inside them.
+            body.border = clay::BorderElementConfig {
+                color: crate::ui::ink(crate::ui::current_theme(app), mv_theme::Token::Border),
+                width: mv_clay::border_outside(1),
+            };
+            body.cornerRadius = crate::ui::corner_radius_all(crate::plane::CANVAS_RADIUS);
+            crate::ui::ui_scope(app, mv_clay::id(crate::plane::PLANE_ID, 0), &body, |_| {});
         });
+        // The settings menu floats under the gear, above the page.
+        crate::settings::menu(app);
     });
     app.clay
         .as_mut()
         .expect("clay context initialised")
         .end_layout()
         .to_vec()
+}
+
+/// The canvas's border box, once laid out.
+fn plane_box(app: &App) -> Option<clay::BoundingBox> {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
+    data.found.then_some(data.boundingBox)
+}
+
+/// Declares the overlay button's kept region: the pointer shows over it, the
+/// click lands on `ReturnToCenter`, and Tab stops on it after the gear. Runs
+/// after the layout (the button's box derives from the canvas's), before the
+/// regions resolve.
+fn declare_plane_button(app: &mut App) {
+    if !crate::overlay::button_visible() {
+        return;
+    }
+    let Some(canvas) = plane_box(app) else {
+        return;
+    };
+    let button = crate::overlay::overlay_button_box(&canvas);
+    crate::input::region_kept(
+        app,
+        Hit {
+            kind: HitKind::ReturnToCenter,
+            index: 0,
+        },
+        button,
+        Cursor::Pointer,
+        Cursor::Pointer,
+        true,
+        crate::ui::corner_radius_all(crate::overlay::BUTTON_RADIUS),
+    );
+}
+
+/// Paints the plane's slot over the canvas: the grid, axes, labels and scale
+/// legend on the content box, then the overlay's brackets and button. Runs
+/// after the Clay commands (over the page background), before the
+/// transition's fade.
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+    let Some(canvas) = plane_box(app) else {
+        return;
+    };
+    let content = crate::plane::canvas_content(&canvas);
+    // The live camera (h2-input's wiring publishes every gesture into it
+    // before the draw, so this draws what the frame stepped to — the hook's
+    // `cur` at publish, which the React draw reads as props).
+    let (center, scale) = (app.camera.center, app.camera.scale);
+    let colors = crate::plane::plane_colors(theme);
+    // Natively fonts are always loaded, so the plane always shows its text;
+    // the pre-font grid-only state is recorded, not reproduced.
+    crate::plane::paint_plane(
+        &mut app.fonts,
+        &mut app.vg,
+        &content,
+        center,
+        scale,
+        &colors,
+        true,
+    );
+    let overlay = crate::overlay::overlay_box(&canvas);
+    let ocolors = crate::overlay::overlay_colors(theme);
+    crate::overlay::paint_corners(
+        &mut app.vg,
+        &crate::overlay::corner_boxes(&overlay),
+        ocolors.chrome,
+    );
+    let button = crate::overlay::overlay_button_box(&canvas);
+    let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
+    let focused = app.input.focus.kind == HitKind::ReturnToCenter;
+    crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -127,18 +214,31 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         crate::draw::nvg_color(bg),
     );
     let commands = layout_page(app);
+    // The canvas first, then the overlay button, so the button wins their
+    // overlap at equal z.
+    crate::plane_input::declare_plane_region(app);
+    declare_plane_button(app);
+    crate::input::collect_regions(app);
     paint_bar_shadow(app, &theme);
+    paint_menu_shadow(app, &theme);
     let fading = app
         .transition
         .active
         .map(|active| (active, Transition::progress(active, now)));
     draw_commands(app, density, &commands);
+    draw_plane(app, &theme);
+    // The rows' swatches, then the gear's hover border and focus ring.
+    crate::settings::paint_swatches(app);
+    crate::settings::paint_chrome(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
-    } else {
-        snapshot_frame(app);
     }
     app.vg.end_frame();
+    if fading.is_none() {
+        // After the flush: `read_pixels` inside the frame would read the
+        // unflushed (stale) backbuffer, so the fade's snapshot waits here.
+        snapshot_frame(app);
+    }
     crate::input::update_cursor(app);
 }
 
@@ -151,15 +251,40 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
     if ink[3] <= 0.0 {
         return;
     }
+    let Some(b) = element_box(app, mv_clay::id("TopBar", 0)) else {
+        return;
+    };
+    paint_shadow(app, b, crate::top_bar::TOPBAR_RADIUS, ink);
+}
+
+/// Paints the settings menu's shadow: 0 6 px 18 px in the shadow colour,
+/// skipped where transparent (the dark themes) and while closed.
+fn paint_menu_shadow(app: &mut App, theme: &mv_theme::Theme) {
+    if !app.settings.open {
+        return;
+    }
+    let ink = theme.colors[mv_theme::Token::ShadowColor];
+    if ink[3] <= 0.0 {
+        return;
+    }
+    let Some(b) = element_box(app, mv_clay::id(crate::settings::layout::MENU_ID, 0)) else {
+        return;
+    };
+    paint_shadow(app, b, crate::settings::layout::MENU_RADIUS, ink);
+}
+
+/// The laid-out box of an element, if the frame laid it out.
+fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
     let data = app
         .clay
         .as_ref()
         .expect("clay context initialised")
-        .get_element_data(mv_clay::id("TopBar", 0));
-    if !data.found {
-        return;
-    }
-    let b = data.boundingBox;
+        .get_element_data(id);
+    data.found.then_some(data.boundingBox)
+}
+
+/// Paints a 0 6 px 18 px shadow behind the box.
+fn paint_shadow(app: &mut App, b: clay::BoundingBox, radius: f32, ink: mv_nvg::Color) {
     let shadow = ink;
     let transparent = [shadow[0], shadow[1], shadow[2], 0.0];
     let blur = 18.0;
@@ -169,7 +294,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         b.y + 6.0,
         b.width,
         b.height,
-        crate::top_bar::TOPBAR_RADIUS,
+        radius,
         feather,
         shadow,
         transparent,
@@ -181,11 +306,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         b.width + blur * 4.0,
         b.height + blur * 4.0,
     );
-    crate::draw::rounded_rect(
-        &mut app.vg,
-        b,
-        crate::ui::corner_radius_all(crate::top_bar::TOPBAR_RADIUS),
-    );
+    crate::draw::rounded_rect(&mut app.vg, b, crate::ui::corner_radius_all(radius));
     app.vg.path_winding(mv_nvg::Winding::CW);
     app.vg.fill_paint(&paint);
     app.vg.fill();

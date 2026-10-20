@@ -43,6 +43,14 @@ pub enum Type {
     Subtitle,
     /// The sidebar stub's copy at this hash: Work Sans 400, 16 px.
     Body,
+    /// The settings menu's caps legends: Work Sans 800, 12 px, 0.08 em.
+    MenuLabel,
+    /// The settings menu's segmented options: Work Sans 600, 14 px.
+    OptionText,
+    /// The settings menu's help message: Work Sans 400, 13 px.
+    MenuHelp,
+    /// A selected theme row's label: Work Sans 600, 16 px.
+    StrongBody,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -83,6 +91,33 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 19.0,
         },
+        // The caps legend's 14 px line box, measured on the reference.
+        Type::MenuLabel => TypeStyle {
+            face: Face::WorkSans800,
+            size: 12.0,
+            tracking: 0.96,
+            line_height: 14.0,
+        },
+        // The segmented option's line box, measured on the reference.
+        Type::OptionText => TypeStyle {
+            face: Face::WorkSans600,
+            size: 14.0,
+            tracking: 0.0,
+            line_height: 17.0,
+        },
+        // The help message's 15 px line box, measured on the reference.
+        Type::MenuHelp => TypeStyle {
+            face: Face::WorkSans400,
+            size: 13.0,
+            tracking: 0.0,
+            line_height: 15.0,
+        },
+        Type::StrongBody => TypeStyle {
+            face: Face::WorkSans600,
+            size: 16.0,
+            tracking: 0.0,
+            line_height: 19.0,
+        },
     }
 }
 
@@ -92,6 +127,10 @@ fn type_from_id(id: u16) -> Type {
         1 => Type::Title,
         2 => Type::Subtitle,
         3 => Type::Body,
+        4 => Type::MenuLabel,
+        5 => Type::OptionText,
+        6 => Type::MenuHelp,
+        7 => Type::StrongBody,
         _ => unreachable!("clay font id names a text style"),
     }
 }
@@ -231,6 +270,10 @@ mod tests {
             (Type::Title, "Function Viewer"),
             (Type::Subtitle, "FUNCTIONS · TRANSFORMATIONS"),
             (Type::Body, "Sidebar!"),
+            (Type::MenuLabel, "APPEARANCE"),
+            (Type::OptionText, "System"),
+            (Type::MenuHelp, "Always dark."),
+            (Type::StrongBody, "Arctic Ice"),
         ];
         app.clay
             .as_mut()
