@@ -72,6 +72,8 @@ fn parse_center_param(raw: Option<&str>) -> Option<[f64; 2]> {
     camera::parse_center(raw?)
 }
 
+// `None` would delete the key, which this param never does, as the TS
+// `centerParam` serialiser never returns `null`.
 #[allow(clippy::unnecessary_wraps)]
 fn serialize_center_param(value: &[f64; 2]) -> Option<String> {
     Some(camera::format_center(*value))
@@ -81,6 +83,8 @@ fn parse_scale_param(raw: Option<&str>) -> Option<f64> {
     camera::parse_scale(raw?)
 }
 
+// `None` would delete the key, which this param never does, as the TS
+// `scaleParam` serialiser never returns `null`.
 #[allow(clippy::unnecessary_wraps)]
 fn serialize_scale_param(value: &f64) -> Option<String> {
     Some(camera::format_scale(*value))
@@ -537,7 +541,9 @@ pub fn external_url_synced(app: &mut App) -> bool {
 /// press or release, a wheel); moves never set it, so a glide under a drag
 /// keeps stepping, and production never sets it (its events and frames are
 /// separate turns already). Always consumed by the next [`frame_step`], so a
-/// hold never leaks into a later turn.
+/// hold never leaks into a later turn. Process-global (not an `App` field)
+/// because the web harness raises it through the `mv_hold_step` FFI entry,
+/// which cannot reach the app.
 static HOLD_CAMERA_STEP: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Holds the camera's next step for this turn's publish-and-draw (see

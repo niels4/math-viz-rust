@@ -811,9 +811,9 @@ def run_native(
     # run by hand defaults to welcome). The script default is function-viewer, so every existing
     # script still opens the viewer.
     command += ["--route", script.start.route]
-    result.detail["command"] = " ".join(command)
     if window:
         command.append("--window")
+    result.detail["command"] = " ".join(command)
     began = time.monotonic()
     try:
         done = subprocess.run(command, capture_output=True, text=True, timeout=600, cwd=REPO)

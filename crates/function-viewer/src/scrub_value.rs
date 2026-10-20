@@ -49,10 +49,6 @@ pub const DRAG_THRESHOLD_PX: f64 = 3.0;
 /// (`REST_MS`, armed by the input layer while [`ScrubBox::pointer_on`]).
 pub const REST_MS: u64 = 400;
 
-/// The box's left chevron (`Chevron dir="left"`): 6×12, round caps.
-pub const CHEVRON_WIDTH: f32 = 6.0;
-/// The box's chevron height.
-pub const CHEVRON_HEIGHT: f32 = 12.0;
 /// The tip under the box: `top: calc(100% + 11px)`, right-flush.
 pub const TIP_BELOW_PX: f32 = 11.0;
 
@@ -1272,7 +1268,7 @@ pub fn tip(app: &mut App, param: TransformParam, index: u32) {
 
 /// Paints the typing tip's arrow glyphs after the command walk (paths, not
 /// text, as the chevrons are). The paint lives in [`crate::tip`]. Call from
-/// `paint_rows`, as the chevrons are.
+/// `draw_page` after the tip walk, as the chevrons are.
 pub fn paint_extras(app: &mut App) {
     for param in crate::transform_section::ROW_ORDER {
         if app.drafts[param].typing_from.is_none() {

@@ -75,6 +75,16 @@ pub enum LiveWhat {
     Resize(LiveResize),
     Scheme(LiveScheme),
     End(LiveEnd),
+    /// A mid-run hash edit: the page's hash the harness hands over directly,
+    /// keeping the script's route (t1-hash; the loop milestone's carrier for
+    /// the `hash` verb in `--live` runs).
+    Hash(LiveHash),
+}
+
+/// A mid-run hash edit, as `sync_from_hash` takes it: `"#route?query"`.
+#[derive(Debug)]
+pub struct LiveHash {
+    pub hash: String,
 }
 
 /// Typed text: posted only while text input is on.
@@ -227,6 +237,7 @@ pub fn live_add(l: &mut Live, at: i64, what: LiveWhat) {
         | LiveWhat::Shot(_)
         | LiveWhat::Resize(_)
         | LiveWhat::Scheme(_)
+        | LiveWhat::Hash(_)
         | LiveWhat::End(_) => {}
     }
     l.steps.push(step);
@@ -407,7 +418,7 @@ fn post(l: &Live, index: i64) {
                     SDL_PushEvent(&mut ev);
                 }
             }
-            LiveWhat::Shot(_) | LiveWhat::Resize(_) | LiveWhat::Scheme(_) | LiveWhat::End(_) => {
+            LiveWhat::Shot(_) | LiveWhat::Resize(_) | LiveWhat::Scheme(_) | LiveWhat::Hash(_) | LiveWhat::End(_) => {
                 push_user_event(
                     UserCode::Live,
                     index as *mut std::ffi::c_void,
@@ -432,6 +443,7 @@ pub fn live_step(app: &mut App, index: i64) -> AppResult {
         Shot(String),
         Resize([i64; 2]),
         Scheme(bool),
+        Hash(String),
         End,
         Model(mv_script::Model),
         Nothing,
@@ -440,6 +452,7 @@ pub fn live_step(app: &mut App, index: i64) -> AppResult {
         LiveWhat::Shot(s) => Action::Shot(s.name.clone()),
         LiveWhat::Resize(r) => Action::Resize(r.size),
         LiveWhat::Scheme(s) => Action::Scheme(s.dark),
+        LiveWhat::Hash(h) => Action::Hash(h.hash.clone()),
         LiveWhat::End(_) => Action::End,
         LiveWhat::Input(input) => match input {
             Input::Model(m) => Action::Model(m.change.clone()),
@@ -493,6 +506,19 @@ pub fn live_step(app: &mut App, index: i64) -> AppResult {
         }
         Action::Model(change) => {
             crate::input::handle_input(app, Input::Model(crate::input::ModelEvent { change }), 0);
+        }
+        Action::Hash(hash) => {
+            // The address-bar edit while the run plays: route and query in
+            // at once, the same handover the scripted harness performs
+            // (`harness.rs`'s `Hash` arm), through the web build's
+            // `hashchange` path on a route change. A frame draws now, so the
+            // changed query records in the run's next shots.
+            let prev = app.url.route().to_string();
+            app.url.sync_from_hash(&hash);
+            if prev != app.url.route() {
+                crate::welcome::enter_route(app);
+            }
+            app.dirty = true;
         }
         Action::Nothing => {}
     }
@@ -630,6 +656,7 @@ fn describe(what: &LiveWhat) -> String {
             Input::Model(e) => format!("Model_Event{{set = {:?}}}", e.change.set),
         },
         LiveWhat::Text(t) => format!("text {:?}", t.text.to_string_lossy()),
+        LiveWhat::Hash(h) => format!("hash {}", h.hash),
         LiveWhat::Shot(s) => format!("shot {}", s.name),
         LiveWhat::Resize(r) => format!("size {} {}", r.size[0], r.size[1]),
         LiveWhat::Scheme(s) => format!("scheme {}", if s.dark { "dark" } else { "light" }),
@@ -680,6 +707,12 @@ mod tests {
             "scheme dark"
         );
         assert_eq!(describe(&LiveWhat::End(LiveEnd {})), "end");
+        assert_eq!(
+            describe(&LiveWhat::Hash(LiveHash {
+                hash: "#function-viewer?center=1,2".to_string()
+            })),
+            "hash #function-viewer?center=1,2"
+        );
     }
 
     #[test]

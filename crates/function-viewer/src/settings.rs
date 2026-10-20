@@ -383,7 +383,7 @@ pub fn menu(app: &mut App) {
         height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
     };
     decl.layout.padding = bordered(layout::MENU_PAD);
-    let page = crate::ui::current_theme(app).clone();
+    let page = crate::ui::current_theme(app);
     let ink = |token| crate::ui::ink(&page, token);
     decl.backgroundColor = ink(mv_theme::Token::Card);
     decl.border = clay::BorderElementConfig {
@@ -444,7 +444,11 @@ fn appearance(app: &mut App, theme: &ThemeState) {
 /// A caps section legend: full-bleed text with 12 px side padding and an 8 px
 /// margin under it.
 fn legend(app: &mut App, id: &str, text: &str) {
-    let page = crate::ui::current_theme(app).clone();
+    // Scoped: the borrow ends before the layout takes `app` mutably.
+    let muted = {
+        let page = crate::ui::current_theme(app);
+        crate::ui::ink(&page, mv_theme::Token::ForegroundMuted)
+    };
     let mut wrap = crate::ui::empty_decl();
     wrap.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
@@ -462,7 +466,7 @@ fn legend(app: &mut App, id: &str, text: &str) {
             mv_clay::id(id, 1),
             crate::typography::Type::MenuLabel,
             text,
-            crate::ui::ink(&page, mv_theme::Token::ForegroundMuted),
+            muted,
             false,
         );
     });
@@ -471,7 +475,7 @@ fn legend(app: &mut App, id: &str, text: &str) {
 /// The segmented light/dark/system control: three 92 px cells in a 36 px
 /// bordered row, dividers as left borders on the second and third.
 fn segmented(app: &mut App, theme: &ThemeState) {
-    let page = crate::ui::current_theme(app).clone();
+    let page = crate::ui::current_theme(app);
     let ink = |token| crate::ui::ink(&page, token);
     let mut grid = crate::ui::empty_decl();
     grid.layout.sizing = clay::Sizing {
@@ -495,7 +499,7 @@ fn segmented(app: &mut App, theme: &ThemeState) {
 
 /// One segmented cell: the 16 px option icon over the label, centred.
 fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
-    let page = crate::ui::current_theme(app).clone();
+    let page = crate::ui::current_theme(app);
     let ink = |token| crate::ui::ink(&page, token);
     let hovered = app.input.hover
         == (Hit {
@@ -590,7 +594,11 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
 
 /// The selection message under the appearance section.
 fn message(app: &mut App, theme: &ThemeState) {
-    let page = crate::ui::current_theme(app).clone();
+    // Scoped: the borrow ends before the layout takes `app` mutably.
+    let muted = {
+        let page = crate::ui::current_theme(app);
+        crate::ui::ink(&page, mv_theme::Token::ForegroundMuted)
+    };
     let text = light_dark_message(theme.light_dark, theme.system);
     let mut wrap = crate::ui::empty_decl();
     wrap.layout.sizing = clay::Sizing {
@@ -609,7 +617,7 @@ fn message(app: &mut App, theme: &ThemeState) {
             mv_clay::id("MenuMessage", 1),
             crate::typography::Type::MenuHelp,
             &text,
-            crate::ui::ink(&page, mv_theme::Token::ForegroundMuted),
+            muted,
             false,
         );
     });
@@ -638,8 +646,11 @@ fn theme_list(app: &mut App, theme: &ThemeState, scheme: SystemScheme, slugs: &[
 
 /// One theme row: the swatch, the label, a spacer, and the check when selected.
 fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
-    let page = crate::ui::current_theme(app).clone();
-    let row_theme = app.themes[port_slug(slug)].clone();
+    // Borrowed (never cloned): `Theme` cannot move out of the `EnumMap`
+    // index, so both themes stay borrows, and the two inks the post-pass
+    // needs are hoisted as owned colours before the layout takes `app`.
+    let page = crate::ui::current_theme(app);
+    let row_theme = &app.themes[port_slug(slug)];
     let hovered = app.input.hover
         == (Hit {
             kind: HitKind::SettingsTheme,
@@ -665,10 +676,12 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
     // hover paints the row's own secondary whether selected or not, as the
     // theme class on the row resolves it (`:hover` has no `:not(.selected)`).
     decl.backgroundColor = if hovered {
-        crate::ui::ink(&row_theme, mv_theme::Token::Secondary)
+        crate::ui::ink(row_theme, mv_theme::Token::Secondary)
     } else {
         crate::ui::ink(&page, mv_theme::Token::Card)
     };
+    let foreground = crate::ui::ink(&page, mv_theme::Token::Foreground);
+    let check_ink = crate::ui::ink(row_theme, mv_theme::Token::Primary);
     crate::ui::ui_scope(app, mv_clay::id("MenuRow", index as u32), &decl, |app| {
         // The swatch box: painted by the post-pass from this element's data.
         let mut swatch_decl = crate::ui::empty_decl();
@@ -691,7 +704,7 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
                 crate::typography::Type::Body
             },
             slug.name(),
-            crate::ui::ink(&page, mv_theme::Token::Foreground),
+            foreground,
             false,
         );
         // The spacer the check's `margin-left: auto` absorbs.
@@ -724,7 +737,7 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
                     mv_clay::id("MenuCheckIcon", index as u32),
                     crate::icons::IconKind::Check,
                     layout::CHECK,
-                    crate::ui::ink(&row_theme, mv_theme::Token::Primary),
+                    check_ink,
                 );
             });
         }
@@ -778,9 +791,16 @@ pub fn paint_chrome(app: &mut App) {
     if !data.found {
         return;
     }
-    let page = crate::ui::current_theme(app).clone();
-    let density = density_of(app);
+    // Scoped: the borrow ends before the paint takes `app.vg` mutably.
+    // The ring is the primary at 32% (the rows' `theme::ring` shape).
+    let (primary, ring) = {
+        let page = crate::ui::current_theme(app);
+        let primary = crate::ui::ink(&page, mv_theme::Token::Primary);
+        let ring = [primary[0], primary[1], primary[2], primary[3] * 0.32];
+        (primary, ring)
+    };
     let b = data.boundingBox;
+    let density = density_of(app);
     let hovered = matches!(app.input.hover.kind, HitKind::Gear)
         || matches!(app.input.pressed.kind, HitKind::Gear);
     if hovered {
@@ -790,16 +810,11 @@ pub fn paint_chrome(app: &mut App) {
             crate::draw::snap_box(b, density),
             crate::ui::corner_radius_all(crate::top_bar::GEAR_SIZE / 2.0),
         );
-        app.vg.stroke_color(crate::draw::nvg_color(crate::ui::ink(
-            &page,
-            mv_theme::Token::Primary,
-        )));
+        app.vg.stroke_color(crate::draw::nvg_color(primary));
         app.vg.stroke_width(1.0);
         app.vg.stroke();
     }
     if app.input.focus.kind == HitKind::Gear && app.input.focus_visible {
-        let ring = crate::ui::ink(&page, mv_theme::Token::Primary);
-        let ring = [ring[0], ring[1], ring[2], ring[3] * 0.32];
         let at = clay::BoundingBox {
             x: b.x - 1.5,
             y: b.y - 1.5,

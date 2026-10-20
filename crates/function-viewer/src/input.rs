@@ -639,15 +639,16 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if !crate::settings::key(app, &event) {
                     crate::welcome::welcome_key(app, &event);
                 }
+            // The x-of-P slider's own keys (h8-points-slider): arrows,
+            // Home, End and Enter on its focused track, last in the chain
+            // (nothing follows it; an unconsumed key falls through, as the
+            // source's guarded Home/End do); Tab walks on above.
             } else if !crate::settings::key(app, &event)
                 && !crate::selector::key(app, &event)
                 && !crate::x_field::key(app, &event)
                 && !crate::transform_row::key(app, &event)
+                && !crate::point_slider::key(app, &event)
             {
-                // The x-of-P slider's own keys (h8-points-slider): arrows,
-                // Home, End and Enter on its focused track; Tab walks on
-                // above.
-                crate::point_slider::key(app, &event);
             }
             // A modifier anywhere re-reads a held scrub's mode live
             // mid-drag, as the window key hook does (down and up, never a

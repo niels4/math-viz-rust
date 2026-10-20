@@ -90,12 +90,27 @@ addToLibrary({
     // (h7-fix-capture: web h=10.40 vs native and the reference h=11.44 at
     // x=1500). SDL's port listens on the canvas, so capturing there is what
     // delivers the moves; the hook's try/catch stands, as a mouse already
-    // captured (or no pointer support) throws.
+    // captured (or no pointer support) throws. The hook's two guards stand
+    // too (`useCamera.ts:171-176`): no capture with an active pointer, and
+    // only button 0 for a mouse. The active id clears on release, cancel
+    // and blur, so a lost event cannot stick it and steal a later capture.
     const canvas = Module.canvas ?? document.getElementById("canvas");
+    let cameraPointerId = null;
     canvas?.addEventListener("pointerdown", (event) => {
+      if (cameraPointerId !== null) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      cameraPointerId = event.pointerId;
       try {
         canvas.setPointerCapture(event.pointerId);
       } catch {}
+    });
+    const releaseCameraPointer = (event) => {
+      if (event.pointerId === cameraPointerId) cameraPointerId = null;
+    };
+    canvas?.addEventListener("pointerup", releaseCameraPointer);
+    canvas?.addEventListener("pointercancel", releaseCameraPointer);
+    window.addEventListener("blur", () => {
+      cameraPointerId = null;
     });
     // Browser shortcuts reach the browser, as on the React page (the user's
     // ruling 2026-10-18; a deliberate departure from the Odin oracle in

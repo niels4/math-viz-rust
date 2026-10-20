@@ -99,7 +99,7 @@ ruler_k = "div[data-param=\"k\"] > div[aria-hidden=\"true\"]"
 # are the thumb (first) and the tip (last); the tip only boxes while shown.
 slider_p = '[aria-label="x of P"]'
 thumb_p = '[aria-label="x of P"] > span:first-of-type'
-slider_tip_p = '[aria-label="x of P"] > span:last-of-type' 
+slider_tip_p = '[aria-label="x of P"] > span:last-of-type'
 # H8 at 96f1e84: the Points card (the sidebar's second section), P's head
 # row (the slider's parent's first div), Q's head (the next point block's
 # first div), P's mark (the head's first svg), P's role slot (the head span

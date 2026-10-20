@@ -270,10 +270,11 @@ pub fn to_precision(x: f64, p: u32) -> String {
     }
     let (digits, exp) = exact_digits(x.abs());
     let p_len = p as usize;
+    let len = digits.len();
     // The decimal exponent: `digits` has `len` places, so the value sits in
     // `[10^(exp+len-1), 10^(exp+len))`.
-    let mut e = exp + digits.len() as i32 - 1;
-    let mut n = if digits.len() >= p_len {
+    let mut e = exp + len as i32 - 1;
+    let mut n = if len >= p_len {
         let (head, rest) = digits.split_at(p_len);
         // An empty rest is exact: nothing to round up.
         if rest.first().is_some_and(|&b| b >= b'5') {
@@ -282,8 +283,9 @@ pub fn to_precision(x: f64, p: u32) -> String {
             head.to_vec()
         }
     } else {
-        let mut padded = digits.clone();
-        padded.extend(std::iter::repeat_n(b'0', p_len - digits.len()));
+        // Moved, not cloned: `len` above holds the length past the move.
+        let mut padded = digits;
+        padded.extend(std::iter::repeat_n(b'0', p_len - len));
         padded
     };
     if n.len() > p_len {

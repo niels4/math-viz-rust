@@ -12,7 +12,7 @@ use crate::input::{
     ButtonEvent, Input, KeyEvent, ModelEvent, PinchEvent, PointerEvent, ReducedMotionEvent,
     SchemeEvent, TextEvent, WheelEvent, WindowEvent,
 };
-use crate::live::{LiveResize, LiveScheme, LiveShot, LiveWhat, live_add};
+use crate::live::{LiveHash, LiveResize, LiveScheme, LiveShot, LiveWhat, live_add};
 
 /// One frame of the grid.
 pub const FRAME_MS: i64 = 16;
@@ -419,13 +419,20 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
             queue(h, Input::Model(ModelEvent { change: m.clone() }));
         }
         mv_script::Verb::Hash(q) => {
-            if h.live.is_some() {
-                eprintln!(
-                    "[ERROR] --- [{}:{}] hash in a live run: the loop milestone's LiveWhat::Hash carries it (see live.rs)",
-                    file!(),
-                    line!()
+            if let Some(live) = h.live.as_mut() {
+                // The live timeline carries the edit (the timer posts it;
+                // the main thread applies it in `live_step`): the script's
+                // route kept, as below.
+                let at = h.time;
+                let kept = h.script_route.clone();
+                live_add(
+                    live,
+                    at,
+                    LiveWhat::Hash(LiveHash {
+                        hash: format!("#{kept}?{}", q.query),
+                    }),
                 );
-                return false;
+                return true;
             }
             // An edit of the page's hash while it runs (the address bar,
             // back/forward): route and query in at once, the same transition

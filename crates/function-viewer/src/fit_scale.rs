@@ -13,7 +13,7 @@ pub const DESIGN: [f64; 2] = [1440.0, 900.0];
 
 /// The graph paper's spacing in px (`paperStep`): the fit rounds down to a
 /// whole number of device pixels per step, so the paper's lines stay on the
-/// hero's (WebKit rounds each tile of a tiled background to whole device
+/// hero's (`WebKit` rounds each tile of a tiled background to whole device
 /// pixels under a transform).
 pub const PAPER_STEP: f64 = 50.0;
 

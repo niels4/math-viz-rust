@@ -204,7 +204,6 @@ impl Easing {
     /// the source writes it (`** 2`/`** 3` as `powi`, same op order, so the
     /// values round the same).
     fn at(&self, x: f64) -> f64 {
-        #[allow(clippy::approx_constant)]
         fn curve(t: f64, p1: f64, p2: f64) -> f64 {
             // `3 * p1 * t * (1 - t) ** 2 + 3 * p2 * t ** 2 * (1 - t) + t ** 3`
             3.0 * p1 * t * (1.0 - t).powi(2) + 3.0 * p2 * t.powi(2) * (1.0 - t) + t.powi(3)
@@ -231,6 +230,7 @@ pub fn cubic_bezier(x1: f64, y1: f64, x2: f64, y2: f64) -> impl Fn(f64) -> f64 {
 }
 
 /// The drag easing (`easeDrag`: 0.4, 0, 0.2, 1).
+#[must_use]
 pub fn ease_drag(progress: f64) -> f64 {
     Easing {
         x1: 0.4,

@@ -511,7 +511,7 @@ fn p_head(app: &mut App) {
     };
     let off = model.off.map(OffSide::dir);
     crate::ui::ui_scope(app, mv_clay::id(P_HEAD_ID, 0), &head, |app| {
-        mark(app, mv_clay::id(P_MARK_ID, 0), MarkShape::Bullseye);
+        mark(app, mv_clay::id(P_MARK_ID, 0));
         letter(app, mv_clay::id(P_LETTER_ID, 0), "P");
         if let Some(dir) = off {
             triangle(app, mv_clay::id(P_OFF_ID, 0), dir);
@@ -542,7 +542,7 @@ fn q_head(app: &mut App) {
         y: clay::LayoutAlignmentY::Center,
     };
     crate::ui::ui_scope(app, mv_clay::id(Q_HEAD_ID, 0), &head, |app| {
-        mark(app, mv_clay::id(Q_MARK_ID, 0), MarkShape::Ring);
+        mark(app, mv_clay::id(Q_MARK_ID, 0));
         letter(app, mv_clay::id(Q_LETTER_ID, 0), "Q");
         // The role slot, as P's (without the badge): flex 1, so the
         // readout stands right.
@@ -580,7 +580,7 @@ fn q_head(app: &mut App) {
 }
 
 /// The mark's spacer: a fixed 18 px box, painted post-pass.
-fn mark(app: &mut App, id: clay::ElementId, _shape: MarkShape) {
+fn mark(app: &mut App, id: clay::ElementId) {
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_fixed(MARK_SIZE),
@@ -590,7 +590,7 @@ fn mark(app: &mut App, id: clay::ElementId, _shape: MarkShape) {
 }
 
 /// The letter's spacer: P or Q on the 25 px serif line, painted post-pass.
-fn letter(app: &mut App, id: clay::ElementId, _letter: &str) {
+fn letter(app: &mut App, id: clay::ElementId, letter: &str) {
     let advance = mv_text::measure(
         &mut app.fonts,
         mv_text::Style {
@@ -599,7 +599,7 @@ fn letter(app: &mut App, id: clay::ElementId, _letter: &str) {
             tracking: 0.0,
             features: mv_text::Features::new(),
         },
-        _letter,
+        letter,
     );
     // Exact: flex sums fractional advances (the browser's P is 11.39 px),
     // unlike the CSS `round(up, …)` slots.
@@ -1293,6 +1293,8 @@ fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f3
 /// right-aligned in its slot, `)`, the relation, then y — the fixed text,
 /// the scientific mantissa with the 11 px exponent raised 8 px, or `–` in
 /// the muted colour when there is no point (`data-empty`).
+// Long by construction: one arm per y shape (fixed, scientific, empty),
+// each painting its runs; splitting it would scatter the run model.
 #[allow(clippy::too_many_lines)]
 fn paint_readout(
     app: &mut App,

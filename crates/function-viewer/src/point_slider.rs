@@ -516,7 +516,9 @@ pub fn key(app: &mut App, event: &KeyEvent) -> bool {
             app.slider_edit = true;
             app.dirty = true;
         }
-        KeyOutcome::Ignored => {}
+        // Off a valid range Home/End do nothing: the source guards them on
+        // `valid`, so the key falls through unconsumed.
+        KeyOutcome::Ignored => return false,
     }
     true
 }

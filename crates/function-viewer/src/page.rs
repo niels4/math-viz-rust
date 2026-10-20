@@ -383,6 +383,8 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     } else {
         1.0
     };
+    // Owned on purpose: `draw_welcome`/`draw_viewer` take `&Theme` beside
+    // `&mut App`, so no borrow of `app` can serve them; the clone ends it.
     let theme = crate::ui::current_theme(app).clone();
     app.vg.begin_frame(size[0], size[1], density);
     // The body's background, over the shell's clear.
