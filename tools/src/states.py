@@ -17,10 +17,11 @@ from images import Difference, contact_sheet, difference, load_rgb
 from script import DARK_THEMES, THEMES, Script, load
 
 STATES = REPO / "tools" / "states"
-# How many (state, surface) runs go at once without --jobs: the smallest level within 10 % of
-# the best wall time with zero verdict differences, measured on 24 cores / 128 GB in
-# .local/briefs/progress/par-states.md (the levels table).
-DEFAULT_JOBS = 4
+# How many (state, surface) runs go at once without --jobs: the smallest level within 10 %
+# of the best wall time with zero differences, measured on 24 cores / 128 GB in
+# .local/briefs/progress/t1-jobs.md (H1 H2, native and web-webkit: 1 job 80 s, 8 jobs 50 s,
+# 24 jobs 50 s; 8 wins the tie).
+DEFAULT_JOBS = 8
 # The scripts of states in another theme (state_script), where the native build can read them.
 VARIANTS = REPO / ".local" / "states-variants"
 # The lines that say how a page opens, before a script's first action.
