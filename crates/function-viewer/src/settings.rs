@@ -140,17 +140,24 @@ impl fmt::Display for FocusSlot {
     }
 }
 
-/// The menu's interactive state: the popover's open flag. Keyboard focus
-/// itself lives in the shell's input state (`app.input.focus`); the menu maps
-/// it to stops with `stop_of`, and Tab/Shift+Tab walk the group stops.
+/// The menu's interactive state: the popover's open flag, plus whether hover
+/// is held off. A pick drops hover like the reference's re-render does, and
+/// Chromium does not re-hover without a mouse move, so the hold suppresses
+/// the hover recompute until the pointer moves. Keyboard focus itself lives
+/// in the shell's input state (`app.input.focus`); the menu maps it to stops
+/// with `stop_of`, and Tab/Shift+Tab walk the group stops.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SettingsMenuState {
     pub open: bool,
+    pub hover_held: bool,
 }
 
 impl SettingsMenuState {
     pub fn closed() -> Self {
-        Self { open: false }
+        Self {
+            open: false,
+            hover_held: false,
+        }
     }
 
     pub fn open(&mut self) {
@@ -159,10 +166,14 @@ impl SettingsMenuState {
 
     pub fn close(&mut self) {
         self.open = false;
+        self.hover_held = false;
     }
 
     pub fn toggle(&mut self) {
         self.open = !self.open;
+        if !self.open {
+            self.hover_held = false;
+        }
     }
 
     /// Tab from the current stop: gear, then the checked light-dark cell, then
@@ -207,6 +218,19 @@ pub fn close_menu(app: &mut App) {
     app.input.focus = Hit::default();
     app.input.focus_visible = false;
     app.dirty = true;
+}
+
+/// A pick drops hover like the reference's re-render does; the hold lasts
+/// until the pointer moves.
+pub fn drop_hover(app: &mut App) {
+    app.settings.hover_held = true;
+    app.input.hover = Hit::default();
+    app.dirty = true;
+}
+
+/// The pointer moved: hover recomputes from the new position again.
+pub fn pointer_moved(app: &mut App) {
+    app.settings.hover_held = false;
 }
 
 /// An arrow key within a radio group: the new checked index, wrapping round.
@@ -835,7 +859,7 @@ pub fn click(app: &mut App, down: Hit) {
             app.set_light_dark(option);
             app.input.focus = down;
             app.input.focus_visible = false;
-            app.input.hover = Hit::default();
+            drop_hover(app);
         }
         HitKind::SettingsTheme => {
             let scheme = app.theme.resolved_scheme();
@@ -843,7 +867,7 @@ pub fn click(app: &mut App, down: Hit) {
                 app.set_theme_slug(*slug);
                 app.input.focus = down;
                 app.input.focus_visible = false;
-                app.input.hover = Hit::default();
+                drop_hover(app);
             }
         }
         _ => {}
@@ -926,7 +950,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                         .expect("focus names a cell");
                     let next = arrow_index(at, LIGHT_DARK_ORDER.len(), arrow);
                     app.set_light_dark(LIGHT_DARK_ORDER[next]);
-                    app.input.hover = Hit::default();
+                    drop_hover(app);
                     crate::input::set_focus(
                         app,
                         Hit {
@@ -942,7 +966,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                     let slugs = shown_slugs(scheme);
                     let next = arrow_index(index, slugs.len(), arrow);
                     app.set_theme_slug(slugs[next]);
-                    app.input.hover = Hit::default();
+                    drop_hover(app);
                     crate::input::set_focus(
                         app,
                         Hit {
@@ -1058,7 +1082,10 @@ mod tests {
 
     #[test]
     fn tab_walks_group_to_group_then_out() {
-        let state = SettingsMenuState { open: true };
+        let state = SettingsMenuState {
+            open: true,
+            hover_held: false,
+        };
         // Probe: gear, then system (checked), then arctic-ice (checked), then out.
         let first = state.tab(None, LightDark::System, 0);
         assert_eq!(first, Some(FocusSlot::LightDark(LightDark::System)));
@@ -1074,7 +1101,10 @@ mod tests {
 
     #[test]
     fn tab_starts_at_the_checked_options() {
-        let state = SettingsMenuState { open: true };
+        let state = SettingsMenuState {
+            open: true,
+            hover_held: false,
+        };
         assert_eq!(
             state.tab(None, LightDark::Dark, 2),
             Some(FocusSlot::LightDark(LightDark::Dark))

@@ -379,6 +379,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.over = !event.left;
             if !event.left {
+                if event.pos != app.input.pointer {
+                    // A real move re-arms hover: a pick's hold lasts only
+                    // until the pointer moves, as Chromium re-hovers then.
+                    crate::settings::pointer_moved(app);
+                }
                 app.input.pointer = event.pos;
             }
             retarget(app);
@@ -386,6 +391,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
         Input::Button(event) => {
             if crate::trace() {
                 println!("input {event:?}");
+            }
+            if event.pos != app.input.pointer {
+                crate::settings::pointer_moved(app);
             }
             app.input.pointer = event.pos;
             app.input.over = true;
@@ -484,11 +492,19 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
     app.input.time = outer;
 }
 
-/// Recomputes hover and cursor after the pointer or targets changed.
+/// Recomputes hover and cursor after the pointer or targets changed. While
+/// the settings menu holds hover off after a pick, the hover stays dropped
+/// (only a pointer move re-arms it), matching Chromium, which does not
+/// re-hover without a mouse move after the re-render.
 pub fn retarget(app: &mut App) {
     let over = app.input.over;
     let pointer = app.input.pointer;
     let pressed = app.input.pressed;
+    let mut hit = if over && !app.settings.hover_held {
+        hit_at(app.input.regions.as_slice(), pointer)
+    } else {
+        Hit::default()
+    };
     let mut hit = if over {
         hit_at(app.input.regions.as_slice(), pointer)
     } else {
