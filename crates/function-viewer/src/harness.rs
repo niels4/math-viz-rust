@@ -1,8 +1,8 @@
 //! The scripted harness: plays `.act` scripts against the app on a 16 ms grid.
 //!
 //! Native only. Each verb becomes timestamped input facts applied in the frame
-//! at their time; shots read the framebuffer back to PNGs and record the
-//! plane's views and the mid-motion shots beside them.
+//! at their time; shots read the framebuffer back to PNGs and record a
+//! `views.json` line beside them.
 
 use enum_map::EnumMap;
 
@@ -108,6 +108,8 @@ pub struct Harness<'a> {
     pub views: Vec<u8>,
     /// The shots taken mid-motion.
     pub moving: Vec<String>,
+    /// The page query as last written to `views.json`.
+    pub url: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -139,6 +141,7 @@ pub fn run_harness(
         videos: 0,
         views: Vec::new(),
         moving: Vec::new(),
+        url: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -148,8 +151,6 @@ pub fn run_harness(
     // under Playwright's paused clock (its init at 0, its first animation
     // frame at 16 ms), where React's view mounts a frame before the script's
     // time 0: its first paint is 16 ms in at the first frame.
-    crate::motion_driver::motion_launch(h.app, -FRAME_MS * MS);
-
     let size = [run.start.size[0] as f32, run.start.size[1] as f32];
     let mut pixels = device_pixels(size, h.density);
     if window {
@@ -447,6 +448,12 @@ fn harness_frame(h: &mut Harness<'_>) {
     if crate::app_loop::iterate(h.app) && h.window {
         h.app.window().gl_swap_window();
     }
+    // The page query, whenever it changed: `--query` at start, then whatever
+    // the page milestones route through `App.url`.
+    if h.app.url != h.url {
+        h.url = h.app.url.clone();
+        h.views.extend_from_slice(url_line(&h.url).as_bytes());
+    }
 }
 
 /// The pointer to `at`. SDL reports no motion that moves nothing.
@@ -726,49 +733,28 @@ fn shot(h: &mut Harness<'_>, name: &str) -> bool {
         return false;
     }
     println!("shot {out}/{name}.png at {} ms", h.time);
-    // The plane's view as the frame drew it, beside the reference's
-    // data-zoom and data-origin-x/y (tools/run view): the zoom, the pan and
-    // where the origin lands in the plane's px; the cursor shown; and the
-    // theme shown, which a pick in the settings panel changes mid-script
-    // (tools/run gamut reads it).
-    let viewport = crate::plane_area::plane_viewport(h.app, h.app.plane.r#box);
-    let zoom = h.app.plane.view.zoom;
-    let pan_x = h.app.plane.view.pan_x;
-    let pan_y = h.app.plane.view.pan_y;
-    // The boxes the frame composited a scaled layer into (an overlay's
-    // opening or closing): where tools/run gamut allows WebKit's sampling of
-    // it.
-    let mut scaled: Vec<String> = Vec::new();
-    let layers = &h.app.layers;
-    for b in layers.scaled[..layers.scaled_count as usize].iter() {
-        scaled.push(format!(
-            "[{:.3}, {:.3}, {:.3}, {:.3}]",
-            b.x, b.y, b.width, b.height
-        ));
-    }
+    // The shell has no camera yet: the zoom stays 1 with the view at the
+    // origin, and no layer ever scales. h2-input owns these fields from the
+    // camera it ports; the cursor and the theme are already real.
     let line = views_line(
         name,
         h.time,
-        zoom,
-        pan_x,
-        pan_y,
-        viewport.origin_x,
-        viewport.origin_y,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
         crate::input::CURSOR_CSS[h.app.input.cursor],
         mv_theme::SLUG_WORDS[mv_theme::shown(h.app.prefs, h.app.system_scheme)],
-        &scaled.join(", "),
+        "",
     );
     h.views.extend_from_slice(line.as_bytes());
-    if crate::motion_driver::motion_translucent(h.app) {
-        h.moving.push(name.to_string());
-    }
     true
 }
 
-/// One `views.json` line: the shot, the script ms, the plane's view, the
-/// cursor, the theme, the scaled boxes. Pure, so the shape the harness
-/// writes is testable without the app. Ten parameters: the spec's `shot`
-/// takes them all, as the ported arities elsewhere.
+/// One `views.json` line: the shot, the script ms, the view (zoom, pan,
+/// origin), the cursor, the theme, the scaled boxes. Pure, so the shape the
+/// harness writes is testable without the app.
 #[allow(clippy::too_many_arguments)]
 fn views_line(
     name: &str,
@@ -795,10 +781,15 @@ fn views_line(
     )
 }
 
-/// The shots taken while a part was drawn at an opacity its motion gives it
-/// (motion_translucent), as <out>/motion.json when there are any: no theme
-/// colour has that opacity, so `tools/run gamut` doesn't hold such a shot's
-/// blends to a prediction.
+/// One `url` line: the page query as the frame left it. Pure, like
+/// `views_line` above, so the shape is testable without the app.
+fn url_line(url: &str) -> String {
+    format!("{{\"url\": {}}}\n", json_string(url))
+}
+
+/// The shots taken mid-motion, as <out>/motion.json when there are any. The
+/// shell never moves, so this stays empty until a page milestone's motion
+/// records into `Harness.moving` again.
 fn write_moving(h: &mut Harness<'_>) -> bool {
     if h.moving.is_empty() {
         return true;
@@ -906,7 +897,7 @@ fn fmt_g17(v: f64) -> String {
     let exponent = if e < 0 {
         format!("e-{:02}", e.abs())
     } else {
-        format!("e+{:02}", e)
+        format!("e+{e:02}")
     };
     format!("{sign}{mantissa}{exponent}")
 }
@@ -1163,6 +1154,15 @@ mod tests {
         );
         let bare = views_line("a", 0, 1.0, 0.0, 0.0, 0.0, 0.0, "c", "t", "");
         assert!(bare.ends_with("\"scaled\": []}\n"), "{bare}");
+    }
+
+    #[test]
+    fn url_line_has_its_shape() {
+        assert_eq!(
+            url_line("center=1,2&scale=2"),
+            "{\"url\": \"center=1,2&scale=2\"}\n"
+        );
+        assert_eq!(url_line(""), "{\"url\": \"\"}\n");
     }
 
     #[test]

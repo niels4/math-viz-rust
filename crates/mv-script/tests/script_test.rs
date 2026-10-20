@@ -55,7 +55,7 @@ scheme dark
 reduced-motion off
 ";
     let (script, err) = parse(text);
-    assert!(err.is_none(), "unexpected error: {:?}", err);
+    assert!(err.is_none(), "unexpected error: {err:?}");
     assert_eq!(
         script.start,
         Start {
@@ -179,7 +179,7 @@ port model p-before none
 wait 16
 ";
     let (script, err) = parse(text);
-    assert!(err.is_none(), "unexpected error: {:?}", err);
+    assert!(err.is_none(), "unexpected error: {err:?}");
     let expected = vec![
         Action {
             line: 2,

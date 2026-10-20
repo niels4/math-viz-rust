@@ -372,8 +372,7 @@ pub fn platform_field_editing(_editing: bool) {}
 
 /// Where the prefs live: `prefs.json` in `dir` when one is given (`--prefs`),
 /// else in SDL's place for the port's own preferences: `…/mathviz/`
-/// `function-viewer-rust/prefs.json` (the Rust app's own path, never the Odin
-/// app's).
+/// `math-viz2-rust/prefs.json` (the Rust app's own path, never math-viz2's).
 pub fn platform_prefs_store(dir: &str) -> String {
     if !dir.is_empty() {
         if let Err(err) = std::fs::create_dir_all(dir) {
@@ -382,7 +381,7 @@ pub fn platform_prefs_store(dir: &str) -> String {
         let dir = dir.trim_end_matches('/');
         return format!("{dir}/prefs.json");
     }
-    match sdl3::filesystem::get_pref_path("mathviz", "function-viewer-rust") {
+    match sdl3::filesystem::get_pref_path("mathviz", "math-viz2-rust") {
         Ok(base) => base.join("prefs.json").to_string_lossy().into_owned(),
         Err(err) => {
             eprintln!("function-viewer-rust: SDL_GetPrefPath: {err}");
@@ -599,13 +598,12 @@ mod tests {
         let store = platform_prefs_store("");
         eprintln!("default prefs store: {store}");
         assert!(
-            store.ends_with("function-viewer-rust/prefs.json"),
-            "default prefs store {store:?} ends in function-viewer-rust/prefs.json"
+            store.ends_with("math-viz2-rust/prefs.json"),
+            "default prefs store {store:?} ends in math-viz2-rust/prefs.json"
         );
         assert!(
-            !store.contains("function-viewer/prefs.json")
-                || store.contains("function-viewer-rust/prefs.json"),
-            "default prefs store {store:?} is not the Odin app's path"
+            !store.contains("mathviz-light-dark") && !store.contains("function-viewer-rust"),
+            "default prefs store {store:?} is the port's own path"
         );
     }
 

@@ -120,8 +120,7 @@ fn main() {
         glow::Context::from_loader_function(|s| {
             video
                 .gl_get_proc_address(s)
-                .map(|f| f as *const c_void)
-                .unwrap_or(core::ptr::null())
+                .map_or(core::ptr::null(), |f| f as *const c_void)
         })
     };
 

@@ -80,15 +80,11 @@ pub fn fixture_box(m: &FixtureMeasures, name: &str) -> Result<[f32; 4], String> 
 }
 
 #[cfg(test)]
-/// The Rust `new(App)`: every field at its zero or resting value.
+/// The shell `App` for tests: every field at its zero or resting value.
 ///
-/// The Odin tests build `new(App)` (zeroed, window and GL context nil) and
-/// set the fields they need; this is that constructor for the Rust tests.
 /// No test opens a window: a `cargo test` thread cannot start SDL video
 /// (measured 2026-10-18: `sdl3::init()` refuses off the main thread, and
-/// with one thread SDL answers "No available video device"), and no Odin
-/// test draws. `viewer` stays the zero state here: each test sets
-/// `mv_viewer::initial_state()` itself, as the Odin tests do.
+/// with one thread SDL answers "No available video device").
 pub(crate) fn headless_app() -> crate::app::App {
     // One body with `App::bare` (`app.rs::zeroed`): the headless tests
     // spell the window and GL owners `None`, `app_init` spells them live.

@@ -162,6 +162,7 @@ pub fn live_start(app: &mut App, run: &mv_script::Script, out: &str) -> bool {
             videos: 0,
             views: Vec::new(),
             moving: Vec::new(),
+            url: String::new(),
         };
         if !crate::harness::play(&mut h, run) {
             return false;
@@ -185,7 +186,7 @@ pub fn live_start(app: &mut App, run: &mv_script::Script, out: &str) -> bool {
     println!(
         "live: {} steps over {} ms through SDL's loop",
         l.steps.len(),
-        l.steps.last().map(|s| s.at).unwrap_or(0)
+        l.steps.last().map_or(0, |s| s.at)
     );
     LIVE_RUN.store(
         Box::into_raw(l).cast::<std::ffi::c_void>(),

@@ -185,7 +185,7 @@ pub fn forget_words(fonts: &mut Fonts) {
 /// Takes the loaded fonts rather than the whole `Fonts`: `shape` holds the
 /// shaping context borrowed while it looks each run's font up.
 fn file_of(kb: &EnumMap<FontFile, mv_sys::kb::font>, font: *const mv_sys::kb::font) -> FontFile {
-    for (file, loaded) in kb.iter() {
+    for (file, loaded) in kb {
         if core::ptr::eq(loaded, font) {
             return file;
         }

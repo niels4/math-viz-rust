@@ -840,7 +840,7 @@ fn before_actions(started: bool, word: &str) -> Failure {
 ///
 /// Ported from `script.odin:605` (`key_name`, private).
 fn key_name(word: &str) -> (Option<KeyName>, Failure) {
-    for (named, name) in NAMED_KEYS.iter() {
+    for (named, name) in &NAMED_KEYS {
         if word == *name {
             return (Some(KeyName::Named(named)), None);
         }
@@ -868,14 +868,14 @@ where
     E: for<'a> EnumArray<&'a str>,
 {
     if fields.len() == 1 {
-        for (e, word) in words.iter() {
+        for (e, word) in words {
             if fields[0] == *word {
                 return (Some(e), None);
             }
         }
     }
     let mut list = String::new();
-    for (_, word) in words.iter() {
+    for (_, word) in words {
         if !list.is_empty() {
             list.push_str(", ");
         }

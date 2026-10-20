@@ -171,16 +171,12 @@ dependencies = [
  "glow",
  "libc",
  "mv-clay",
- "mv-motion",
  "mv-numfmt",
  "mv-nvg",
- "mv-plane",
  "mv-script",
- "mv-scrub",
  "mv-sys",
  "mv-text",
  "mv-theme",
- "mv-viewer",
  "png",
  "sdl3",
  "sdl3-main",
@@ -254,12 +250,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
-name = "libm"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
-
-[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -293,10 +283,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mv-motion"
-version = "0.0.0"
-
-[[package]]
 name = "mv-numfmt"
 version = "0.0.0"
 
@@ -311,33 +297,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "mv-plane"
-version = "0.0.0"
-dependencies = [
- "enum-map",
- "libm",
- "mv-motion",
- "mv-numfmt",
- "mv-nvg",
- "mv-text",
- "mv-theme",
-]
-
-[[package]]
 name = "mv-script"
 version = "0.0.0"
 dependencies = [
  "enum-map",
  "enumset",
  "mv-theme",
-]
-
-[[package]]
-name = "mv-scrub"
-version = "0.0.0"
-dependencies = [
- "enum-map",
- "mv-numfmt",
 ]
 
 [[package]]
@@ -367,19 +332,6 @@ dependencies = [
  "enum-map",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "mv-viewer"
-version = "0.0.0"
-dependencies = [
- "enum-map",
- "enumset",
- "mv-motion",
- "mv-numfmt",
- "mv-plane",
- "mv-scrub",
- "mv-theme",
 ]
 
 [[package]]
