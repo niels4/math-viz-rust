@@ -1,0 +1,15 @@
+# reset-all-frames (H7): a=3, h=2; Reset all eases both back together while
+# the boxes show 1.00 and 0.00 at once. Same frame ladder as reset-frames.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=3&h=2
+wait 2000
+click 348.6 402.5
+shot reset-all-f0
+frames reset-all-f100 every 100 for 100
+frames reset-all-f200 every 100 for 100
+frames reset-all-f700 every 500 for 500
+frames reset-all-f1000 every 300 for 300

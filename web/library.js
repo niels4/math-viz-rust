@@ -81,6 +81,22 @@ addToLibrary({
       },
       { capture: true, passive: false },
     );
+    // The canvas's pointer capture (`useCamera.ts`: the press captures the
+    // canvas, released implicitly on pointerup and pointercancel): the
+    // capture retargets out-of-element moves to the canvas with working
+    // offsets, so a drag past the canvas's edge — and past the viewport's —
+    // keeps reaching SDL's canvas listeners as its moves. Without this a
+    // handle drag past the viewport stopped following on the web build
+    // (h7-fix-capture: web h=10.40 vs native and the reference h=11.44 at
+    // x=1500). SDL's port listens on the canvas, so capturing there is what
+    // delivers the moves; the hook's try/catch stands, as a mouse already
+    // captured (or no pointer support) throws.
+    const canvas = Module.canvas ?? document.getElementById("canvas");
+    canvas?.addEventListener("pointerdown", (event) => {
+      try {
+        canvas.setPointerCapture(event.pointerId);
+      } catch {}
+    });
     // Browser shortcuts reach the browser, as on the React page (the user's
     // ruling 2026-10-18; a deliberate departure from the Odin oracle in
     // keyboard default handling only, no pixel effect). SDL's Emscripten port

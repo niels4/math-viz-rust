@@ -1,0 +1,21 @@
+# flip-frames (H6): flipping a=2 on x², on the paused clock. The flip
+# toggle's centre is (218, 450.5) at 1440x900 (probed on the reference at
+# 5196; re-measure if h5's rows move it). The click writes a=-2 to the URL
+# at once; flip-f0 shows the render-phase curves (plane still a=2.00); the
+# frames lines shoot at +100, +300, +600 and +1000 ms (model: 1.07, about
+# -1.04, about -1.90, exactly -2.00; the run's views shown lines pin each
+# frame). Behaviour: url line func=x2&a=-2 right after the click; views
+# shown lines each frame the spring moves.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2
+wait 2000
+click 218 450.5
+shot flip-f0
+frames flip-f100 every 100 for 100
+frames flip-f300 every 200 for 200
+frames flip-f600 every 300 for 300
+frames flip-f1000 every 400 for 400

@@ -1,0 +1,19 @@
+# handle-drag-shift (h7-plane): the diamond pressed on-centre (grab 0) and
+# moved +50,+30 px in 5 px steps (every step hits even one render stale),
+# held: h = 2.0, k = -3.6, the camera unchanged, grab-active, the h and k
+# rows lit with their rulers out.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 200
+down
+wait 150
+move 1028 670 over 160
+wait 300
+shot handle-drag-shift
+up

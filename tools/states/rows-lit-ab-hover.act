@@ -1,0 +1,16 @@
+# rows-lit-ab-hover (H7): the pointer on the scale square (unit (2,-1) at
+# page (1028,540)) lights the a and b rows; no rulers. Approached from empty
+# plane, never from the diamond: a direct diamond-to-square jump leaves the
+# reference's hovering false (cursor pan) while a and b stay lit.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&h=1&k=-2&scale=0.5
+wait 500
+move 500 800
+wait 300
+move 1030 542
+wait 300
+shot rows-lit-ab-hover

@@ -1,0 +1,11 @@
+# lines-lit-a (H6): x2 at a=2, h=1, k=-3 with the pointer on a's box: the dashed box joining the handles, its right side measuring a.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 2000
+move 331.5 450.5
+wait 1000
+shot lines-lit-a

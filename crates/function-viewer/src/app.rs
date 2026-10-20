@@ -9,6 +9,7 @@ use enum_map::EnumMap;
 
 use crate::app_loop;
 use crate::input::InputState;
+use crate::plane_input::HandleId;
 use crate::scroll::{Scroll, Scroller};
 use crate::url::Url;
 
@@ -132,6 +133,27 @@ pub struct App {
     pub scrub_rest: Option<(crate::state::TransformParam, crate::app_loop::Time)>,
     /// The parameter whose rest tip shows (resolved when the timer fires).
     pub scrub_resting: Option<crate::state::TransformParam>,
+    /// When the return-to-centre hover began, on the app's clock; `None`
+    /// while the pointer is elsewhere (h6-handles; the tooltip shows past
+    /// its 400 ms delay).
+    pub overlay_tip_since: Option<crate::app_loop::Time>,
+    /// The flip toggle's state: the pending flip, its spring, the press
+    /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
+    pub flip: crate::flip::FlipState,
+    /// The plane's handle hover: the cursor rule's `hovering` and the last
+    /// hovered handle (`None` for none), as `CartesianPlane.tsx`'s
+    /// `hovering` state and `lastHoveredIndex` ref do (h7-plane;
+    /// `plane_input.rs` owns the dispatch).
+    pub hovering: bool,
+    pub hovered: Option<HandleId>,
+    /// A plane handle drag in flight, with the press's grab offset in plane
+    /// units (the `dragging` state and the `grab` ref at `251c080`).
+    pub dragging: bool,
+    pub grab: [f64; 2],
+    /// The pressed handle while a drag flies (the hook's closed-over
+    /// handle: the drag's formula pair never changes mid-drag, while the
+    /// hover index follows the moves).
+    pub dragged: Option<HandleId>,
 }
 
 impl App {
@@ -294,6 +316,13 @@ impl App {
             scrub_hold: None,
             scrub_rest: None,
             scrub_resting: None,
+            overlay_tip_since: None,
+            flip: crate::flip::FlipState::new(),
+            hovering: false,
+            hovered: None,
+            dragging: false,
+            grab: [0.0, 0.0],
+            dragged: None,
         }
     }
 }
