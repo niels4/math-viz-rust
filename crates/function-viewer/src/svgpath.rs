@@ -719,11 +719,12 @@ mod tests {
         assert_eq!(steps.last().unwrap().op, PathOp::Close);
     }
 
-    // The settings menu's marks: the sun's rays as eight lines, one of them a
-    // move's extra numbers; the moon's two arcs end where its path says, the
-    // second closing on the first's start.
+    // math-viz2's `TopBar/icons.tsx` marks, byte for byte: the system stand
+    // as three lines, the sun's rays as eight (one of them a move's extra
+    // numbers); the moon's two arcs end where its path says, the second
+    // closing on the first's start.
     #[test]
-    fn settings_icon_paths_read() {
+    fn mathviz_icon_paths_read() {
         expect_path(
             SYSTEM_STAND,
             &[
