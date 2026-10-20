@@ -510,14 +510,11 @@ fn restore_commas(search: &str) -> String {
 #[cfg(test)]
 mod url_tests {
     use super::*;
-    use mv_numfmt::round_to;
+    use mv_numfmt::to_fixed;
 
     /// The vitest `numberDef`: `toFixed(2)`, default 0. Serialises through
-    /// `round_to` first: Rust's `{:.2}` rounds ties to even while `toFixed`
-    /// rounds them up, so the tie direction is settled in decimal before
-    /// printing (the workspace idiom); the printed `-` is ASCII, as
-    /// `toFixed` prints (`format_number`'s U+2212 minus is for display,
-    /// never the URL).
+    /// [`to_fixed`] (exact, ASCII `-` as `toFixed` prints; never
+    /// `format_number`'s U+2212 minus, which is for display, never the URL).
     const fn number_def(key: &'static str, debounce_ms: u64) -> QueryParamDef<f64> {
         QueryParamDef {
             key,
@@ -537,7 +534,7 @@ mod url_tests {
     // (TS `null`); these test defs never do, hence the allow.
     #[allow(clippy::unnecessary_wraps)]
     fn serialize_fixed2(value: &f64) -> Option<String> {
-        Some(format!("{:.2}", round_to(*value, 2)))
+        Some(to_fixed(*value, 2))
     }
 
     fn parse_center_opt(raw: Option<&str>) -> Option<[f64; 2]> {
@@ -549,9 +546,9 @@ mod url_tests {
     #[allow(clippy::unnecessary_wraps)]
     fn serialize_center(value: &[f64; 2]) -> Option<String> {
         Some(format!(
-            "{:.4},{:.4}",
-            round_to(value[0], 4),
-            round_to(value[1], 4)
+            "{},{}",
+            to_fixed(value[0], 4),
+            to_fixed(value[1], 4)
         ))
     }
 
@@ -715,6 +712,16 @@ mod url_tests {
         assert_eq!(*param.get(), [1.2325, 5.0]);
         param.set_flushed(&mut url, [2.0, 3.0]);
         assert!(url.query().contains("qp-center=2.0000,3.0000"));
+    }
+
+    #[test]
+    fn serializes_ties_like_to_fixed() {
+        // The binary value decides, not the decimal digits: 2.675 is
+        // 2.6749999... underneath, while 2.5 ties up exactly.
+        assert_eq!(serialize_fixed2(&2.675), Some("2.67".to_string()));
+        assert_eq!(serialize_fixed2(&-2.675), Some("-2.67".to_string()));
+        assert_eq!(serialize_fixed2(&2.5), Some("2.50".to_string()));
+        assert_eq!(serialize_fixed2(&-0.00001), Some("-0.00".to_string()));
     }
 
     #[test]
