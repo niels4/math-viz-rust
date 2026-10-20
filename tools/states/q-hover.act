@@ -1,0 +1,17 @@
+# q-hover (h8-plane): the pointer resting at (1028, 490), plot (2, 0), off
+# both handles: the Q ring on the curve at the quantized x=2, the full-height
+# guide, both drop lines, the label "Q (2.00, 2.00)". A fresh page; the first
+# move settles, then the final move lands on the fresh render (a 1 px nudge
+# would leave Q at 2.02, as the first probe showed).
+# Behaviour: url line (empty query); q line 2.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1029 490
+wait 800
+move 1028 490
+wait 500
+shot q-hover

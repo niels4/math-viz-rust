@@ -1,0 +1,11 @@
+# marker-off-up (h8-plane): center=12,0 with p=12 puts P at (12, 12) past the
+# top edge: the 130-wide label with the up arrow at the frame's edge.
+# Behaviour: url line center=12,0&p=12; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query center=12,0&p=12
+wait 2000
+shot marker-off-up

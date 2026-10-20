@@ -1,0 +1,11 @@
+# marker-label-clamp-right (h8-plane): p=9 on x1, so the label clamps 12 px
+# inside the frame's right edge while P stays in view.
+# Behaviour: url line p=9; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query p=9
+wait 2000
+shot marker-label-clamp-right

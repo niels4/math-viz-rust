@@ -1,0 +1,13 @@
+# q-row-hover (h8-points-row): the pointer resting on the plane: Q
+# "follows your pointer" with f(x) = y at the quantized x. Runs after
+# h8-plane merges (its Q source); until then judged from a scratch script
+# that sets q_x. Plane centre at 1440x900 is about 900 450.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 900 450
+wait 500
+shot q-row-hover

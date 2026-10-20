@@ -161,6 +161,12 @@ pub enum HitKind {
     /// The x-of-P slider's track (h8-points-slider; the whole 20 px box is
     /// the hit, the thumb takes no pointer events; a focus stop, in tab order).
     PointSlider,
+    /// The top bar's wordmark link to the root page (h8-plane; `index` 0).
+    /// A hot region with the pointer cursor and a no-op click on both
+    /// targets: the root page is the template's placeholder card, never in
+    /// the port, which has one route (the planner's call, `decisions.md`).
+    /// Never a focus stop: the port's tab walk is the milestones' own.
+    Wordmark,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures

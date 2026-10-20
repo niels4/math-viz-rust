@@ -163,6 +163,9 @@ pub fn init_params_from_url(app: &mut App) {
     app.b_param = crate::url::QueryParam::new(&B_PARAM, &query);
     app.h_param = crate::url::QueryParam::new(&H_PARAM, &query);
     app.k_param = crate::url::QueryParam::new(&K_PARAM, &query);
+    // P's x starts from the page query with the transform params
+    // (h8-points-row; the slider and the field write it through the same
+    // param at their merges).
     app.p_param = crate::url::QueryParam::new(&crate::functions::P_PARAM, &query);
 }
 
@@ -174,7 +177,8 @@ pub fn params_step(app: &mut App, now_ms: u64) -> bool {
     let wrote = app.a_param.step(&mut app.url, now_ms)
         | app.b_param.step(&mut app.url, now_ms)
         | app.h_param.step(&mut app.url, now_ms)
-        | app.k_param.step(&mut app.url, now_ms);
+        | app.k_param.step(&mut app.url, now_ms)
+        | app.p_param.step(&mut app.url, now_ms);
     external_params_synced(app);
     wrote
 }
@@ -186,23 +190,27 @@ pub fn external_params_synced(app: &mut App) -> bool {
     let changed = app.a_param.sync(&app.url)
         | app.b_param.sync(&app.url)
         | app.h_param.sync(&app.url)
-        | app.k_param.sync(&app.url);
+        | app.k_param.sync(&app.url)
+        | app.p_param.sync(&app.url);
     if changed {
         app.dirty = true;
     }
     changed
 }
 
-/// Whether any transform param holds a debounced URL write: the loop stays
+/// Whether any page param holds a debounced URL write: the loop stays
 /// awake for the deadline, or a typed or nudged value would never reach the
 /// URL on a quiet page (nothing else steps the params once the frame
-/// settles — the wheel only worked by accident of the rest timer).
+/// settles — the wheel only worked by accident of the rest timer). P rides
+/// with the transform params: the slider's release write flushes through
+/// the same deadline.
 #[must_use]
 pub fn params_pending(app: &App) -> bool {
     app.a_param.has_pending()
         || app.b_param.has_pending()
         || app.h_param.has_pending()
         || app.k_param.has_pending()
+        || app.p_param.has_pending()
 }
 
 /// The card over the sidebar column: the "Transform" legend, the rows in

@@ -624,6 +624,68 @@ no new tokens (all eight tabled).
   (one-line duplication of `grid.rs`'s, which h7-p-plane owns) because
   `f64::clamp` panics on the negative range a narrow canvas makes.
 
+### h8-plane (the P/Q markers on the plane)
+
+- `plane_markers.rs` paints `&[PlotMarker]` through the geometry: the guide
+  (1 px `[4,6]`), the drop lines (1.5 px `[5,4]`, both dash offsets half the
+  first dash) cut with h6-curve's `dash_pieces` and a carried offset, because
+  Canvas continues dashes across `moveTo` subpaths (probed live, not read).
+  The label pill reuses `rounded_rect`; its runs draw at the geometry's
+  literal baselines through `Type::MathsItalic`/`Type::FieldText` faces.
+  Widths are `ceil(measure)` per run, as the source ceils `measureText`.
+- Q's source is `hover_q`/`clear_q` in `plane_input.rs`: quantized x on moves
+  that hit no handle with nothing dragged and no plane press, cleared on
+  leave and on any panning move. Behaviour reads through a `{"q": ...}`
+  views line and `act.py`'s `plane_point` (hash + Q row role/readout).
+  Scripted hovers land on target+1, settle, then land on the target: a
+  trailing 1 px nudge leaves Q 0.02 off (quantized, as the first probe
+  showed).
+- `--point-p`/`--point-q` resolve per theme on the sidebar (probed equal to
+  the source's ordinals 6/6); `tools/run themes` merges the base block's
+  defaults under each theme block's override (`read_sidebar_points`), and
+  `tools/run tokens` + the mv-theme `ALL_TOKENS`/tally carry the two tokens.
+- The wordmark is a `HitKind::Wordmark` region (Pointer, no focus stop) with
+  a no-op click arm; the root page stays a `decisions.md` line. The shift
+  diamond draws at the live h, k while the square rides the shown unit point
+  (h7-sidebar fix-forward); paint and hit test share `build_handles`.
+- Judging a milestone whose card is still unported: the siblings' Points
+  card is one giant cluster per state (232k px at (29.5,650) 373×169);
+  everything else in the canvas is named at 6x. Reference-side engine
+  quirks seen: chromium/firefox draw one axis tick 1 device px off webkit
+  (13–17 px slivers, port == webkit); firefox rounds sage's canvas-top
+  background a level (port == webkit).
+
+### h8-points-row (the Points card's rows)
+
+- The readout's x slot is the closed field's input, not a span: the input
+  is only the value's chars wide (`--chars: max(1, text.length)`,
+  unrounded) and the lead right-aligns the whole [open paren + input]
+  group (`justify-content: flex-end`), so `f(` sits the slot's leftover
+  right of the lead's left edge (11.8 px at the default slots — measured,
+  not eyeballed). The stand-in paints that closed look until
+  h8-points-field swaps its field in.
+- The role slot wraps badge and role to a clipped second line, each whole
+  or not at all: hidden runs declare no scope and take no gap, or an
+  unbreakable fixed run stretches the head past the card (sci showed a
+  392 px card). Shown widths come from one `slot_shown` predicate shared
+  by layout and paint.
+- The badge's pill is primary pre-blended opaque over the card (the
+  framebuffer blends linear while the reference composites gamma: a
+  translucent fill reads ~30 levels light, measured). The linger needs a
+  `Timer::MovedLinger` keep-awake: shots photograph the buffer without
+  drawing, so without it the app sleeps after the release's URL flush and
+  the badge never clears. Feed `MovedBy` the frame clock (`clock_now`),
+  never `input.time`, which is 0 outside input handling.
+- The first frame always lays out stale (no plane box yet): refresh the
+  cached range in the paint and dirty on change, or query states
+  photograph `p = 2` forever. P's `p` rides the shared param plumbing
+  (`init_params_from_url`, `params_step`, `external_params_synced`,
+  `params_pending`).
+- Playwright's `add_init_script` takes a program, not a function value —
+  an arrow-function wrapper silently never runs (two probe rounds kept
+  Arctic Ice). Seed each theme in its own slot; the three-key model reads
+  `dark-theme` in dark mode.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

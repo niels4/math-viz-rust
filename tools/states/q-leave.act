@@ -1,0 +1,14 @@
+# q-leave (h8-plane): the pointer rests on the plane, then moves off the
+# canvas onto the sidebar: Q clears once the pointer leaves.
+# Behaviour: url line (empty query); no q line at the shot.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1028 490
+wait 800
+move 100 490
+wait 500
+shot q-leave

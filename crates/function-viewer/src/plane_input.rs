@@ -268,6 +268,32 @@ fn plane_grid(app: &App) -> Option<GridLayout> {
     ))
 }
 
+/// Q's hover source (`onHoverPoint` in `FunctionViewer.tsx`'s `Plot`,
+/// through `useMouseHandles`' move and leave, gated by `CartesianPlane` on
+/// `dragging || panning`): the quantized x under the pointer when the move
+/// hits no handle and no handle drags and the plane isn't panning, else
+/// cleared. Runs on every move, even when the hovered index didn't change.
+pub fn hover_q(app: &mut App, index: Option<HandleId>, point: crate::plot::PlotPoint) {
+    let next = if index.is_none() && !app.dragging && app.input.pressed.kind != HitKind::Plane {
+        Some(crate::point_format::quantize(point.x))
+    } else {
+        None
+    };
+    if app.state.q_x != next {
+        app.state.q_x = next;
+        app.dirty = true;
+    }
+}
+
+/// Q cleared: the pointer left the canvas, or a pan started. No-op when
+/// already clear, so quiet frames stay clean.
+pub fn clear_q(app: &mut App) {
+    if app.state.q_x.is_some() {
+        app.state.q_x = None;
+        app.dirty = true;
+    }
+}
+
 /// The hover dispatch for an unpressed move over the plane
 /// (`CartesianPlane.tsx`'s `onPointerMove`): the hit handle's hover first
 /// (hovering on, its two params lit), then, when the hovered index changed,
@@ -279,13 +305,16 @@ fn plane_grid(app: &App) -> Option<GridLayout> {
 /// nothing, so the frame stays clean.
 pub fn plane_hover(app: &mut App) {
     if app.input.hover.kind != HitKind::Plane {
+        clear_q(app);
         return;
     }
     let (Some(grid), Some(at)) = (plane_grid(app), canvas_at(app)) else {
+        clear_q(app);
         return;
     };
     let handles = crate::page::build_handles(app);
     let index = hit_test(&grid, &handles, at).and_then(HandleId::from_index);
+    hover_q(app, index, from_px(&grid, at));
     if index == app.hovered {
         return;
     }
@@ -384,6 +413,10 @@ pub fn plane_move(app: &mut App) {
     if app.camera.center != before {
         app.dirty = true;
     }
+    // The press names the plane, so this move pans: Q stays null while
+    // panning (`CartesianPlane`'s gate), and a pan started under a lingering
+    // Q clears it.
+    clear_q(app);
     crate::input::retarget(app);
     // The press names the plane (the `panning` half of the cursor rule);
     // the regions' cursors already agree, and this keeps headless regions
@@ -989,6 +1022,7 @@ mod tests {
         app.b_param = QueryParam::new(&crate::functions::B_PARAM, app.url.query());
         app.h_param = QueryParam::new(&crate::functions::H_PARAM, app.url.query());
         app.k_param = QueryParam::new(&crate::functions::K_PARAM, app.url.query());
+        app.p_param = QueryParam::new(&crate::functions::P_PARAM, app.url.query());
     }
 
     /// The canvas px of a handle: the content box sits at the origin, 800 by
@@ -1067,6 +1101,47 @@ mod tests {
         assert_eq!(app.hovered, None);
         assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
         assert!(app.state.lit().is_empty());
+    }
+
+    /// Ported from `CartesianPlane.test.tsx` ("reports the point under the
+    /// pointer, and null once the pointer leaves or pans the plane"): two
+    /// moves 40 px apart quantize 0.8 apart at 50 px a unit, leaving the
+    /// canvas clears, and a press and move pans with Q held null.
+    #[test]
+    fn hovering_the_plane_reports_the_quantized_point_until_it_leaves_or_pans() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x1");
+        // Off both handles (the diamond at the origin's px, the square at
+        // (450, 250)): (500, 300) is plot (2, 0).
+        handle_input(&mut app, pointer_to([500.0, 300.0]), 16 * MS);
+        assert_eq!(app.state.q_x, Some(2.0));
+        handle_input(&mut app, pointer_to([540.0, 300.0]), 32 * MS);
+        assert_eq!(app.state.q_x, Some(2.8));
+        // Off the canvas the hover leaves the plane: Q clears.
+        handle_input(&mut app, pointer_to([-10.0, 300.0]), 48 * MS);
+        assert_eq!(app.state.q_x, None);
+        // Back on, then a press and move: panning holds Q null.
+        handle_input(&mut app, pointer_to([540.0, 300.0]), 64 * MS);
+        assert_eq!(app.state.q_x, Some(2.8));
+        handle_input(&mut app, left_button([540.0, 300.0], true), 80 * MS);
+        handle_input(&mut app, pointer_to([580.0, 300.0]), 96 * MS);
+        assert_eq!(app.state.q_x, None);
+    }
+
+    /// Ported from `CartesianPlane.test.tsx` ("reports null while the pointer
+    /// rests on a handle"): Q shows off the handles and clears onto one.
+    #[test]
+    fn hovering_a_handle_reports_no_point() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x1");
+        handle_input(&mut app, pointer_to([500.0, 300.0]), 16 * MS);
+        assert_eq!(app.state.q_x, Some(2.0));
+        let diamond = handle_px(&app, 0);
+        handle_input(&mut app, pointer_to(diamond), 32 * MS);
+        assert_eq!(app.hovered, Some(HandleId::Shift));
+        assert_eq!(app.state.q_x, None);
     }
 
     #[test]

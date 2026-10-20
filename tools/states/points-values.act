@@ -1,0 +1,10 @@
+# points-values (h8-points-row): func=x2&p=1.5&k=-1: P "pinned",
+# f(1.50) = 1.25.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&p=1.5&k=-1
+wait 2000
+shot points-values

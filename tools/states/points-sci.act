@@ -1,0 +1,10 @@
+# points-sci (h8-points-row): func=x3&p=-123.4: P below the view,
+# f(-123.40) approx -1.88x10 with the superscript 6.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x3&p=-123.4
+wait 2000
+shot points-sci

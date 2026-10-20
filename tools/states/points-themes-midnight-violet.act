@@ -1,0 +1,9 @@
+# points-themes-midnight-violet (h8-points-row): the Points card in midnight-violet (point_p and
+# point_q per theme).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme midnight-violet
+wait 2000
+shot points-themes-midnight-violet

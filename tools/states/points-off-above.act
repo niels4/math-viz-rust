@@ -1,0 +1,9 @@
+# points-off-above (h8-points-row): func=x2&p=3: P above the view.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&p=3
+wait 2000
+shot points-off-above

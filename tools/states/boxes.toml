@@ -94,8 +94,22 @@ tape_a = "div[data-param=\"a\"] > div[aria-hidden=\"true\"] > div"
 # as h5's ruler_a.
 ruler_h = "div[data-param=\"h\"] > div[aria-hidden=\"true\"]"
 ruler_k = "div[data-param=\"k\"] > div[aria-hidden=\"true\"]"
+
 # H8 at 96f1e84: the x-of-P slider's track, thumb and tip. The two spans
 # are the thumb (first) and the tip (last); the tip only boxes while shown.
 slider_p = '[aria-label="x of P"]'
 thumb_p = '[aria-label="x of P"] > span:first-of-type'
 slider_tip_p = '[aria-label="x of P"] > span:last-of-type' 
+# H8 at 96f1e84: the Points card (the sidebar's second section), P's head
+# row (the slider's parent's first div), Q's head (the next point block's
+# first div), P's mark (the head's first svg), P's role slot (the head span
+# holding spans that is not the readout: the off-mark triangle's span holds
+# only an svg, the readout is the last span) and the two readouts (each
+# head's last span). Verified boxes against ref-h8 (see progress).
+card_points = "#root > div > div:nth-child(2) > section:nth-of-type(2)"
+row_p = "div:has(> [role=slider]) > div:first-child"
+row_q = "div:has(> [role=slider]) + div > div:first-child"
+mark_p = "div:has(> [role=slider]) > div:first-child > svg:first-of-type"
+role_p = "div:has(> [role=slider]) > div:first-child > span:has(> span):not(:last-child)"
+readout_p = "div:has(> [role=slider]) > div:first-child > span:last-child"
+readout_q = "div:has(> [role=slider]) + div > div:first-child > span:last-child"

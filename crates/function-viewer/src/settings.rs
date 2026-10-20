@@ -850,7 +850,8 @@ pub fn press_down(app: &mut App) {
         | HitKind::TransformFlip
         | HitKind::TransformReset
         | HitKind::TransformResetAll
-        | HitKind::PointSlider => {
+        | HitKind::PointSlider
+        | HitKind::Wordmark => {
             close_menu(app);
         }
     }
@@ -872,6 +873,11 @@ pub fn click(app: &mut App, down: Hit) {
             app.input.focus = Hit::default();
             app.dirty = true;
         }
+        // The wordmark link to the root page: a no-op click (h8-plane; the
+        // root page is never in the port, which has one route). The press
+        // started and the release lands on it, as a button's `onClick`
+        // needs both; nothing changes, and no frame is marked dirty.
+        HitKind::Wordmark => {}
         HitKind::SettingsLightDark if (down.index as usize) < LIGHT_DARK_ORDER.len() => {
             let option = LIGHT_DARK_ORDER[down.index as usize];
             let changed = option != app.theme.light_dark;

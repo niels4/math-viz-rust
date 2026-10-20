@@ -1,0 +1,10 @@
+# points-off-below (h8-points-row): p=-5: P below the view, f(-5.00) =
+# -5.00 with a true minus.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query p=-5
+wait 2000
+shot points-off-below

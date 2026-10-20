@@ -315,6 +315,29 @@ def plane_lit(page: Page) -> str:
     )
 
 
+def plane_point(page: Page) -> dict[str, object]:
+    """Q's hover state for the marker behaviour checks (h8-plane): the page's
+    hash query beside the Q row's role and readout text. The Q row is the
+    Points card's `.point` div without the x-of-P slider: its role span reads
+    "point at the plane" at rest, "follows your pointer" under Q, and its
+    readout the `f(x) = y` text (or the dashes at rest)."""
+    return page.evaluate(
+        """() => {
+          const slider = document.querySelector('[role="slider"][aria-label="x of P"]');
+          const points = slider.parentElement.parentElement;
+          const rows = [...points.children];
+          const q = rows.find((row) => !row.contains(slider));
+          return {
+            hash: location.hash,
+            role: q.textContent.includes("follows your pointer")
+              ? "follows your pointer"
+              : "point at the plane",
+            readout: q.textContent.replace(/\\s+/g, " ").trim(),
+          };
+        }"""
+    )
+
+
 def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
@@ -811,9 +834,11 @@ def check_views(out: Path) -> list[str]:
     the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
     one parameter to the list, still accepting the old single-parameter shape). A line holding only `cursor`
     (pan / grab-hover / grab-active) is the canvas's cursor, written whenever it changes between
-    the plane's three (h7-plane). A line holding only `p` (P's live value) is the x-of-P
-    slider's, written whenever it changes (h8-points-slider). A line holding only `shown` ({a, b, h, k,
-    animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
+    the plane's three (h7-plane). A line holding only `shown` ({a, b, h, k,
+    animating}) is the transform the plane draws, written whenever it changes (h6-curve).
+    A line holding only `p` (P's live value) is the x-of-P slider's, written whenever
+    it changes (h8-points-slider). A line holding only `q` (a number or null) is Q's
+    quantized x, written whenever the pointer names or clears a point (h8-plane)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -869,6 +894,11 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"p"}:
             if not _is_num(view.get("p")):
                 problems.append(f"views.json line {number}: 'p' is not a number")
+            continue
+        if set(view) == {"q"}:
+            q: object = view.get("q")
+            if q is not None and not _is_num(q):
+                problems.append(f"views.json line {number}: 'q' is not a number or null")
             continue
         if set(view) == {"shown"}:
             shown_raw: object = view.get("shown")

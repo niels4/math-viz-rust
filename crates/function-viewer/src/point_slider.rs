@@ -807,12 +807,9 @@ fn paint_thumb(
     app.vg.fill();
 }
 
-/// The thumb's point ink: `PointP` once h8-plane's tokens merge (its token
-/// lines and `themes.rs` regeneration, already on its branch: switch this
-/// one helper then). Until then the foreground, so the crate compiles and
-/// the shape judges; the core reads wrong in every theme meanwhile.
+/// The thumb's point ink (`PointP`, h8-plane's token).
 fn thumb_point_ink(theme: &mv_theme::Theme) -> mv_sys::clay::Color {
-    crate::ui::ink(theme, mv_theme::Token::Foreground)
+    crate::ui::ink(theme, mv_theme::Token::PointP)
 }
 
 /// The parked thumb's ring: point-p ink dashed 3 on 2 (`stroke-dasharray`),
