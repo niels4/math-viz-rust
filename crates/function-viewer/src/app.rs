@@ -117,6 +117,10 @@ pub struct App {
     pub h_param: crate::url::QueryParam<f64>,
     /// The `k` page param, as above.
     pub k_param: crate::url::QueryParam<f64>,
+    /// P's x page param: the live value with its flush (h8-plane; `url.rs`
+    /// owns the state machine; the slider writes it on release, as the
+    /// hook's `setValue` does. h8-points-slider writes through this field).
+    pub p_param: crate::url::QueryParam<f64>,
     /// The uncommitted text per parameter: `None` at rest (the box shows the
     /// value), `Some` once typed into (h4-rows; `number_field.rs` owns the
     /// display and commit rules).
@@ -310,6 +314,7 @@ impl App {
             b_param: crate::url::QueryParam::new(&crate::functions::B_PARAM, ""),
             h_param: crate::url::QueryParam::new(&crate::functions::H_PARAM, ""),
             k_param: crate::url::QueryParam::new(&crate::functions::K_PARAM, ""),
+            p_param: crate::url::QueryParam::new(&crate::functions::P_PARAM, ""),
             drafts: EnumMap::default(),
             // At rest: no scrub holds a box, no rest tip is armed or showing.
             scrub: None,

@@ -456,14 +456,16 @@ pub fn plane_texts(
 }
 
 /// Paints the plane over the canvas's content box: the grid, the axes, the
-/// curves, the handles, and, once the font has loaded, the labels and the
-/// scale legend (the `drawCartesianPlane` order: the dashed originals, the
-/// lit parameter's lines, the solid curves, the handles, the legend).
+/// curves, the handles, the point markers, and, once the font has loaded, the
+/// labels and the scale legend (the `drawCartesianPlane` order: the dashed
+/// originals, the lit parameter's lines, the solid curves, the handles, the
+/// guides, the drop lines, the markers with their labels, the legend).
 /// h6-curve paints its dashed originals behind each transformed curve;
 /// the dispatch below splits its pass around the lines.
-// Thirteen paint inputs (the plane's six, the frame's curves with their
-// three inks, the handles and lines with theirs): a bundle struct would
-// hide the draw order this signature documents.
+// Fifteen paint inputs (the plane's six, the frame's curves with their
+// three inks, the handles and lines with theirs, the markers with their
+// colours): a bundle struct would hide the draw order this signature
+// documents.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_plane(
     fonts: &mut mv_text::Fonts,
@@ -479,6 +481,8 @@ pub fn paint_plane(
     handles: &[crate::plot::PlotHandle],
     lines: &[crate::plot::PlotLine],
     primary: [f32; 4],
+    markers: &[crate::plane_geometry::PlotMarker],
+    mcolors: &crate::plane_markers::MarkerColors,
 ) {
     let width = f64::from(content.width);
     let height = f64::from(content.height);
@@ -497,8 +501,9 @@ pub fn paint_plane(
         let style = label_style();
         // `layout_labels` takes a shared measure while shaping borrows the
         // fonts mutably: the cell lends them out call by call, which is sound
-        // because the layout never re-enters the measure.
-        let cell = std::cell::RefCell::new(fonts);
+        // because the layout never re-enters the measure. The cell holds a
+        // reborrow, so the caller's `fonts` stays usable below.
+        let cell = std::cell::RefCell::new(&mut *fonts);
         let measure = |text: &str| {
             let mut guard = cell.borrow_mut();
             let fonts: &mut mv_text::Fonts = &mut guard;
@@ -515,7 +520,8 @@ pub fn paint_plane(
         None
     };
     // The draw order (`drawCartesianPlane.ts`): the dashed originals, the
-    // lit parameter's lines, the solid curves, the handles. The two curve
+    // lit parameter's lines, the solid curves, the handles, the guides, the
+    // drop lines, the markers with their labels, the legend. The two curve
     // passes filter on the `dashed` flag; each pass keeps the frame's order.
     paint_curves(
         vg,
@@ -539,8 +545,17 @@ pub fn paint_plane(
         false,
     );
     paint_handles(vg, &grid, handles, primary, colors.page);
-    if let Some((fonts, geometry)) = legend {
-        paint_legend(fonts, vg, &geometry, &colors.legend);
+    // The markers paint over the handles; their labels wait for the font
+    // with the axis labels (the `legend` option carries the measured fonts
+    // exactly when `font_ready` lent them).
+    match legend {
+        Some((fonts, geometry)) => {
+            crate::plane_markers::paint_markers(fonts, vg, &grid, markers, mcolors, true);
+            paint_legend(fonts, vg, &geometry, &colors.legend);
+        }
+        None => {
+            crate::plane_markers::paint_markers(fonts, vg, &grid, markers, mcolors, false);
+        }
     }
     vg.reset_scissor();
     paint_corner_cutouts(vg, content.width, content.height, colors.page);

@@ -11,19 +11,18 @@
 //! then each marker's arcs and, once the font has loaded, its label.
 //!
 //! Dashes go through h6-curve's [`dash_pieces`](crate::plane::dash_pieces),
-//! never a second emulation. All positions are canvas-relative px; the caller
+//! never a second emulation. Canvas continues a dash pattern across the
+//! subpaths of one path (probed in `.local/probe/dash_subpath.py`: the second
+//! drop segment dashes from the first's phase), so the two drop segments are
+//! cut with a carried offset. All positions are canvas-relative px; the caller
 //! translates to the content box, as the other painters do.
-//!
-//! Draft (phase 1): h8-p-marker's geometry names are its prompt's contract;
-//! the scratch-tree check carries spec-derived stubs until it merges, and
-//! phase 2 reconciles any name the porter fixed differently.
 
 use mv_text::{Face, Features, Style};
 
 use crate::grid::GridLayout;
 use crate::plane_geometry::{
-    DROP_DASH, GUIDE_DASH, LabelLayout, MarkerArcs, MarkerShape, PlotMarker, arrow_path,
-    drop_lines, guide_x, label_layout, marker_arcs,
+    DROP_DASH, DROP_WIDTH, GUIDE_DASH, GUIDE_WIDTH, LABEL_BORDER, LABEL_RUN_GAP, LabelLayout,
+    MarkerInk, PlotMarker, arrow_path, drop_lines, guide_x, label_layout, marker_arcs, marker_look,
 };
 
 /// The P marker's name face: STIX Two Text italic 400, 20 px
@@ -48,24 +47,11 @@ pub fn marker_coords_style() -> Style {
     }
 }
 
-/// The guide's look (`drawGuide`): 1 px, `[4, 6]` dashes from half a dash in.
-pub const GUIDE_WIDTH: f32 = 1.0;
-
 /// Where the guide's pattern starts (`lineDashOffset`: half the first dash).
 pub const GUIDE_OFFSET: f64 = 2.0;
 
-/// The drop lines' look (`drawDropLines`): 1.5 px, `[5, 4]` dashes from half
-/// a dash in.
-pub const DROP_WIDTH: f32 = 1.5;
-
 /// Where the drop lines' pattern starts (half the first dash).
 pub const DROP_OFFSET: f64 = 2.5;
-
-/// The label pill's border width, in px (`labelBorder`).
-pub const LABEL_BORDER: f32 = 2.0;
-
-/// The gap between the label's name and coords runs, in px (`labelRunGap`).
-pub const LABEL_RUN_GAP: f64 = 6.0;
 
 /// The colours the markers paint with, resolved from the theme: the two point
 /// inks (`point_p`/`point_q`, the sidebar's `--point-p`/`--point-q`), the
@@ -102,16 +88,14 @@ pub fn marker_ink(colors: &MarkerColors, marker: &PlotMarker) -> [f32; 4] {
     }
 }
 
-/// A marker's ring and core inks: a bullseye's ring is the foreground and its
-/// core the marker's ink, a ring's the other way round (`drawMarker`).
-pub fn marker_arc_inks(
-    shape: MarkerShape,
-    ink: [f32; 4],
-    foreground: [f32; 4],
-) -> ([f32; 4], [f32; 4]) {
-    match shape {
-        MarkerShape::Bullseye => (foreground, ink),
-        MarkerShape::Ring => (ink, foreground),
+/// Whose ink a marker arc takes: the plane background, the foreground, or the
+/// marker's own ink (`MarkerInk`, resolved here as the source resolves
+/// `theme[...]` in `drawMarker`).
+pub fn arc_ink(colors: &MarkerColors, ink: MarkerInk, marker: &PlotMarker) -> [f32; 4] {
+    match ink {
+        MarkerInk::Background => colors.background,
+        MarkerInk::Foreground => colors.foreground,
+        MarkerInk::Marker => marker_ink(colors, marker),
     }
 }
 
@@ -144,33 +128,35 @@ pub fn paint_guide(
     };
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     vg.stroke_color(colors.foreground_muted);
-    vg.stroke_width(GUIDE_WIDTH);
+    vg.stroke_width(GUIDE_WIDTH as f32);
     stroke_pieces(
         vg,
-        &crate::plane::dash_pieces(
-            &[[f64::from(px), 0.0], [f64::from(px), grid.height]],
-            GUIDE_DASH,
-            GUIDE_OFFSET,
-        ),
+        &crate::plane::dash_pieces(&[[px, 0.0], [px, grid.height]], GUIDE_DASH, GUIDE_OFFSET),
     );
 }
 
 /// Paints a marker's drop lines to the axes, clamped at the frame
-/// (`drawDropLines`).
+/// (`drawDropLines`): both segments in one path, vertical first, the dash
+/// phase carried across them as Canvas carries it.
 pub fn paint_drop_lines(
     vg: &mut mv_nvg::Context,
     grid: &GridLayout,
     marker: &PlotMarker,
     colors: &MarkerColors,
 ) {
+    let lines = drop_lines(grid, marker.point);
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     vg.stroke_color(marker_ink(colors, marker));
-    vg.stroke_width(DROP_WIDTH);
-    for segment in drop_lines(grid, marker.point) {
+    vg.stroke_width(DROP_WIDTH as f32);
+    // The dash distance Canvas has consumed so far along the path.
+    let mut consumed = 0.0;
+    for segment in [lines.vertical, lines.horizontal].into_iter().flatten() {
         stroke_pieces(
             vg,
-            &crate::plane::dash_pieces(&segment, DROP_DASH, DROP_OFFSET),
+            &crate::plane::dash_pieces(&segment, DROP_DASH, DROP_OFFSET + consumed),
         );
+        let [[x0, y0], [x1, y1]] = segment;
+        consumed += (x1 - x0).hypot(y1 - y0);
     }
 }
 
@@ -178,24 +164,30 @@ pub fn paint_drop_lines(
 /// the ring stroke, the core fill (`drawMarker`).
 pub fn paint_marker(
     vg: &mut mv_nvg::Context,
-    arcs: &MarkerArcs,
-    ring_ink: [f32; 4],
-    core_ink: [f32; 4],
-    background: [f32; 4],
+    marker: &PlotMarker,
+    at: [f64; 2],
+    colors: &MarkerColors,
 ) {
-    let [x, y] = arcs.center;
+    let arcs = marker_arcs(at, marker.shape);
+    let ring_width = marker_look(marker.shape).ring as f32;
+    // The background fill.
+    let [x, y] = arcs[0].at;
     vg.begin_path();
-    vg.circle(x as f32, y as f32, arcs.back_r as f32);
-    vg.fill_color(background);
+    vg.circle(x as f32, y as f32, arcs[0].r as f32);
+    vg.fill_color(arc_ink(colors, arcs[0].ink, marker));
     vg.fill();
+    // The ring stroke.
+    let [x, y] = arcs[1].at;
     vg.begin_path();
-    vg.circle(x as f32, y as f32, arcs.ring_r as f32);
-    vg.stroke_color(ring_ink);
-    vg.stroke_width(arcs.ring_width as f32);
+    vg.circle(x as f32, y as f32, arcs[1].r as f32);
+    vg.stroke_color(arc_ink(colors, arcs[1].ink, marker));
+    vg.stroke_width(ring_width);
     vg.stroke();
+    // The core fill.
+    let [x, y] = arcs[2].at;
     vg.begin_path();
-    vg.circle(x as f32, y as f32, arcs.core_r as f32);
-    vg.fill_color(core_ink);
+    vg.circle(x as f32, y as f32, arcs[2].r as f32);
+    vg.fill_color(arc_ink(colors, arcs[2].ink, marker));
     vg.fill();
 }
 
@@ -210,8 +202,8 @@ pub fn label_text_xs(layout: &LabelLayout, name_width: f64) -> (f32, f32) {
 
 /// Paints a marker's label: the pill in the card colour with a 2 px border in
 /// the marker's ink, the off-frame arrow in the ink, the name and coords at
-/// their literal baselines (`drawLabel`, `drawArrow`). `name_width` and
-/// `coords_width` are the ceiled measures `label_layout` laid out with.
+/// their literal baselines (`drawLabel`, `drawArrow`). `name_width` is the
+/// ceiled name measure `label_layout` laid out with.
 // Eight paint inputs (the marker and its runs with their layout, widths and
 // inks): the call reads in draw order, as `paint_plane`'s does.
 #[allow(clippy::too_many_arguments)]
@@ -226,29 +218,34 @@ pub fn paint_label(
     colors: &MarkerColors,
 ) {
     let ink = marker_ink(colors, marker);
-    let [x, y, w, h] = layout.rect;
     // The pill and its border, stroked inset by half the border.
     vg.begin_path();
-    vg.rounded_rect(x as f32, y as f32, w as f32, h as f32, (h / 2.0) as f32);
+    vg.rounded_rect(
+        layout.x as f32,
+        layout.y as f32,
+        layout.w as f32,
+        layout.h as f32,
+        (layout.h / 2.0) as f32,
+    );
     vg.fill_color(colors.card);
     vg.fill();
-    let half = f64::from(LABEL_BORDER) / 2.0;
+    let half = LABEL_BORDER / 2.0;
     vg.line_cap(mv_nvg::LineCapType::BUTT);
     vg.stroke_color(ink);
-    vg.stroke_width(LABEL_BORDER);
+    vg.stroke_width(LABEL_BORDER as f32);
     vg.begin_path();
     vg.rounded_rect(
-        (x + half) as f32,
-        (y + half) as f32,
-        (w - f64::from(LABEL_BORDER)) as f32,
-        (h - f64::from(LABEL_BORDER)) as f32,
-        (h / 2.0 - half) as f32,
+        (layout.x + half) as f32,
+        (layout.y + half) as f32,
+        (layout.w - LABEL_BORDER) as f32,
+        (layout.h - LABEL_BORDER) as f32,
+        (layout.h / 2.0 - half) as f32,
     );
     vg.stroke();
     // The off-frame arrow, filled in the ink.
-    if let (Some(dir), Some(at)) = (layout.dir, layout.arrow) {
+    if let (Some(dir), Some([ax, ay])) = (layout.dir, layout.arrow) {
         vg.begin_path();
-        let mut corners = arrow_path(dir, at).into_iter();
+        let mut corners = arrow_path(dir, ax, ay).into_iter();
         if let Some([first_x, first_y]) = corners.next() {
             vg.move_to(first_x as f32, first_y as f32);
             for [corner_x, corner_y] in corners {
@@ -301,15 +298,7 @@ pub fn paint_markers(
     }
     for marker in markers {
         let at = crate::plane_geometry::to_px(grid, marker.point);
-        let (ring_ink, core_ink) =
-            marker_arc_inks(marker.shape, marker_ink(colors, marker), colors.foreground);
-        paint_marker(
-            vg,
-            &marker_arcs(at, marker.shape),
-            ring_ink,
-            core_ink,
-            colors.background,
-        );
+        paint_marker(vg, marker, at, colors);
         if font_ready && let Some(label) = &marker.label {
             let name_width =
                 f64::from(mv_text::measure(fonts, marker_name_style(), &label.name)).ceil();
@@ -338,7 +327,7 @@ pub fn paint_markers(
 mod tests {
     use super::*;
     use crate::grid::layout_grid;
-    use crate::plane_geometry::{Direction, PlotLabel};
+    use crate::plane_geometry::{MarkerShape, PlotLabel};
     use crate::plot::PlotPoint;
 
     /// The 400 by 300 px canvas at scale 0.5 the vitest draws on
@@ -371,42 +360,59 @@ mod tests {
         assert_eq!(coords.size, 17.0);
     }
 
-    /// A bullseye's ring is the foreground and its core the marker's ink; a
-    /// ring's the other way round.
+    /// A bullseye's ring takes the foreground and its core the marker's ink;
+    /// a ring's go the other way round (`marker_arcs`' swap, resolved here).
     #[test]
     fn arc_inks_swap_by_shape() {
-        let ink = [0.0, 1.0, 0.0, 1.0];
-        let foreground = [0.0, 0.0, 0.0, 1.0];
+        let at = [250.0, 100.0];
+        let bullseye = marker_arcs(at, MarkerShape::Bullseye);
         assert_eq!(
-            marker_arc_inks(MarkerShape::Bullseye, ink, foreground),
-            (foreground, ink)
+            [bullseye[0].ink, bullseye[1].ink, bullseye[2].ink],
+            [
+                MarkerInk::Background,
+                MarkerInk::Foreground,
+                MarkerInk::Marker
+            ]
         );
+        let ring = marker_arcs(at, MarkerShape::Ring);
         assert_eq!(
-            marker_arc_inks(MarkerShape::Ring, ink, foreground),
-            (ink, foreground)
+            [ring[0].ink, ring[1].ink, ring[2].ink],
+            [
+                MarkerInk::Background,
+                MarkerInk::Marker,
+                MarkerInk::Foreground
+            ]
         );
+        assert_eq!([ring[0].r, ring[1].r, ring[2].r], [12.0, 10.5, 3.0]);
     }
 
-    /// P at (1, 1) is a bullseye around (250, 100) with a core in its ink.
+    /// `MarkerInk` resolves against the marker's own ink for `Marker`.
     #[test]
-    fn p_marker_is_a_bullseye_with_its_core_in_its_ink() {
-        let at = crate::plane_geometry::to_px(&grid_400x300(), PlotPoint { x: 1.0, y: 1.0 });
-        assert_eq!(at, [250.0, 100.0]);
-        let arcs = marker_arcs(at, MarkerShape::Bullseye);
-        assert_eq!(arcs.center, [250.0, 100.0]);
-        assert_eq!(arcs.back_r, 12.0);
-        assert_eq!(arcs.ring_r, 12.0 - 2.5 / 2.0);
-        assert_eq!(arcs.core_r, 6.0);
-    }
-
-    /// Q at (1, 1) is a ring in its ink around (250, 100) with a centre in
-    /// the foreground.
-    #[test]
-    fn q_marker_is_a_ring_with_a_foreground_core() {
-        let at = crate::plane_geometry::to_px(&grid_400x300(), PlotPoint { x: 1.0, y: 1.0 });
-        let arcs = marker_arcs(at, MarkerShape::Ring);
-        assert_eq!([arcs.back_r, arcs.ring_r, arcs.core_r], [12.0, 10.5, 3.0]);
-        assert_eq!(arcs.ring_width, 3.0);
+    fn marker_ink_resolves_point_tokens() {
+        let colors = MarkerColors {
+            point_p: [0.0, 1.0, 0.0, 1.0],
+            point_q: [0.0, 0.0, 1.0, 1.0],
+            foreground: [0.0, 0.0, 0.0, 1.0],
+            foreground_muted: [0.5, 0.5, 0.5, 1.0],
+            background: [1.0, 1.0, 1.0, 1.0],
+            card: [0.2, 0.2, 0.2, 1.0],
+        };
+        let point = PlotPoint { x: 1.0, y: 1.0 };
+        let p = marker(point);
+        assert_eq!(arc_ink(&colors, MarkerInk::Marker, &p), colors.point_p);
+        let q = PlotMarker {
+            ink: mv_theme::Token::PointQ,
+            ..marker(point)
+        };
+        assert_eq!(arc_ink(&colors, MarkerInk::Marker, &q), colors.point_q);
+        assert_eq!(
+            arc_ink(&colors, MarkerInk::Foreground, &p),
+            colors.foreground
+        );
+        assert_eq!(
+            arc_ink(&colors, MarkerInk::Background, &p),
+            colors.background
+        );
     }
 
     /// P's label sits 22 px right of the point, its bottom 13.2 px above it:
@@ -416,73 +422,11 @@ mod tests {
     fn label_sits_right_of_the_point() {
         let grid = grid_400x300();
         let layout = label_layout(&grid, 250.0, 100.0, 40.0, 40.0);
-        let [x, y, w, h] = layout.rect;
-        assert_eq!([x, w, h], [272.0, 114.0, 41.0]);
-        assert!((y - 45.8).abs() < 0.05, "label y {y}");
+        assert_eq!([layout.x, layout.w, layout.h], [272.0, 114.0, 41.0]);
+        assert!((layout.y - 45.8).abs() < 0.05, "label y {}", layout.y);
         assert_eq!(layout.dir, None);
         let (name_x, coords_x) = label_text_xs(&layout, 40.0);
         assert_eq!([name_x, coords_x], [286.0, 332.0]);
-    }
-
-    /// P's label stays 12 px inside the frame on each side, keeping its place
-    /// along that side.
-    #[test]
-    fn label_clamps_inside_the_frame() {
-        let grid = grid_400x300();
-        let left_of = |x: f64, y: f64| label_layout(&grid, x, y, 40.0, 40.0).rect[0];
-        let top_of = |x: f64, y: f64| label_layout(&grid, x, y, 40.0, 40.0).rect[1];
-        // (-1, 20) and (-1, -20) in plot units through the grid.
-        let hi = crate::plane_geometry::to_px(&grid, PlotPoint { x: -1.0, y: 20.0 });
-        let lo = crate::plane_geometry::to_px(&grid, PlotPoint { x: -1.0, y: -20.0 });
-        assert_eq!([left_of(hi[0], hi[1]), top_of(hi[0], hi[1])], [172.0, 12.0]);
-        assert_eq!(
-            [left_of(lo[0], lo[1]), top_of(lo[0], lo[1])],
-            [172.0, 247.0]
-        );
-    }
-
-    /// P's label leads with a triangle pointing the way P lies furthest past
-    /// the view.
-    #[test]
-    fn off_view_label_leads_with_an_arrow() {
-        let grid = grid_400x300();
-        let layout = label_layout(&grid, 150.0, -850.0, 40.0, 40.0);
-        assert_eq!(layout.dir, Some(Direction::Up));
-        let [x, y, w, _] = layout.rect;
-        assert_eq!(w, 130.0);
-        let at = layout.arrow.expect("an off-view label carries its arrow");
-        let corners = arrow_path(Direction::Up, at);
-        assert_eq!(
-            corners.map(|[px, py]| [px - x, py - y]),
-            [[16.0, 15.5], [21.0, 25.5], [11.0, 25.5]]
-        );
-    }
-
-    /// P's drop lines run in its ink from (1, 1) to each axis; above the view
-    /// the vertical comes in from the top edge and none runs off the canvas.
-    #[test]
-    fn drop_lines_run_to_the_axes() {
-        let grid = grid_400x300();
-        assert_eq!(
-            drop_lines(&grid, PlotPoint { x: 1.0, y: 1.0 }),
-            vec![
-                [[250.0, 100.0], [250.0, 150.0]],
-                [[250.0, 100.0], [200.0, 100.0]],
-            ]
-        );
-        assert_eq!(
-            drop_lines(&grid, PlotPoint { x: 1.0, y: 20.0 }),
-            vec![[[250.0, 0.0], [250.0, 150.0]]]
-        );
-    }
-
-    /// Q's guide runs down the plane's full height at its x, even while Q is
-    /// above the view; none shows while its x lies past the view.
-    #[test]
-    fn guide_runs_the_full_height() {
-        let grid = grid_400x300();
-        assert_eq!(guide_x(&grid, PlotPoint { x: 1.0, y: 20.0 }), Some(250.0));
-        assert_eq!(guide_x(&grid, PlotPoint { x: 20.0, y: 1.0 }), None);
     }
 
     /// The label's coords run starts past the name's measured width plus the
@@ -490,7 +434,10 @@ mod tests {
     #[test]
     fn coords_run_follows_the_name() {
         let layout = LabelLayout {
-            rect: [272.0, 45.8, 114.0, 41.0],
+            x: 272.0,
+            y: 45.8,
+            w: 114.0,
+            h: 41.0,
             dir: None,
             text_left: 286.0,
             name_baseline: 63.0,
@@ -510,5 +457,34 @@ mod tests {
         };
         assert_eq!(label.name, "P");
         assert_eq!(label.coords, "(1.00, 1.00)");
+    }
+
+    /// Q's guide runs while its x lies on the plane, whatever its y is; none
+    /// shows past either edge.
+    #[test]
+    fn guide_runs_while_x_is_on_the_plane() {
+        let grid = grid_400x300();
+        assert_eq!(guide_x(&grid, PlotPoint { x: 1.0, y: 20.0 }), Some(250.0));
+        assert_eq!(guide_x(&grid, PlotPoint { x: 20.0, y: 1.0 }), None);
+    }
+
+    /// A marker's drop lines run to the axes: vertical first, then
+    /// horizontal; above the view the vertical comes in from the top edge.
+    #[test]
+    fn drop_lines_run_vertical_first() {
+        let grid = grid_400x300();
+        let lines = drop_lines(&grid, PlotPoint { x: 1.0, y: 1.0 });
+        assert_eq!(
+            [lines.vertical, lines.horizontal],
+            [
+                Some([[250.0, 100.0], [250.0, 150.0]]),
+                Some([[250.0, 100.0], [200.0, 100.0]]),
+            ]
+        );
+        let above = drop_lines(&grid, PlotPoint { x: 1.0, y: 20.0 });
+        assert_eq!(
+            [above.vertical, above.horizontal],
+            [Some([[250.0, 0.0], [250.0, 150.0]]), None]
+        );
     }
 }
