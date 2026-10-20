@@ -210,7 +210,7 @@ pub struct ScrubDrag {
     pub dx: f64,
     /// The modifier in force.
     pub mode: ScrubMode,
-    /// The box's layout box, anchoring the ruler.
+    /// The row's layout box, anchoring the ruler.
     pub row_box: clay::BoundingBox,
 }
 

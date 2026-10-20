@@ -23,7 +23,7 @@ use mv_text::{Face, Features, Style};
 use crate::app::App;
 use crate::ruler_marks::{RulerMarks, ruler_marks};
 use crate::scrub::ScrubMode;
-use crate::scrub_value::{ScrubDrag, ScrubKind, is_scale, scrub_kind};
+use crate::scrub_value::{ScrubDrag, ScrubKind, is_scale};
 use crate::state::TransformParam;
 
 /// The card's gap under the row (`.ruler`: `top: calc(100% + 4px)`).
@@ -98,11 +98,21 @@ pub enum ChevronSide {
     Right,
 }
 
+/// The tape's border-box width inside a row `row_width` wide: the tape fills
+/// the card's content, so only the card's rim and padding come off (the
+/// tape's own rim does not — at 350: 332, the probe's clientWidth 328 plus
+/// its 2 px rims).
+#[must_use]
+pub fn tape_box_width(row_width: f32) -> f32 {
+    row_width - 2.0 * (RULER_BORDER + RULER_PAD)
+}
+
 /// The tape's content width inside a row `row_width` wide: the card's border
-/// and padding plus the tape's own border come off both sides (at 350: 328).
+/// and padding plus the tape's own rim come off both sides (at 350: 328, what
+/// the source measures as `clientWidth` and passes to `rulerMarks`).
 #[must_use]
 pub fn tape_width(row_width: f32) -> f32 {
-    row_width - 2.0 * (RULER_BORDER + RULER_PAD + TAPE_BORDER)
+    tape_box_width(row_width) - 2.0 * TAPE_BORDER
 }
 
 /// The card's height: its border and padding around the 32 px tape (at rest:
@@ -316,7 +326,7 @@ pub fn layout_ruler(app: &mut App, parent: clay::ElementId, param: TransformPara
     crate::ui::ui_scope(app, ruler_id(param), &card, |app| {
         let mut tape = crate::ui::empty_decl();
         tape.layout.sizing = clay::Sizing {
-            width: mv_clay::sizing_fixed(tape_width(row_width)),
+            width: mv_clay::sizing_fixed(tape_box_width(row_width)),
             height: mv_clay::sizing_fixed(TAPE_HEIGHT),
         };
         tape.layout.padding = clay::Padding {
@@ -328,7 +338,7 @@ pub fn layout_ruler(app: &mut App, parent: clay::ElementId, param: TransformPara
         crate::ui::ui_scope(app, tape_box_id(param), &tape, |app| {
             let mut content = crate::ui::empty_decl();
             content.layout.sizing = clay::Sizing {
-                width: mv_clay::sizing_fixed(tape_width(row_width) - 2.0 * TAPE_BORDER),
+                width: mv_clay::sizing_fixed(tape_width(row_width)),
                 height: mv_clay::sizing_fixed(tape_content_height()),
             };
             crate::ui::ui_scope(app, tape_id(param), &content, |_| {});
@@ -336,31 +346,15 @@ pub fn layout_ruler(app: &mut App, parent: clay::ElementId, param: TransformPara
     });
 }
 
-/// The open drag as the ruler draws it: the held scrub's rebased anchor
-/// rebuilt into h5-box's [`ScrubDrag`], with the laid-out row's box (the
-/// ruler spans the row, as wide as it, 4 px under it). Nothing while no drag
-/// holds a value.
+/// The open drag as the ruler draws it: h5-box's [`ScrubDrag`] mirrored onto
+/// [`App::scrub`] while a scrub holds the value, with the row's laid-out box
+/// along in [`ScrubDrag::row_box`] (the ruler spans the row, as wide as it,
+/// 4 px under it). One derivation feeds the ruler: the hold's press is
+/// mirrored on every mutation path (`store` covers moves and rebases), so no
+/// reader rebuilds it. Nothing while no drag holds a value.
 #[must_use]
 pub fn open_drag(app: &App) -> Option<ScrubDrag> {
-    let (param, press) = match app.scrub_hold {
-        Some(crate::scrub_value::ScrubHold::Scrub { param, press }) if press.dragging => {
-            (param, press)
-        }
-        _ => return None,
-    };
-    let clay = app.clay.as_ref().expect("clay context initialised");
-    let data = clay.get_element_data(row_parent(param));
-    if !data.found {
-        return None;
-    }
-    Some(ScrubDrag {
-        param,
-        kind: scrub_kind(param),
-        start_value: press.from,
-        dx: press.last_x - press.x,
-        mode: press.mode,
-        row_box: data.boundingBox,
-    })
+    app.scrub
 }
 
 /// Lays the open drag's ruler out: the floating card under its row. Called
@@ -555,6 +549,7 @@ mod tests {
     #[test]
     fn card_arithmetic_matches_the_reference() {
         assert_eq!(tape_width(350.0), 328.0);
+        assert_eq!(tape_box_width(350.0), 332.0);
         assert_eq!(ruler_height(), 50.0);
         assert_eq!(tape_origin(), 9.0);
         assert_eq!(tape_content_height(), 28.0);
@@ -689,6 +684,26 @@ mod tests {
         assert_eq!(
             chevron_points(328.0, 28.0, ChevronSide::Right),
             [[317.0, 9.0], [322.0, 14.0], [317.0, 19.0]]
+        );
+    }
+
+    #[test]
+    fn boundary_label_survives_the_plumbed_width() {
+        // box-drag-a-50 end to end at the pure level: the live value is the
+        // quantized 1.11, and a 350 row plumbs the 328 tape the source
+        // measures — so the 0.8 label sits 0.08 px inside and survives the
+        // TS `inside` filter (the review's missing sliver).
+        let marks = marks_for(1.11, 350.0, TransformParam::A);
+        assert_eq!(
+            marks.labels.first().map(|label| label.text.as_str()),
+            Some("0.8")
+        );
+        assert_eq!(
+            marks
+                .labels
+                .first()
+                .map(|label| mv_numfmt::round_to(label.x, 2)),
+            Some(0.08)
         );
     }
 
