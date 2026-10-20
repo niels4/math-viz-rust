@@ -16,20 +16,23 @@
 //!   readout with fixed-width slots, `≈` when inexact, scientific `m×10ⁿ`
 //!   from 1e5, `–` when empty).
 //!
-//! The row owns P's head and leaves one call line each for the slider under
-//! the head ([`crate::point_slider`], with an empty 20 px track as the
-//! stand-in until h8-points-slider merges) and for the field in the
-//! readout's x slot ([`crate::x_field`], the formatted number as the
-//! stand-in until h8-points-field merges). `p`'s param ([`crate::functions::P_PARAM`),
-//! the visible range ([`crate::visible_range`]), the number formatters
-//! ([`crate::point_format`]) and the moved badge's state
-//! ([`crate::moved_by`]) are the porters' names, as the plan lists them.
+//! The row owns P's head and leaves stand-ins for its siblings: an empty
+//! 20 px track under the head for h8-points-slider's call line, and the
+//! formatted number in the readout's x slot for h8-points-field (which
+//! swaps its field in at its merge). `p`'s param (`P_PARAM`), the visible
+//! range (`visible_range`), the number formatters (`point_format`) and the
+//! badge's state machine (`MovedBy`) are h8-p-points's; the per-param scrub
+//! modes the badge reads as its drag flag are h7-p-state's; `Token::PointP`
+//! and `Token::PointQ` land with h8-plane's regeneration.
 
 use mv_sys::clay;
 
 use crate::app::App;
+use crate::app_loop::MS;
 use crate::functions::FunctionSlug;
-use crate::point_format::{ReadoutSlots, format_change, format_number, number_parts, readout_slots};
+use crate::point_format::{
+    NumberParts, ReadoutSlots, format_change, format_number, number_parts, readout_slots,
+};
 use crate::transform_curves::{Transform, TransformedFunction};
 use crate::visible_range::VisibleRange;
 
@@ -65,11 +68,13 @@ pub const ROLE_LINE: f32 = 15.0;
 
 /// The moved badge: a 24 px pill, radius 6, 6 px between label and change,
 /// 8 px after it (`.moved`); the label 13 px 600 (`.moved_label`), the
-/// change 14 px mono tabular (`.moved_value`).
+/// change 14 px mono tabular (`.moved_value`). The pill is primary mixed
+/// 26 % over the card (`BADGE_MIX`).
 pub const BADGE_HEIGHT: f32 = 24.0;
 pub const BADGE_RADIUS: f32 = 6.0;
 pub const BADGE_GAP: f32 = 6.0;
 pub const BADGE_AFTER: f32 = 8.0;
+pub const BADGE_MIX: f32 = 0.26;
 pub const BADGE_LABEL_SIZE: f32 = 13.0;
 pub const BADGE_VALUE_SIZE: f32 = 14.0;
 pub const BADGE_PAD_X: f32 = 8.0;
@@ -115,6 +120,7 @@ pub const P_READOUT_ID: &str = "PReadout";
 pub const Q_HEAD_ID: &str = "QHead";
 pub const Q_MARK_ID: &str = "QMark";
 pub const Q_LETTER_ID: &str = "QLetter";
+pub const Q_ROLE_SLOT_ID: &str = "QRoleSlot";
 pub const Q_ROLE_ID: &str = "QRole";
 pub const Q_READOUT_ID: &str = "QReadout";
 /// The slider's scope (h8-points-slider's call line) and the readout x
@@ -297,7 +303,7 @@ pub fn p_row(
         y,
         off: range.and_then(|range| off_side(x, y, range)),
         moved,
-        slots: range.map(readout_slots),
+        slots: readout_slots(range.copied()),
     }
 }
 
@@ -344,7 +350,7 @@ pub fn q_row(
             }
             .value(x)
         }),
-        slots: range.map(readout_slots),
+        slots: readout_slots(range.copied()),
     }
 }
 
@@ -369,16 +375,18 @@ pub fn readout_text(x: Option<f64>, y: Option<f64>) -> ReadoutText {
     let parts = y.map(number_parts);
     let (rel, y_text, superscript) = match &parts {
         None => ("=", NO_NUMBER.to_owned(), None),
-        Some(parts) if parts.kind() == crate::point_format::NumberKind::Sci => (
-            if parts.exact() { "=" } else { "≈" },
-            format!("{}×10", parts.mantissa()),
-            Some(parts.exponent().to_owned()),
+        Some(NumberParts::Sci {
+            mantissa,
+            exponent,
+            exact,
+        }) => (
+            if *exact { "=" } else { "≈" },
+            format!("{mantissa}×10"),
+            Some(exponent.clone()),
         ),
-        Some(parts) => (
-            if parts.exact() { "=" } else { "≈" },
-            parts.text().to_owned(),
-            None,
-        ),
+        Some(NumberParts::Fixed { text, exact }) => {
+            (if *exact { "=" } else { "≈" }, text.clone(), None)
+        }
     };
     ReadoutText {
         text: format!("f({x_text}) {rel} {y_text}"),
@@ -484,9 +492,21 @@ fn p_point(app: &mut App) {
     point.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
     crate::ui::ui_scope(app, mv_clay::id(P_POINT_ID, 0), &point, |app| {
         p_head(app);
-        // h8-points-slider's call line: the x-of-P slider under the head.
-        crate::point_slider::slider(app);
+        // h8-points-slider swaps its `point_slider::slider(app)` call in
+        // for this stand-in at its merge (the track stays 20 px).
+        slider_stand_in(app);
     });
+}
+
+/// The slider's stand-in: an empty 20 px track under P's head
+/// (`SLIDER_ID` marks the anchor for h8-points-slider's call line).
+fn slider_stand_in(app: &mut App) {
+    let mut track = crate::ui::empty_decl();
+    track.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fixed(SLIDER_STAND_IN_HEIGHT),
+    };
+    crate::ui::ui_scope(app, mv_clay::id(SLIDER_ID, 0), &track, |_| {});
 }
 
 /// P's head row (`.head`): the mark, P, the off triangle, the role slot
@@ -511,7 +531,12 @@ fn p_head(app: &mut App) {
             triangle(app, mv_clay::id(P_OFF_ID, 0), dir);
         }
         role_slot(app, &model);
-        readout(app, mv_clay::id(P_READOUT_ID, 0), Some(model.x), Some(model.y));
+        readout(
+            app,
+            mv_clay::id(P_READOUT_ID, 0),
+            Some(model.x),
+            Some(model.y),
+        );
     });
 }
 
@@ -531,7 +556,23 @@ fn q_head(app: &mut App) {
     crate::ui::ui_scope(app, mv_clay::id(Q_HEAD_ID, 0), &head, |app| {
         mark(app, mv_clay::id(Q_MARK_ID, 0), MarkShape::Ring);
         letter(app, mv_clay::id(Q_LETTER_ID, 0), "Q");
-        role_text(app, mv_clay::id(Q_ROLE_ID, 0), model.role(), false);
+        // The role slot, as P's (without the badge): flex 1, so the
+        // readout stands right.
+        let mut slot = crate::ui::empty_decl();
+        slot.layout.sizing = clay::Sizing {
+            width: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
+            height: mv_clay::sizing_fixed(HEAD_HEIGHT),
+        };
+        slot.layout.childAlignment = clay::ChildAlignment {
+            x: clay::LayoutAlignmentX::Left,
+            y: clay::LayoutAlignmentY::Center,
+        };
+        crate::ui::ui_scope(app, mv_clay::id(Q_ROLE_SLOT_ID, 0), &slot, |app| {
+            let (_, role_w) = slot_shown(app, model.role(), None, "Q", None, model.x, model.y);
+            if role_w > 0.0 {
+                role_text(app, mv_clay::id(Q_ROLE_ID, 0), role_w);
+            }
+        });
         readout(app, mv_clay::id(Q_READOUT_ID, 0), model.x, model.y);
     });
 }
@@ -558,9 +599,11 @@ fn letter(app: &mut App, id: clay::ElementId, _letter: &str) {
         },
         _letter,
     );
+    // Exact: flex sums fractional advances (the browser's P is 11.39 px),
+    // unlike the CSS `round(up, …)` slots.
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_fixed(advance.ceil()),
+        width: mv_clay::sizing_fixed(advance),
         height: mv_clay::sizing_fixed(LETTER_LINE),
     };
     crate::ui::ui_scope(app, id, &decl, |_| {});
@@ -578,10 +621,58 @@ fn triangle(app: &mut App, id: clay::ElementId, dir: TriangleDir) {
     crate::ui::ui_scope(app, id, &decl, |_| {});
 }
 
-/// The role slot (`.role_slot`): flex 1, 30 px, overflow hidden. The badge
-/// and the role wrap to a clipped second line when the room left is too
-/// narrow, so each shows whole or not at all: the badge paints when it
-/// fits, the role when both fit.
+/// The head's content width: the card's content box (the sidebar column is
+/// a fixed 400 px track with 12 px insets and 12 px card padding, so 350 px
+/// at every window width, as the readout's row is).
+pub const HEAD_CONTENT_WIDTH: f32 = 350.0;
+
+/// What a role slot shows: the badge's and the role's spacer widths (0 for
+/// a hidden run). The badge and the role wrap to a clipped second line when
+/// the room left is too narrow, so each shows whole or not at all: the
+/// badge fits its slot, the role fits beside the badge (or alone when the
+/// badge wrapped away). Hidden runs declare no scope, so no phantom gap
+/// shifts a shown run and no unbreakable fixed run stretches the head past
+/// the card.
+fn slot_shown(
+    app: &mut App,
+    role: &str,
+    moved: Option<f64>,
+    letter: &str,
+    tri: Option<TriangleDir>,
+    x: Option<f64>,
+    y: Option<f64>,
+) -> (f32, f32) {
+    let letter_w = mv_text::measure(
+        &mut app.fonts,
+        mv_text::Style {
+            face: mv_text::Face::Stix400Italic,
+            size: LETTER_SIZE,
+            tracking: 0.0,
+            features: mv_text::Features::new(),
+        },
+        letter,
+    );
+    let tri_w = tri.map_or(0.0, |dir| triangle_size(dir)[0] + HEAD_GAP);
+    let readout_w = readout_width(app, x, y);
+    let slot_avail = HEAD_CONTENT_WIDTH
+        - (MARK_SIZE + HEAD_GAP + letter_w + HEAD_GAP + tri_w)
+        - HEAD_GAP
+        - readout_w;
+    let badge_w = badge_width(app);
+    let badge_shown = moved.is_some() && badge_w <= slot_avail;
+    let role_w = role_advance(app, role);
+    let role_shown = if badge_shown {
+        badge_w + BADGE_AFTER + role_w <= slot_avail
+    } else {
+        role_w <= slot_avail
+    };
+    (
+        if badge_shown { badge_w } else { 0.0 },
+        if role_shown { role_w } else { 0.0 },
+    )
+}
+
+/// The role slot (`.role_slot`): flex 1, 30 px, overflow hidden.
 fn role_slot(app: &mut App, model: &PRowModel) {
     let mut slot = crate::ui::empty_decl();
     slot.layout.sizing = clay::Sizing {
@@ -593,17 +684,28 @@ fn role_slot(app: &mut App, model: &PRowModel) {
         x: clay::LayoutAlignmentX::Left,
         y: clay::LayoutAlignmentY::Center,
     };
+    let off = model.off.map(OffSide::dir);
+    let (badge_w, role_w) = slot_shown(
+        app,
+        model.role(),
+        model.moved,
+        "P",
+        off,
+        Some(model.x),
+        Some(model.y),
+    );
     crate::ui::ui_scope(app, mv_clay::id(P_ROLE_SLOT_ID, 0), &slot, |app| {
-        if model.moved.is_some() {
-            badge_spacer(app);
+        if badge_w > 0.0 {
+            badge_spacer(app, badge_w);
         }
-        role_text(app, mv_clay::id(P_ROLE_ID, 0), model.role(), model.off.is_some());
+        if role_w > 0.0 {
+            role_text(app, mv_clay::id(P_ROLE_ID, 0), role_w);
+        }
     });
 }
 
-/// The moved badge's spacer, measured from its label and change.
-fn badge_spacer(app: &mut App) {
-    let width = badge_width(app);
+/// The moved badge's spacer: the shown width (hidden declares no scope).
+fn badge_spacer(app: &mut App, width: f32) {
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_fixed(width),
@@ -626,7 +728,7 @@ pub fn badge_width(app: &mut App) -> f32 {
         },
         "moved",
     );
-    (label + BADGE_GAP + change_advance(app, "+0.00") + 2.0 * BADGE_PAD_X).ceil()
+    label + BADGE_GAP + change_advance(app, "+0.00") + 2.0 * BADGE_PAD_X
 }
 
 /// The change's advance at its paint size (14 px mono tabular).
@@ -643,21 +745,12 @@ fn change_advance(app: &mut App, text: &str) -> f32 {
     )
 }
 
-/// A role's spacer, measured at 13 px.
-fn role_text(app: &mut App, id: clay::ElementId, _role: &str, _off: bool) {
-    let advance = mv_text::measure(
-        &mut app.fonts,
-        mv_text::Style {
-            face: mv_text::Face::WorkSans500,
-            size: ROLE_SIZE,
-            tracking: 0.0,
-            features: mv_text::Features::new(),
-        },
-        _role,
-    );
+/// A role's spacer: the shown width (hidden declares no scope), 30 px tall
+/// like the slot.
+fn role_text(app: &mut App, id: clay::ElementId, width: f32) {
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_fixed(advance.ceil()),
+        width: mv_clay::sizing_fixed(width),
         height: mv_clay::sizing_fixed(HEAD_HEIGHT),
     };
     crate::ui::ui_scope(app, id, &decl, |_| {});
@@ -673,9 +766,9 @@ fn readout(app: &mut App, id: clay::ElementId, x: Option<f64>, y: Option<f64>) {
         width: mv_clay::sizing_fixed(width),
         height: mv_clay::sizing_fixed(READOUT_HEIGHT),
     };
-    crate::ui::ui_scope(app, id, &decl, |app| {
-        // h8-points-field's call line: the x field in the readout's x slot.
-        crate::x_field::slot(app, mv_clay::id(X_SLOT_ID, 0));
+    crate::ui::ui_scope(app, id, &decl, |_| {
+        // h8-points-field swaps its `x_field` call in for the formatted
+        // number's paint at its merge (the x slot's box stays).
     });
 }
 
@@ -684,8 +777,7 @@ fn readout(app: &mut App, id: clay::ElementId, x: Option<f64>, y: Option<f64>) {
 /// its content, as the browser sizes the spans.
 #[must_use]
 pub fn readout_width(app: &mut App, x: Option<f64>, y: Option<f64>) -> f32 {
-    let range = crate::visible_range::live(app);
-    let slots = range.as_ref().map(readout_slots);
+    let slots = readout_slots(app.visible_range);
     let number = mv_text::Style {
         face: mv_text::Face::RobotoMono500,
         size: NUMBER_SIZE,
@@ -697,23 +789,32 @@ pub fn readout_width(app: &mut App, x: Option<f64>, y: Option<f64>) -> f32 {
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
     let x_text = x.map_or_else(|| NO_NUMBER.to_owned(), format_number);
-    let x_min = ceil_px(x_text.chars().count().max(slots.map_or(0, |slots| slots.x)) as f32 * ch);
+    // With no point the lead's `--chars` is the dash's own length: the x
+    // slot never applies while empty (`PointReadout`'s `xChars`).
+    let x_chars = match x {
+        Some(_) => x_text.chars().count().max(slots.map_or(0, |slots| slots.x)),
+        None => x_text.chars().count(),
+    };
+    let x_min = ceil_px(x_chars as f32 * ch);
     let x_slot = x_min.max(mv_text::measure(&mut app.fonts, number, &x_text));
     let y_slot = match y.map(number_parts) {
         None => mv_text::measure(&mut app.fonts, number, NO_NUMBER),
-        Some(ref p) if p.kind() == crate::point_format::NumberKind::Sci => {
-            sci_advance(app, p) + sup_advance(app, p)
-        }
-        Some(ref p) => {
-            let min = ceil_px(p.text().chars().count().max(slots.map_or(0, |slots| slots.y)) as f32 * ch);
-            min.max(mv_text::measure(&mut app.fonts, number, p.text()))
+        Some(NumberParts::Sci {
+            ref mantissa,
+            ref exponent,
+            ..
+        }) => sci_advance(app, mantissa) + sup_advance(app, exponent),
+        Some(NumberParts::Fixed { ref text, .. }) => {
+            let min =
+                ceil_px(text.chars().count().max(slots.map_or(0, |slots| slots.y)) as f32 * ch);
+            min.max(mv_text::measure(&mut app.fonts, number, text))
         }
     };
     open + x_slot + close + rel + y_slot
 }
 
 /// A scientific y's mantissa run advance (`m×10` at 18 px mono).
-fn sci_advance(app: &mut App, parts: &crate::point_format::NumberParts) -> f32 {
+fn sci_advance(app: &mut App, mantissa: &str) -> f32 {
     mv_text::measure(
         &mut app.fonts,
         mv_text::Style {
@@ -722,12 +823,12 @@ fn sci_advance(app: &mut App, parts: &crate::point_format::NumberParts) -> f32 {
             tracking: 0.0,
             features: tabular(),
         },
-        &format!("{}×10", parts.mantissa()),
+        &format!("{mantissa}×10"),
     )
 }
 
 /// A scientific y's exponent advance (11 px).
-fn sup_advance(app: &mut App, parts: &crate::point_format::NumberParts) -> f32 {
+fn sup_advance(app: &mut App, exponent: &str) -> f32 {
     mv_text::measure(
         &mut app.fonts,
         mv_text::Style {
@@ -736,25 +837,51 @@ fn sup_advance(app: &mut App, parts: &crate::point_format::NumberParts) -> f32 {
             tracking: 0.0,
             features: tabular(),
         },
-        parts.exponent(),
+        exponent,
     )
 }
 
 /// P's live row: f at the URL's a b h k with the live `p`, the visible
-/// range and the badge's change.
+/// range and the badge's change. Feeds the badge's state machine this
+/// frame's `(dragging, x, y)` first (`MovedBy::update` dedups identical
+/// feeds, so the layout's and the paint's feeds agree).
 #[must_use]
-pub fn live_p_row(app: &App) -> PRowModel {
+pub fn live_p_row(app: &mut App) -> PRowModel {
+    let transform = Transform {
+        a: *app.a_param.get(),
+        b: *app.b_param.get(),
+        h: *app.h_param.get(),
+        k: *app.k_param.get(),
+    };
+    let x = *app.p_param.get();
+    let y = TransformedFunction {
+        base: crate::functions::base(*app.func_param.get()),
+        transform,
+    }
+    .value(x);
+    let dragging = app.state.scrub_mode.values().any(|mode| mode.is_some());
+    // The frame's clock (`clock_now`: script time under the harness, wall
+    // ticks live) — not `input.time`, which only stands while a fact is
+    // handled and is 0 in the paint, freezing the linger.
+    let now_ms = (crate::app_loop::clock_now(app).max(0) as u64) / (MS as u64);
+    app.moved_by.update(dragging, x, y, now_ms);
+    // While the badge lingers past the release, keep a frame due: the
+    // linger clears lazily inside `update` (release-anchored, never
+    // restarted), and the timer's repaint paints it gone. Without this the
+    // app sleeps after the release's URL flush and the shot photographs the
+    // stale badge, as the scrub rest tip's timer does for its tip.
+    if app.moved_by.moved().is_some() && !dragging {
+        app.timers[crate::app_loop::Timer::MovedLinger] =
+            (now_ms + crate::moved_by::LINGER_MS) as i64 * MS;
+    } else {
+        app.timers[crate::app_loop::Timer::MovedLinger] = 0;
+    }
     p_row(
         *app.func_param.get(),
-        Transform {
-            a: *app.a_param.get(),
-            b: *app.b_param.get(),
-            h: *app.h_param.get(),
-            k: *app.k_param.get(),
-        },
-        *app.p_param.get(),
-        crate::visible_range::live(app).as_ref(),
-        crate::moved_by::moved_by(app),
+        transform,
+        x,
+        app.visible_range.as_ref(),
+        app.moved_by.moved(),
     )
 }
 
@@ -769,15 +896,27 @@ pub fn live_q_row(app: &App) -> QRowModel {
             h: *app.h_param.get(),
             k: *app.k_param.get(),
         },
-        app.q_x,
-        crate::visible_range::live(app).as_ref(),
+        app.state.q_x,
+        app.visible_range.as_ref(),
     )
 }
 
 /// Paints the card's rows post-pass, after the frame's commands: the marks,
 /// letters, triangles, badges, roles and readouts from the same model the
-/// spacers measure. Hidden scopes paint nothing.
+/// spacers measure. Hidden scopes paint nothing. The slider paints itself
+/// from exactly one place: h8-points-slider's `paint_slider` call in
+/// `page.rs`, beside this one (this module paints no slider pixels, only
+/// the stand-in's empty layout scope).
 pub fn paint_points(app: &mut App) {
+    // Refresh the cached range from the just-laid-out plane: `live` reads
+    // the current layout where the layout read the previous frame's. Dirty
+    // on change so the first frame redraws converged (h8-p-points's `live`
+    // is the shared contract; the cache is this card's).
+    let range = crate::visible_range::live(app);
+    if range != app.visible_range {
+        app.visible_range = range;
+        app.dirty = true;
+    }
     let theme = crate::ui::current_theme(app).clone();
     paint_mark(app, &theme, mv_clay::id(P_MARK_ID, 0), MarkShape::Bullseye);
     paint_mark(app, &theme, mv_clay::id(Q_MARK_ID, 0), MarkShape::Ring);
@@ -789,8 +928,19 @@ pub fn paint_points(app: &mut App) {
     }
     paint_role_slot(app, &theme, &p);
     let q = live_q_row(app);
-    paint_role(app, &theme, mv_clay::id(Q_ROLE_ID, 0), q.role(), false);
-    paint_readout(app, &theme, mv_clay::id(P_READOUT_ID, 0), Some(p.x), Some(p.y));
+    if let Some(slot) = laid_out(app, mv_clay::id(Q_ROLE_SLOT_ID, 0)) {
+        let (_, role_w) = slot_shown(app, q.role(), None, "Q", None, q.x, q.y);
+        if role_w > 0.0 {
+            paint_role(app, &theme, q.role(), false, slot.x, slot.y);
+        }
+    }
+    paint_readout(
+        app,
+        &theme,
+        mv_clay::id(P_READOUT_ID, 0),
+        Some(p.x),
+        Some(p.y),
+    );
     paint_readout(app, &theme, mv_clay::id(Q_READOUT_ID, 0), q.x, q.y);
 }
 
@@ -836,7 +986,13 @@ fn paint_letter(app: &mut App, theme: &mv_theme::Theme, id: clay::ElementId, let
         return;
     };
     let ink = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Foreground));
-    let base = r#box.y + mv_text::baseline(&mut app.fonts, mv_text::Face::Stix400Italic, LETTER_SIZE, LETTER_LINE);
+    let base = r#box.y
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::Stix400Italic,
+            LETTER_SIZE,
+            LETTER_LINE,
+        );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
@@ -867,9 +1023,12 @@ fn paint_triangle(app: &mut App, theme: &mv_theme::Theme, id: clay::ElementId, d
         TriangleDir::Right => [[0.0, 0.0], [9.0, 5.0], [0.0, 10.0]],
     };
     app.vg.begin_path();
-    app.vg.move_to(r#box.x + corners[0][0], r#box.y + corners[0][1]);
-    app.vg.line_to(r#box.x + corners[1][0], r#box.y + corners[1][1]);
-    app.vg.line_to(r#box.x + corners[2][0], r#box.y + corners[2][1]);
+    app.vg
+        .move_to(r#box.x + corners[0][0], r#box.y + corners[0][1]);
+    app.vg
+        .line_to(r#box.x + corners[1][0], r#box.y + corners[1][1]);
+    app.vg
+        .line_to(r#box.x + corners[2][0], r#box.y + corners[2][1]);
     app.vg.close_path();
     app.vg.fill_color(crate::draw::nvg_color(crate::ui::ink(
         theme,
@@ -884,19 +1043,34 @@ fn paint_role_slot(app: &mut App, theme: &mv_theme::Theme, model: &PRowModel) {
     let Some(slot) = laid_out(app, mv_clay::id(P_ROLE_SLOT_ID, 0)) else {
         return;
     };
-    let badge_w = if model.moved.is_some() {
-        badge_width(app)
-    } else {
-        0.0
-    };
-    let role = model.role();
-    let role_w = role_advance(app, role);
-    let gap = if model.moved.is_some() { BADGE_AFTER } else { 0.0 };
-    if model.moved.is_some() && badge_w <= slot.width {
-        paint_badge(app, theme, model.moved, slot.x);
+    // The layout's predicate, so paint and layout agree run for run.
+    let off = model.off.map(OffSide::dir);
+    let (badge_w, role_w) = slot_shown(
+        app,
+        model.role(),
+        model.moved,
+        "P",
+        off,
+        Some(model.x),
+        Some(model.y),
+    );
+    if badge_w > 0.0 {
+        paint_badge(app, theme, model.moved, slot.x, slot.y);
     }
-    if badge_w + gap + role_w <= slot.width {
-        paint_role(app, theme, mv_clay::id(P_ROLE_ID, 0), role, model.off.is_some());
+    if role_w > 0.0 {
+        paint_role(
+            app,
+            theme,
+            model.role(),
+            model.off.is_some(),
+            slot.x
+                + if badge_w > 0.0 {
+                    badge_w + BADGE_AFTER
+                } else {
+                    0.0
+                },
+            slot.y,
+        );
     }
 }
 
@@ -912,23 +1086,25 @@ fn role_advance(app: &mut App, role: &str) -> f32 {
         },
         role,
     )
-    .ceil()
 }
 
 /// A role: 13 px 500 on its 15 px line, centred in the 30 px slot — muted
 /// when pinned, foreground when off (`[data-off]`).
-fn paint_role(app: &mut App, theme: &mv_theme::Theme, id: clay::ElementId, role: &str, off: bool) {
-    let Some(r#box) = laid_out(app, id) else {
-        return;
-    };
+fn paint_role(app: &mut App, theme: &mv_theme::Theme, role: &str, off: bool, x: f32, y: f32) {
     let token = if off {
         mv_theme::Token::Foreground
     } else {
         mv_theme::Token::ForegroundMuted
     };
     let ink = crate::draw::nvg_color(crate::ui::ink(theme, token));
-    let base = r#box.y + (HEAD_HEIGHT - ROLE_LINE) / 2.0
-        + mv_text::baseline(&mut app.fonts, mv_text::Face::WorkSans500, ROLE_SIZE, ROLE_LINE);
+    let base = y
+        + (HEAD_HEIGHT - ROLE_LINE) / 2.0
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::WorkSans500,
+            ROLE_SIZE,
+            ROLE_LINE,
+        );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
@@ -938,7 +1114,7 @@ fn paint_role(app: &mut App, theme: &mv_theme::Theme, id: clay::ElementId, role:
             tracking: 0.0,
             features: mv_text::Features::new(),
         },
-        r#box.x,
+        x,
         base,
         role,
         ink,
@@ -948,15 +1124,23 @@ fn paint_role(app: &mut App, theme: &mv_theme::Theme, id: clay::ElementId, role:
 /// The moved badge: the `moved` label beside the change through
 /// `format_change`, in a 24 px pill in primary at 26 % with a 1 px primary
 /// border (`.moved`).
-fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f32) {
+fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f32, y: f32) {
     let Some(change) = moved else {
         return;
     };
-    let Some(r#box) = laid_out(app, mv_clay::id(P_BADGE_ID, 0)) else {
-        return;
-    };
-    let primary = theme.colors[mv_theme::Token::Primary];
-    let pill = crate::draw::nvg_color([primary[0], primary[1], primary[2], 0.26]);
+    let width = badge_width(app);
+    let pill_y = y + (HEAD_HEIGHT - BADGE_HEIGHT) / 2.0;
+    let primary = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Primary));
+    // Primary at 26 % over the card, opaque and pre-blended: the
+    // framebuffer blends linear while the reference composites gamma, so a
+    // translucent fill reads ~30 levels light (h4-readout's finding).
+    let backdrop = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Section));
+    let pill = [
+        primary[0] * BADGE_MIX + backdrop[0] * (1.0 - BADGE_MIX),
+        primary[1] * BADGE_MIX + backdrop[1] * (1.0 - BADGE_MIX),
+        primary[2] * BADGE_MIX + backdrop[2] * (1.0 - BADGE_MIX),
+        1.0,
+    ];
     let rim = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Primary));
     let ink = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Foreground));
     app.vg.begin_path();
@@ -964,8 +1148,8 @@ fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f3
         &mut app.vg,
         clay::BoundingBox {
             x,
-            y: r#box.y,
-            width: r#box.width,
+            y: pill_y,
+            width,
             height: BADGE_HEIGHT,
         },
         crate::ui::corner_radius_all(BADGE_RADIUS),
@@ -975,8 +1159,14 @@ fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f3
     app.vg.stroke_width(1.0);
     app.vg.stroke_color(rim);
     app.vg.stroke();
-    let label_base = r#box.y + (BADGE_HEIGHT - ROLE_LINE) / 2.0
-        + mv_text::baseline(&mut app.fonts, mv_text::Face::WorkSans600, BADGE_LABEL_SIZE, ROLE_LINE);
+    let label_base = pill_y
+        + (BADGE_HEIGHT - ROLE_LINE) / 2.0
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::WorkSans600,
+            BADGE_LABEL_SIZE,
+            ROLE_LINE,
+        );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
@@ -1002,8 +1192,14 @@ fn paint_badge(app: &mut App, theme: &mv_theme::Theme, moved: Option<f64>, x: f3
         },
         "moved",
     );
-    let value_base = r#box.y + (BADGE_HEIGHT - 18.0) / 2.0
-        + mv_text::baseline(&mut app.fonts, mv_text::Face::RobotoMono500, BADGE_VALUE_SIZE, 18.0);
+    let value_base = pill_y
+        + (BADGE_HEIGHT - 18.0) / 2.0
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::RobotoMono500,
+            BADGE_VALUE_SIZE,
+            18.0,
+        );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
@@ -1035,8 +1231,7 @@ fn paint_readout(
     let Some(r#box) = laid_out(app, id) else {
         return;
     };
-    let range = crate::visible_range::live(app);
-    let slots = range.as_ref().map(readout_slots);
+    let slots = readout_slots(app.visible_range);
     let x_text = x.map_or_else(|| NO_NUMBER.to_owned(), format_number);
     let parts = y.map(number_parts);
     let empty = parts.is_none();
@@ -1058,42 +1253,110 @@ fn paint_readout(
         tracking: 0.0,
         features: tabular(),
     };
-    let math_base = r#box.y + mv_text::baseline(&mut app.fonts, mv_text::Face::Stix400, MATH_SIZE, READOUT_HEIGHT);
-    let number_base = r#box.y + (READOUT_HEIGHT - NUMBER_LINE) / 2.0
-        + mv_text::baseline(&mut app.fonts, mv_text::Face::RobotoMono500, NUMBER_SIZE, NUMBER_LINE);
+    let math_base = r#box.y
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::Stix400,
+            MATH_SIZE,
+            READOUT_HEIGHT,
+        );
+    let number_base = r#box.y
+        + (READOUT_HEIGHT - NUMBER_LINE) / 2.0
+        + mv_text::baseline(
+            &mut app.fonts,
+            mv_text::Face::RobotoMono500,
+            NUMBER_SIZE,
+            NUMBER_LINE,
+        );
     let ch = ch_advance(app);
     let open = ceil_px(OPEN_EM * MATH_SIZE);
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel_w = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
-    let x_slot = ceil_px(x_text.chars().count().max(slots.map_or(0, |slots| slots.x)) as f32 * ch);
-    // The lead holds the open paren and the right-aligned x number.
-    mv_text::draw(&mut app.fonts, &mut app.vg, math, r#box.x, math_base, "f(", ink);
-    let x_w = mv_text::measure(&mut app.fonts, number, &x_text);
+    let x_chars = match x {
+        Some(_) => x_text.chars().count().max(slots.map_or(0, |slots| slots.x)),
+        None => x_text.chars().count(),
+    };
+    let x_slot = ceil_px(x_chars as f32 * ch);
+    // The lead right-aligns its [open paren + x] group (`justify-content:
+    // flex-end`): the field's input is only the value's chars wide
+    // (`--chars: max(1, text.length)`, unrounded), so the group shifts right
+    // by the slot's leftover. Q's dash span has no field and keeps the
+    // slot's right alignment.
+    let input_w = mv_text::measure(&mut app.fonts, number, &x_text);
+    let push = if x.is_some() { x_slot - input_w } else { 0.0 };
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        math,
+        r#box.x + push,
+        math_base,
+        "f(",
+        ink,
+    );
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
         number,
-        r#box.x + open + (x_slot - x_w),
+        r#box.x + open + x_slot - input_w,
         number_base,
         &x_text,
         ink,
     );
     let rel_x = r#box.x + open + x_slot;
-    mv_text::draw(&mut app.fonts, &mut app.vg, math, rel_x, math_base, ")", ink);
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        math,
+        rel_x,
+        math_base,
+        ")",
+        ink,
+    );
     let rel = match &parts {
         None => "=",
-        Some(p) if p.exact() => "=",
-        Some(_) => "≈",
+        Some(NumberParts::Fixed { exact, .. }) | Some(NumberParts::Sci { exact, .. }) => {
+            if *exact {
+                "="
+            } else {
+                "≈"
+            }
+        }
     };
-    mv_text::draw(&mut app.fonts, &mut app.vg, math, rel_x + close + REL_PAD, math_base, rel, ink);
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        math,
+        rel_x + close + REL_PAD,
+        math_base,
+        rel,
+        ink,
+    );
     let y_x = rel_x + close + rel_w;
     match &parts {
         None => {
-            mv_text::draw(&mut app.fonts, &mut app.vg, number, y_x, number_base, NO_NUMBER, ink);
+            mv_text::draw(
+                &mut app.fonts,
+                &mut app.vg,
+                number,
+                y_x,
+                number_base,
+                NO_NUMBER,
+                ink,
+            );
         }
-        Some(p) if p.kind() == crate::point_format::NumberKind::Sci => {
-            let mantissa = format!("{}×10", p.mantissa());
-            mv_text::draw(&mut app.fonts, &mut app.vg, number, y_x, number_base, &mantissa, ink);
+        Some(NumberParts::Sci {
+            mantissa, exponent, ..
+        }) => {
+            let mantissa = format!("{mantissa}×10");
+            mv_text::draw(
+                &mut app.fonts,
+                &mut app.vg,
+                number,
+                y_x,
+                number_base,
+                &mantissa,
+                ink,
+            );
             let mantissa_w = mv_text::measure(&mut app.fonts, number, &mantissa);
             mv_text::draw(
                 &mut app.fonts,
@@ -1106,14 +1369,28 @@ fn paint_readout(
                 },
                 y_x + mantissa_w,
                 number_base - EXPONENT_RAISE,
-                p.exponent(),
+                exponent,
                 ink,
             );
         }
-        Some(p) => {
-            mv_text::draw(&mut app.fonts, &mut app.vg, number, y_x, number_base, p.text(), ink);
+        Some(NumberParts::Fixed { text, .. }) => {
+            mv_text::draw(
+                &mut app.fonts,
+                &mut app.vg,
+                number,
+                y_x,
+                number_base,
+                text,
+                ink,
+            );
         }
     }
+}
+
+/// The linger timer's action: repaint, so the paint's feed clears a spent
+/// linger and the shot photographs it gone.
+pub fn moved_linger_fired(app: &mut App) {
+    app.dirty = true;
 }
 
 /// A laid-out box by Clay id, for the paint pass.
@@ -1349,5 +1626,181 @@ mod tests {
             slots: None,
         };
         assert_eq!(row.badge().as_deref(), Some("moved −0.50"));
+    }
+
+    /// The card's boxes against the fixture (`SideBar.test.tsx`'s points
+    /// title case rides along: the card paints, so the title stands).
+    /// The first pass lays the plane out; the second lays the card out with
+    /// the range the shared `live` reads from it — at rest the app has
+    /// converged the same way.
+    #[test]
+    fn boxes_match_fixture() {
+        const SLACK: f32 = 0.5;
+        assert_eq!(TITLE, "Points");
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        let _commands = crate::page::layout_page(&mut app);
+        // The paint's refresh, as the app runs it: seed the cache from the
+        // laid-out plane so the second pass lays the card out converged.
+        app.visible_range = crate::visible_range::live(&app);
+        assert!(
+            app.visible_range.is_some(),
+            "the laid-out plane shows a range"
+        );
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot =
+            crate::fixture::fixture_shot(&fixture, "default").expect("default shot in fixture");
+        for (id, name) in [
+            (CARD_ID, "card_points"),
+            (P_HEAD_ID, "row_p"),
+            (Q_HEAD_ID, "row_q"),
+            (P_MARK_ID, "mark_p"),
+            (P_ROLE_SLOT_ID, "role_p"),
+            (P_READOUT_ID, "readout_p"),
+            (Q_READOUT_ID, "readout_q"),
+        ] {
+            let data = clay.get_element_data(mv_clay::id(id, 0));
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got - want).abs() <= SLACK,
+                    "{name}[{i}]: laid out {got}, reference {want}"
+                );
+            }
+        }
+    }
+
+    /// A long readout never stretches the head past the card: the role
+    /// wraps away (whole or not at all) instead of forcing growth
+    /// (`points-sci` showed a 392 px card before this).
+    #[test]
+    fn long_readouts_wrap_the_role_instead_of_stretching_the_head() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        app.url = crate::url::Url::from_query("func=x3&p=-123.4");
+        crate::transform_section::init_params_from_url(&mut app);
+        let _commands = crate::page::layout_page(&mut app);
+        app.visible_range = crate::visible_range::live(&app);
+        let _commands = crate::page::layout_page(&mut app);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let card = clay.get_element_data(mv_clay::id(CARD_ID, 0)).boundingBox;
+        let head = clay.get_element_data(mv_clay::id(P_HEAD_ID, 0)).boundingBox;
+        let readout = clay
+            .get_element_data(mv_clay::id(P_READOUT_ID, 0))
+            .boundingBox;
+        assert_eq!((card.width, head.width), (374.0, 350.0));
+        assert!(
+            readout.x + readout.width <= 391.0,
+            "readout spills past the card: x {} w {}",
+            readout.x,
+            readout.width
+        );
+    }
+
+    /// A headless app with its clock settable, for the moved cases (the
+    /// moved cases drive `moved_by` through a coarse scrub mode on k, as
+    /// `PRow.test.tsx` does).
+    fn moved_app(query: &str) -> App {
+        let mut app = crate::fixture::headless_app();
+        // The live range reads the Clay context: initialise it (no layout,
+        // so the range is `None`, as on the first frame).
+        crate::ui::init_clay(&mut app);
+        app.func_param = crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, query);
+        app
+    }
+
+    /// Feeds one frame at `now_ms` and reads the row's strings.
+    fn live_at(app: &mut App, now_ms: u64) -> PRowModel {
+        app.r#loop.script_time = Some(now_ms as i64 * MS);
+        live_p_row(app)
+    }
+
+    #[test]
+    fn moved_badge_tracks_a_coarse_k_drag_until_600ms_after_release() {
+        use crate::scrub::ScrubMode;
+        use crate::state::TransformParam;
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = moved_app("func=x2");
+        // At rest on x2 at p = 2 (y = 4): no badge.
+        assert_eq!(live_at(&mut app, 0).badge(), None);
+
+        // The drag's first change lands with its start: k = 1 moves f(P)
+        // 4 → 5, read `moved +1.00` before `pinned`.
+        app.state.scrub_mode[TransformParam::K] = Some(ScrubMode::Coarse);
+        app.k_param = crate::url::QueryParam::new(&crate::functions::K_PARAM, "k=1");
+        let row = live_at(&mut app, 100);
+        assert_eq!(row.badge().as_deref(), Some("moved +1.00"));
+        assert_eq!(row.role(), "pinned");
+
+        // On to k = −0.5 (y = 3.5): `moved −0.50`.
+        app.k_param = crate::url::QueryParam::new(&crate::functions::K_PARAM, "k=-0.5");
+        let row = live_at(&mut app, 200);
+        assert_eq!(row.badge().as_deref(), Some("moved −0.50"));
+
+        // Released: the badge lingers 599 ms, then goes at 600.
+        app.state.scrub_mode[TransformParam::K] = None;
+        let row = live_at(&mut app, 300);
+        assert_eq!(row.badge().as_deref(), Some("moved −0.50"));
+        let row = live_at(&mut app, 899);
+        assert_eq!(row.badge().as_deref(), Some("moved −0.50"));
+        let row = live_at(&mut app, 900);
+        assert_eq!(row.badge(), None);
+    }
+
+    #[test]
+    fn moved_badge_stays_away_while_a_drag_leaves_f_p_where_it_was() {
+        use crate::scrub::ScrubMode;
+        use crate::state::TransformParam;
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = moved_app("func=x2");
+        assert_eq!(live_at(&mut app, 0).badge(), None);
+        // An h drag with x and y unchanged never marks the badge.
+        app.state.scrub_mode[TransformParam::H] = Some(ScrubMode::Coarse);
+        assert_eq!(live_at(&mut app, 100).badge(), None);
+        assert_eq!(live_at(&mut app, 200).badge(), None);
+        app.state.scrub_mode[TransformParam::H] = None;
+        assert_eq!(live_at(&mut app, 300).badge(), None);
+    }
+
+    #[test]
+    fn moved_badge_goes_at_once_when_a_non_drag_changes_the_curve() {
+        use crate::scrub::ScrubMode;
+        use crate::state::TransformParam;
+
+        let _guard = mv_clay::tests_lock();
+        let mut app = moved_app("");
+        assert_eq!(live_at(&mut app, 0).badge(), None);
+        // A same-frame drag start and h change marks the badge at once.
+        app.state.scrub_mode[TransformParam::H] = Some(ScrubMode::Coarse);
+        app.h_param = crate::url::QueryParam::new(&crate::functions::H_PARAM, "h=1");
+        let row = live_at(&mut app, 100);
+        assert_eq!(row.badge().as_deref(), Some("moved −1.00"));
+
+        // Released with the value kept: the badge lingers.
+        app.state.scrub_mode[TransformParam::H] = None;
+        let row = live_at(&mut app, 200);
+        assert_eq!(row.badge().as_deref(), Some("moved −1.00"));
+
+        // A y change outside the drag clears it at once, not lingering.
+        app.k_param = crate::url::QueryParam::new(&crate::functions::K_PARAM, "k=2");
+        assert_eq!(live_at(&mut app, 300).badge(), None);
     }
 }

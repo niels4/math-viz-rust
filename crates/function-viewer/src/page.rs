@@ -405,6 +405,9 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // and Reset all's focus ring (h5-buttons).
     crate::transform_row::paint_rows(app);
     crate::transform_section::paint_head(app);
+    // The Points card's rows (h8-points-row): the marks, letters, badge,
+    // roles and readouts, over the rows beneath like the ruler's tape.
+    crate::points_section::paint_points(app);
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);

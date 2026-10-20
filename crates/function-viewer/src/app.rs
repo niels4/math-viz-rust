@@ -158,6 +158,20 @@ pub struct App {
     /// handle: the drag's formula pair never changes mid-drag, while the
     /// hover index follows the moves).
     pub dragged: Option<HandleId>,
+    /// The moved badge's state machine (h8-points-row; `moved_by.rs` owns
+    /// it): fed `(dragging, x, y)` every frame P's row draws.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub moved_by: crate::moved_by::MovedBy,
+    /// The plane's visible plot range for the Points rows' slots
+    /// (h8-points-row): the sidebar lays out before the plane, so the
+    /// layout reads the previous frame's range (at rest — every judged
+    /// shot — it equals the current one). Refreshed in `paint_points`,
+    /// dirtying on change so the first frame's `None` redraws converged
+    /// instead of photographing stale.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub visible_range: Option<crate::visible_range::VisibleRange>,
 }
 
 impl App {
@@ -328,6 +342,8 @@ impl App {
             dragging: false,
             grab: [0.0, 0.0],
             dragged: None,
+            moved_by: crate::moved_by::MovedBy::new(),
+            visible_range: None,
         }
     }
 }
