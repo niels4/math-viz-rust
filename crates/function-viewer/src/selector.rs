@@ -17,7 +17,8 @@ use crate::app::App;
 use crate::functions::{FUNCTION_SLUGS, FunctionSlug};
 use crate::input::{Cursor, Hit, HitKind};
 
-/// The card: `--card`, radius `--radius-card`, padding
+/// The card: `--section` (the inner surface since 82c2809's restyle;
+/// `--card` before), radius `--radius-card`, padding
 /// `--space-inset`/`--space-inset`/`--space-section` (12/12/16).
 pub const CARD_PAD_X: f32 = 12.0;
 pub const CARD_PAD_TOP: f32 = 12.0;
@@ -137,7 +138,7 @@ pub fn function_card(app: &mut App, current: FunctionSlug) {
     };
     card.layout.childGap = TITLE_GAP as u16;
     card.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
-    card.backgroundColor = ink(mv_theme::Token::Card);
+    card.backgroundColor = ink(mv_theme::Token::Section);
     card.cornerRadius = crate::ui::corner_radius_all(CARD_RADIUS);
     crate::ui::ui_scope(app, mv_clay::id(CARD_ID, 0), &card, |app| {
         legend(app, ink(mv_theme::Token::Foreground));
