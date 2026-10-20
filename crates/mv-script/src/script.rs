@@ -1,9 +1,11 @@
 //! Ported from `src/script/script.odin` (698 lines): the action-language reader.
 //!
 //! A line is a verb and its arguments, and '#' starts a comment. Lines before
-//! the first action say how the page opens; after it, size, scheme and
+//! the first action say how the page opens (`size`, `density`, `scheme`, `mode`,
+//! `theme`, `reduced-motion`, `space` and `query`); after it, size, scheme and
 //! reduced-motion change it live. Positions are logical pixels, times
-//! milliseconds.
+//! milliseconds. The page's hash query (`query center=1,2&scale=2`) opens on every
+//! surface: appended to the reference and web URLs, passed as --query natively.
 
 use enum_map::{Enum, EnumArray, EnumMap};
 use enumset::{EnumSet, EnumSetType};
@@ -19,12 +21,14 @@ pub struct Script {
 }
 
 /// How the page opens: the window's logical size and pixel density, the
-/// system's colour scheme and motion preference, the stored appearance, and
-/// the colour space the port draws in.
+/// system's colour scheme and motion preference, the stored appearance, the
+/// colour space the port draws in, and the page's hash query (?key=value&...)
+/// opening on every surface.
 ///
 /// Ported from `script.odin:25` (`Start :: struct { size, density, scheme,
-/// mode, dark_theme, light_theme, reduced_motion, space }`).
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// mode, dark_theme, light_theme, reduced_motion, space }`), with the query
+/// math-viz2 keeps in the hash (router-util.ts's createFullHash).
+#[derive(Clone, Debug, PartialEq)]
 pub struct Start {
     pub size: [i64; 2],
     pub density: f32,
@@ -34,9 +38,10 @@ pub struct Start {
     pub light_theme: mv_theme::Slug,
     pub reduced_motion: bool,
     pub space: mv_theme::Space,
+    pub query: String,
 }
 
-/// React's defaults, on a dark system at the size the judgments use.
+/// math-viz2's defaults, on a dark system at the size the judgments use.
 ///
 /// Ported from `script.odin:37` (`DEFAULT_START :: Start{...}`).
 pub const DEFAULT_START: Start = Start {
@@ -48,6 +53,7 @@ pub const DEFAULT_START: Start = Start {
     light_theme: mv_theme::DEFAULT_PREFS.light,
     reduced_motion: false,
     space: mv_theme::Space::Srgb,
+    query: String::new(),
 };
 
 /// An action: a verb, the line it came from, and the surfaces it runs on.
@@ -405,7 +411,7 @@ pub fn parse(text: &str) -> (Script, Option<Error>) {
             parse_line(&mut script.start, started, body, surface)
         } else {
             // A qualified line is an action: the page opens alike on every surface.
-            let mut scratch = script.start;
+            let mut scratch = script.start.clone();
             let (verb, failure) = parse_line(&mut scratch, started, body, surface);
             let mut failure = failure;
             if failure.is_none() {
@@ -577,6 +583,21 @@ fn parse_line(
                 return (None, Some(message));
             }
             start.space = or_fail!(one_of(&fields, &mv_theme::SPACE_WORDS, "space"));
+        }
+        "query" => {
+            if let Some(message) = before_actions(started, word) {
+                return (None, Some(message));
+            }
+            if fields.len() != 1 {
+                return (
+                    None,
+                    Some(
+                        "query takes the page's hash query, e.g. query center=1,2&scale=2"
+                            .to_string(),
+                    ),
+                );
+            }
+            start.query = fields[0].to_string();
         }
         "move" => {
             if fields.len() != 2 && !(fields.len() == 4 && fields[2] == "over") {
@@ -824,7 +845,7 @@ fn parse_type(text: &str) -> (Option<Verb>, Failure) {
     )
 }
 
-/// density, mode, theme and space come before the first action.
+/// density, mode, theme, space and query come before the first action.
 ///
 /// Ported from `script.odin:597` (`before_actions`, private).
 fn before_actions(started: bool, word: &str) -> Failure {

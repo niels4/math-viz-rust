@@ -74,8 +74,9 @@ command reads the reference from the environment, `REACT_REF` (the checkout) and
   twin parses it too: change `tools/src/script.py` and `crates/mv-script/src/script.rs`
   together).
 - **Storage keys:** the reference is seeded with math-viz2's keys (`mathviz-light-dark`,
-  `mathviz-dark-theme`, `mathviz-light-theme`, one JSON string each); the web build with the
-  port's own (`math-viz2-rust-light-dark`, `math-viz2-rust-dark-theme`,
+  `mathviz-dark-theme`, `mathviz-light-theme`, one JSON string each, and `mathviz-theme`, the
+  single key the reference reads before h1's three-key model: each reference reads its own);
+  the web build with the port's own (`math-viz2-rust-light-dark`, `math-viz2-rust-dark-theme`,
   `math-viz2-rust-light-theme`). The port never shares runtime state with math-viz2.
 - **The three toml files** (`tools/states/`): `milestones.toml` groups states by milestone
   (`H0 = ["default"]`); `tokens.toml` lists the (selector, token) pairs the port draws with

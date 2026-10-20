@@ -199,6 +199,7 @@ KEPT: dict[str, dict[str, str]] = {
     "educational-warm": {
         "radius": "9.6,       // 0.6rem",
         "card_radius": "18.0, // 18px",
+        # Inserted into the output raw (HEADER.format substitutes values, never formats them).
         "card_shadow": """Some(ShadowDefinition {
                 offset: [0.0, 6.0],
                 blur: 18.0,
@@ -207,7 +208,7 @@ KEPT: dict[str, dict[str, str]] = {
                     p: 12.0,
                     b: None,
                 }),
-            },""",
+            }),""",
         "glow_radius": "0.0,",
         "hud_ticks": "0.0,",
         "label_tracking": "1.12,",
@@ -355,8 +356,12 @@ def verify(themes: list[Theme], pairs: list[tuple[str, str]]) -> None:
             mode = json.dumps(json.dumps(scheme))
             dark = json.dumps(json.dumps(slug if scheme == "dark" else "arctic-ice"))
             light = json.dumps(json.dumps(slug if scheme == "light" else "clean-teal"))
+            single = json.dumps(json.dumps(slug))
             init = "\n".join(
                 [
+                    # Both storage shapes: the single key the reference reads before h1, the
+                    # three keys after; each reference reads its own.
+                    f"localStorage.setItem('mathviz-theme', {single});",
                     f"localStorage.setItem('mathviz-light-dark', {mode});",
                     f"localStorage.setItem('mathviz-dark-theme', {dark});",
                     f"localStorage.setItem('mathviz-light-theme', {light});",
@@ -409,10 +414,16 @@ def generate(ref: Path, out: Path = OUT) -> Path:
     themes = read_themes(ref)
     pairs = read_pairs()
     filed = [token for _, token in pairs]
-    if [t for s, t in pairs if s == "body"] != themes[0].colour_tokens():
-        sys.exit("tokens.toml's body tokens differ from the theme files' order")
+    decls = themes[0].declarations
+    # tokens.toml may lead the reference (h1's tokens, added to math-viz2 after its pin):
+    # values come only from the files the reference has; the rest wait for its move.
+    emittable = [t for t in filed if t in decls]
+    if emittable != [t for t in themes[0].colour_tokens() if t in emittable]:
+        sys.exit("tokens.toml's filed tokens differ from the theme files' order")
+    if missing := [t for t in filed if t not in decls]:
+        print(f"no source in the reference's files yet, skipped: {', '.join(missing)}")
     seen: list[str] = []
-    for token in filed:
+    for token in emittable:
         if token not in seen:
             seen.append(token)
     verify(themes, pairs)
@@ -424,7 +435,9 @@ def generate(ref: Path, out: Path = OUT) -> Path:
     ).stdout.strip()
     tokens = "\n".join(f"    {rust_variant(name)}," for name in seen)
     text = HEADER.format(
-        commit=commit, tokens=tokens, definitions="\n".join(definition(t, filed) for t in themes)
+        commit=commit,
+        tokens=tokens,
+        definitions="\n".join(definition(t, emittable) for t in themes),
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)

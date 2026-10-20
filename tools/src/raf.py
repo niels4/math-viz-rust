@@ -26,7 +26,9 @@ GEAR = (1383, 48)
 MODE_LIGHT = (1251, 129)
 GAP = (1250, 181)
 
-INIT = """localStorage.setItem('mathviz-light-dark',
+INIT = """localStorage.setItem('mathviz-theme',
+  JSON.stringify("arctic-ice"));
+localStorage.setItem('mathviz-light-dark',
   JSON.stringify("system"));
 localStorage.setItem('mathviz-dark-theme',
   JSON.stringify("arctic-ice"));

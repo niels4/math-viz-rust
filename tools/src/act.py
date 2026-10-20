@@ -241,14 +241,18 @@ def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
     math-viz2 has no tour key) and, for the web build, the same prefs under the port's own keys
-    (math-viz2-rust-*: the port never shares runtime state with math-viz2); on the reference 2D
-    canvases in sRGB, since a headless screenshot shows a display-p3 canvas's values as sRGB, and
-    under a paused clock its CSS animations on the script's clock (SEEK_ANIMATIONS); on the web
-    build the script's colour space, which wins over the engine's rule (web/library.js)."""
+    (math-viz2-rust-*: the port never shares runtime state with math-viz2); the reference before
+    h1's three-key model reads the single `mathviz-theme` key instead, so both shapes are seeded
+    and each reference reads its own; on the reference 2D canvases in sRGB, since a headless
+    screenshot shows a display-p3 canvas's values as sRGB, and under a paused clock its CSS
+    animations on the script's clock (SEEK_ANIMATIONS); on the web build the script's colour
+    space, which wins over the engine's rule (web/library.js)."""
     mode = json.dumps(json.dumps(start.mode))
     dark = json.dumps(json.dumps(start.dark_theme))
     light = json.dumps(json.dumps(start.light_theme))
+    shown = json.dumps(json.dumps(start.theme_shown))
     lines = [
+        f"localStorage.setItem('mathviz-theme', {shown});",
         f"localStorage.setItem('mathviz-light-dark', {mode});",
         f"localStorage.setItem('mathviz-dark-theme', {dark});",
         f"localStorage.setItem('mathviz-light-theme', {light});",

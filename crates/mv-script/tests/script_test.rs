@@ -67,6 +67,7 @@ reduced-motion off
             light_theme: Slug::SageEditorial,
             reduced_motion: true,
             space: Space::DisplayP3,
+            query: String::new(),
         }
     );
     let expected = vec![
@@ -284,6 +285,24 @@ wait 16
         assert_eq!(script.actions[i], action, "action {i}");
     }
     assert_eq!(script.start.size, [1440, 900]);
+}
+
+#[test]
+fn query_opens_the_page_with_the_hash_query() {
+    let (script, err) = parse("query center=1,2&scale=2\nwait 16\nshot rest\n");
+    assert!(err.is_none(), "unexpected error: {:?}", err);
+    assert_eq!(script.start.query, "center=1,2&scale=2");
+    assert_eq!(script.actions.len(), 2);
+
+    for text in [
+        "query\nwait 1\n",
+        "query a=1 b=2\nwait 1\n",
+        "wait 1\nquery a=1\n",
+        "ref query a=1\nwait 1\n",
+    ] {
+        let (_, err) = parse(text);
+        assert!(err.is_some(), "no error for {text:?}");
+    }
 }
 
 #[test]
