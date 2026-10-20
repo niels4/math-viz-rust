@@ -211,7 +211,14 @@ impl HighlightState {
     /// the stored list equals the given one element for element. To drop
     /// the side unconditionally (the pointer is on nothing), pass an empty
     /// list with `on`: the emptied side reads as absent whichever side
-    /// leads, exactly as the source's off leaves it.
+    /// leads. That is the source's off except in one case: the source's
+    /// off with a stale list is a no-op (it keeps the old list and the old
+    /// lead), while on-with-empty clears unconditionally and takes the
+    /// lead. The lit answer is the same either way (an emptied side falls
+    /// through to the other side), and the only stale off the source ever
+    /// fires is the plane's handle-to-handle hover-end, which the plane's
+    /// dispatch replicates element for element (h7-plane's handle-hover-move
+    /// proves it: `pan` with a and b lit).
     pub fn set_hover(&mut self, params: &[TransformParam], on: bool) {
         if on {
             self.hover = params.to_vec();

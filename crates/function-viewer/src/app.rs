@@ -139,6 +139,20 @@ pub struct App {
     /// The flip toggle's state: the pending flip, its spring, the press
     /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
     pub flip: crate::flip::FlipState,
+    /// The plane's handle hover: the cursor rule's `hovering` and the last
+    /// hovered handle's index (shift 0, scale 1, `None` for none), as
+    /// `CartesianPlane.tsx`'s `hovering` state and `lastHoveredIndex` ref
+    /// do (h7-plane; `plane_input.rs` owns the dispatch).
+    pub hovering: bool,
+    pub hovered: Option<usize>,
+    /// A plane handle drag in flight, with the press's grab offset in plane
+    /// units (the `dragging` state and the `grab` ref at `251c080`).
+    pub dragging: bool,
+    pub grab: [f64; 2],
+    /// The pressed handle's index while a drag flies (the hook's closed-over
+    /// handle: the drag's formula pair never changes mid-drag, while the
+    /// hover index follows the moves).
+    pub dragged: Option<usize>,
 }
 
 impl App {
@@ -303,6 +317,11 @@ impl App {
             scrub_resting: None,
             overlay_tip_since: None,
             flip: crate::flip::FlipState::new(),
+            hovering: false,
+            hovered: None,
+            dragging: false,
+            grab: [0.0, 0.0],
+            dragged: None,
         }
     }
 }

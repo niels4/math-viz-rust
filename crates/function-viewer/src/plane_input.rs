@@ -5,9 +5,13 @@
 //! A port of the wiring in `CartesianPlane.tsx` (`flushCamera` as `onSettle`,
 //! the overlay button's flush-both-to-default click) and `useCamera.ts`'s
 //! event handlers (`onWheel`, `onPointerDown/Move/Up`, `offsetFromCenter`) at
-//! math-viz2 `c409aad`. The camera itself (`camera.rs`, h2-p-camera) and the
-//! URL params (`url.rs`, h2-p-url) own their state machines; this module only
-//! routes between them, the input layer and the frame loop.
+//! math-viz2 `c409aad`, plus the plane handles' hover and drag dispatch
+//! (`onHover`/`onHoverEnd` order, the grab offset, `dragging`, the scrub
+//! modes, no pan while dragging, the release flush) and the canvas cursor
+//! (`data-cursor`: pan, grab-hover, grab-active) at `251c080`. The camera
+//! itself (`camera.rs`, h2-p-camera) and the URL params (`url.rs`, h2-p-url)
+//! own their state machines; this module only routes between them, the input
+//! layer and the frame loop.
 //!
 //! Event flow: `input.rs` calls [`plane_down`]/[`plane_move`]/[`plane_up`]/
 //! [`plane_wheel`] when the press or hover names [`HitKind::Plane`]
@@ -30,7 +34,10 @@
 use crate::app::App;
 use crate::app_loop::{MS, Time};
 use crate::camera::{self, PointerButton};
+use crate::grid::{GridLayout, layout_grid};
 use crate::input::{Cursor, Hit, HitKind, region_kept, region_of};
+use crate::plane_geometry::{from_px, hit_test};
+use crate::state::TransformParam;
 use crate::url::{QueryParam, QueryParamDef, default_equals};
 
 /// The SDL mouse pointer's id in camera coordinates. `input.rs` decodes only
@@ -168,27 +175,177 @@ pub fn declare_plane_region(app: &mut App) {
             index: 0,
         },
         content,
-        Cursor::Default,
-        Cursor::Default,
+        // The canvas's own cursors (`CartesianPlain.module.css`): the
+        // crosshair at rest, the closed hand while a press holds. The grab
+        // over a handle comes from `plane_cursor`, not the region, because
+        // the diamond-to-square jump leaves the cursor at pan while a
+        // handle is still under the pointer (h7-plane's handle-hover-move).
+        Cursor::Crosshair,
+        Cursor::Grabbing,
         false,
         crate::ui::corner_radius_all(0.0),
     );
 }
 
-/// A primary press on the plane: adopt outside values first (above), then the
-/// drag starts. Catching the plane ends a glide while a zoom carries on, as
-/// the hook's `onPointerDown` does. Needs no draw: nothing moved yet.
+/// The shift handle's two lit parameters, then the scale handle's (the
+/// `shiftParams`/`scaleParams` lists at `251c080`, in build order so the
+/// square wins a tie through `hit_test`'s last-index rule).
+fn handle_params(index: usize) -> &'static [TransformParam] {
+    match index {
+        0 => &[TransformParam::H, TransformParam::K],
+        _ => &[TransformParam::A, TransformParam::B],
+    }
+}
+
+/// The plane's content box in window logical px, from the last frame's kept
+/// region (the box only moves on a resize, so the input turn reads it).
+fn plane_content(app: &App) -> Option<mv_sys::clay::BoundingBox> {
+    let (region, found) = region_of(
+        app,
+        Hit {
+            kind: HitKind::Plane,
+            index: 0,
+        },
+    );
+    found.then_some(region.r#box)
+}
+
+/// The pointer in canvas px (the hook's `offsetX`/`offsetY`, past the 1 px
+/// border onto the content box). Past the canvas's edge the values run
+/// negative or past the size, and `from_px` still maps them, so a drag
+/// past the edge keeps following (the capture retargets the moves).
+fn canvas_at(app: &App) -> Option<[f64; 2]> {
+    let content = plane_content(app)?;
+    Some([
+        f64::from(app.input.pointer[0]) - f64::from(content.x),
+        f64::from(app.input.pointer[1]) - f64::from(content.y),
+    ])
+}
+
+/// The grid the hit test and `from_px` read: laid out for the live camera
+/// over the last frame's content box (the paint lays out the same grid for
+/// the same values, so a press hit-tests what the frame paints).
+fn plane_grid(app: &App) -> Option<GridLayout> {
+    let content = plane_content(app)?;
+    Some(layout_grid(
+        app.camera.center,
+        app.camera.scale,
+        f64::from(content.width),
+        f64::from(content.height),
+        crate::plane::LABEL_MARGIN,
+    ))
+}
+
+/// The hover dispatch for an unpressed move over the plane
+/// (`CartesianPlane.tsx`'s `onPointerMove`): the hit handle's hover first
+/// (hovering on, its two params lit), then, when the hovered index changed,
+/// the previously hovered handle's hover-end (its params off only when the
+/// stored list still equals them). The new hover first is load-bearing: a
+/// jump straight from the diamond to the square leaves hovering false with
+/// a and b lit (the old end's same-list check no-ops on the new list), and
+/// the cursor falls back to pan. Same-index moves and empty moves change
+/// nothing, so the frame stays clean.
+pub fn plane_hover(app: &mut App) {
+    if app.input.hover.kind != HitKind::Plane {
+        return;
+    }
+    let (Some(grid), Some(at)) = (plane_grid(app), canvas_at(app)) else {
+        return;
+    };
+    let handles = crate::page::build_handles(app);
+    let index = hit_test(&grid, &handles, at);
+    if index == app.hovered {
+        return;
+    }
+    // The source's statement order: the hit handle's hover (hovering on),
+    // then the previous index's hover-end (hovering off) when the index
+    // changed — a diamond-to-square jump lands hovering false.
+    if let Some(next) = index {
+        app.hovering = true;
+        app.state.set_hover(handle_params(next), true);
+    }
+    if let Some(last) = app.hovered {
+        app.hovering = false;
+        app.state.set_hover(handle_params(last), false);
+    }
+    app.hovered = index;
+    app.dirty = true;
+}
+
+/// The canvas's cursor from the hover and press state
+/// (`CartesianPlane.tsx`'s rule: `dragging || panning` grabs closed, else
+/// `hovering` grabs open, else the crosshair). The press on the plane or a
+/// handle is the `panning` half (the hook sets it on any canvas press and
+/// clears it on release); `app.dragging` is the `dragging` half. Only
+/// while the pointer or press names the plane: anywhere else the regions'
+/// cursors stand. Runs after the dispatch and the retarget, so its cursor
+/// wins. `pub` for the input layer's unpressed-move path.
+pub fn plane_cursor(app: &mut App) {
+    let on_plane =
+        app.input.hover.kind == HitKind::Plane || app.input.pressed.kind == HitKind::Plane;
+    if !on_plane {
+        return;
+    }
+    let cursor = if app.dragging || app.input.pressed.kind == HitKind::Plane {
+        Cursor::Grabbing
+    } else if app.hovering {
+        Cursor::Grab
+    } else {
+        Cursor::Crosshair
+    };
+    crate::input::set_cursor(app, cursor);
+}
+
+/// A primary press on the plane: adopt outside values first (above), then
+/// the drag starts. Catching the plane ends a glide while a zoom carries on,
+/// as the hook's `onPointerDown` does. The press always reaches the camera
+/// (the hook's `panning`, which also shows the closed hand); a press on a
+/// handle additionally starts the handle drag and no pan: the grab offset
+/// in plane units, `dragging` on, and both params' scrub modes coarse (the
+/// rows light and their rulers come out). Needs no draw unless a drag
+/// started.
 pub fn plane_down(app: &mut App, button: PointerButton) {
     adopt_camera(app);
     let at = pointer_at(app);
     app.camera
         .pointer_down(MOUSE_POINTER_ID, at, fact_ms(app), button);
+    // The press's own hit test (a press on a handle starts a drag and no
+    // pan; a miss pans as before). The press touches no hover state (the
+    // hook's press sets only the grab, the drag and the modes; the hover
+    // follows from the moves, as the React handler does): the dispatch in
+    // the drag path picks the hover up from the first move.
+    if let (Some(grid), Some(px)) = (plane_grid(app), canvas_at(app)) {
+        let handles = crate::page::build_handles(app);
+        if let Some(index) = hit_test(&grid, &handles, px) {
+            let point = from_px(&grid, px);
+            let anchor = handles[index].at;
+            app.grab = [anchor.x - point.x, anchor.y - point.y];
+            app.dragged = Some(index);
+            app.dragging = true;
+            let params = handle_params(index);
+            app.state.scrub_mode[params[0]] = Some(crate::scrub::ScrubMode::Coarse);
+            app.state.scrub_mode[params[1]] = Some(crate::scrub::ScrubMode::Coarse);
+            app.dirty = true;
+        }
+    }
+    plane_cursor(app);
 }
 
 /// A move while the plane holds the pointer (capture, as `setPointerCapture`
-/// keeps the hook's moves coming): pans at once. Marks dirty only when the
-/// center changed, as `publish` only writes what changed.
+/// keeps the hook's moves coming): a handle drag sets through its params,
+/// else the plane pans at once. The camera never sees a handle drag's moves
+/// (the hook returns early while `dragging`: no pan, no samples). Marks
+/// dirty when the drag or the center changed.
 pub fn plane_move(app: &mut App) {
+    if app.dragging {
+        // The drag's sets first (the canvas's own move listener), then the
+        // hover dispatch (the React prop, which bubbles after), exactly as
+        // the hook's two listeners run them.
+        drag_move(app);
+        plane_hover(app);
+        plane_cursor(app);
+        return;
+    }
     let before = app.camera.center;
     let at = pointer_at(app);
     app.camera.pointer_move(MOUSE_POINTER_ID, at, fact_ms(app));
@@ -196,6 +353,43 @@ pub fn plane_move(app: &mut App) {
         app.dirty = true;
     }
     crate::input::retarget(app);
+    // The press names the plane (the `panning` half of the cursor rule);
+    // the regions' cursors already agree, and this keeps headless regions
+    // (which declare no cursors) on the same cursor.
+    plane_cursor(app);
+}
+
+/// One held step of a handle drag (`onDrag`): the shift handle sets
+/// `h = x + grab.x`, `k = y + grab.y`; the scale handle sets
+/// `b = (x + grab.x − h) / unitX`, `a = (y + grab.y − k) / g(unitX)`
+/// (`g(unitX)` is 1 for all four functions at this hash; the port divides
+/// by the formula, not the value). Through the params, so the writes stay
+/// debounced as the hook's `setH`/`setK`/`setA`/`setB` do.
+fn drag_move(app: &mut App) {
+    let (Some(grid), Some(px)) = (plane_grid(app), canvas_at(app)) else {
+        return;
+    };
+    let point = from_px(&grid, px);
+    let [gx, gy] = app.grab;
+    let now_ms = (app.input.time / MS).max(0) as u64;
+    match app.dragged {
+        Some(1) => {
+            let slug = *app.func_param.get();
+            let unit = crate::functions::unit_x(slug);
+            let h = *app.h_param.get();
+            let k = *app.k_param.get();
+            app.b_param.set((point.x + gx - h) / unit, now_ms);
+            app.a_param.set(
+                (point.y + gy - k) / crate::functions::base(slug)(unit),
+                now_ms,
+            );
+        }
+        _ => {
+            app.h_param.set(point.x + gx, now_ms);
+            app.k_param.set(point.y + gy, now_ms);
+        }
+    }
+    app.dirty = true;
 }
 
 /// A wheel notch about the cursor: `delta` in DOM px (`input.rs` already
@@ -218,12 +412,34 @@ pub fn plane_wheel(app: &mut App, delta: [f32; 2]) {
 
 /// The held pointer let go (or the window lost focus mid-drag, as
 /// `pointercancel` ends the hook's drag): the next frame glides on, or
-/// settles and writes the URL.
+/// settles and writes the URL. A handle drag ends first: `dragging` off,
+/// both params' modes cleared, both flushed (the URL written at once).
+/// The hover stays where the last move left it (no move fires on release),
+/// so the cursor and the lit list fall back to the pointer's position.
 pub fn plane_up(app: &mut App) {
     app.camera.pointer_up(MOUSE_POINTER_ID, fact_ms(app));
     if app.camera.animating() {
         app.dirty = true;
     }
+    if app.dragging {
+        app.dragging = false;
+        match app.dragged.take() {
+            Some(1) => {
+                app.state.scrub_mode[TransformParam::A] = None;
+                app.state.scrub_mode[TransformParam::B] = None;
+                app.a_param.flush(&mut app.url);
+                app.b_param.flush(&mut app.url);
+            }
+            _ => {
+                app.state.scrub_mode[TransformParam::H] = None;
+                app.state.scrub_mode[TransformParam::K] = None;
+                app.h_param.flush(&mut app.url);
+                app.k_param.flush(&mut app.url);
+            }
+        }
+        app.dirty = true;
+    }
+    plane_cursor(app);
 }
 
 /// Copy an external query change into the param live values and adopt it into
@@ -343,7 +559,9 @@ mod tests {
 
     /// The plane's region over a content box at `origin` sized `size`, in
     /// window logical px. Pushed straight into the last frame's targets: the
-    /// layout that declares it is h2-plane's, which is still running.
+    /// layout that declares it is h2-plane's, which is still running. The
+    /// cursors are the production region's (the crosshair at rest, the
+    /// closed hand while a press holds).
     fn declare_plane(app: &mut App, origin: [f32; 2], size: [f32; 2]) {
         app.input.regions.push(Region {
             hit: Hit {
@@ -356,8 +574,8 @@ mod tests {
                 width: size[0],
                 height: size[1],
             },
-            cursor: crate::input::Cursor::Default,
-            pressed: crate::input::Cursor::Default,
+            cursor: crate::input::Cursor::Crosshair,
+            pressed: crate::input::Cursor::Grabbing,
             radius: mv_sys::clay::CornerRadius {
                 topLeft: 0.0,
                 topRight: 0.0,
@@ -721,5 +939,205 @@ mod tests {
         );
         run_until_still(&mut app, 1000);
         assert!((app.camera.center[0] - -0.4).abs() < 1e-12);
+    }
+
+    /// Seeds the page query's function and parameters, as a `query` line
+    /// does: the camera and the pick plus a, b, h, k.
+    fn seed_view(app: &mut App, query: &str) {
+        app.url = crate::url::Url::from_query(query);
+        init_camera_from_url(app);
+        app.func_param = QueryParam::new(&crate::functions::FUNC_PARAM, app.url.query());
+        app.a_param = QueryParam::new(&crate::functions::A_PARAM, app.url.query());
+        app.b_param = QueryParam::new(&crate::functions::B_PARAM, app.url.query());
+        app.h_param = QueryParam::new(&crate::functions::H_PARAM, app.url.query());
+        app.k_param = QueryParam::new(&crate::functions::K_PARAM, app.url.query());
+    }
+
+    /// The canvas px of a handle: the content box sits at the origin, 800 by
+    /// 600, so the grid's origin is its center (400, 300) at 50 px a unit.
+    fn handle_px(app: &App, index: usize) -> [f32; 2] {
+        let grid = crate::grid::layout_grid(
+            app.camera.center,
+            app.camera.scale,
+            800.0,
+            600.0,
+            crate::plane::LABEL_MARGIN,
+        );
+        let [x, y] = crate::plane_geometry::to_px(&grid, crate::page::build_handles(app)[index].at);
+        [x as f32, y as f32]
+    }
+
+    #[test]
+    fn pressing_empty_canvas_shows_the_closed_hand_until_release() {
+        // The `CartesianPlane` closed-hand test's shape, against the cursor
+        // state: no handles under the press (x1 at rest, the diamond sits
+        // at the origin's px), so the plane pans.
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x1");
+        handle_input(&mut app, pointer_to([100.0, 100.0]), 0);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        handle_input(&mut app, left_button([100.0, 100.0], true), 16 * MS);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grabbing);
+        assert!(!app.dragging);
+        handle_input(&mut app, pointer_to([140.0, 100.0]), 32 * MS);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grabbing);
+        handle_input(&mut app, left_button([140.0, 100.0], false), 48 * MS);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+    }
+
+    #[test]
+    fn hovering_the_diamond_lights_h_and_k() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let diamond = handle_px(&app, 0);
+        assert_eq!(diamond, [450.0, 450.0]);
+        handle_input(&mut app, pointer_to(diamond), 16 * MS);
+        assert!(app.hovering);
+        assert_eq!(app.hovered, Some(0));
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
+        assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
+    }
+
+    #[test]
+    fn hovering_straight_to_the_square_leaves_pan_with_a_b_lit() {
+        // The new hover fires before the old handle's hover-end (the
+        // source's order), so hovering falls false while a and b light.
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let diamond = handle_px(&app, 0);
+        let square = handle_px(&app, 1);
+        handle_input(&mut app, pointer_to(diamond), 16 * MS);
+        handle_input(&mut app, pointer_to(square), 32 * MS);
+        assert!(!app.hovering);
+        assert_eq!(app.hovered, Some(1));
+        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        assert_eq!(app.state.lit(), vec![TransformParam::A, TransformParam::B]);
+    }
+
+    #[test]
+    fn moving_off_the_handles_drops_the_light() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let diamond = handle_px(&app, 0);
+        handle_input(&mut app, pointer_to(diamond), 16 * MS);
+        handle_input(&mut app, pointer_to([100.0, 100.0]), 32 * MS);
+        assert!(!app.hovering);
+        assert_eq!(app.hovered, None);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        assert!(app.state.lit().is_empty());
+    }
+
+    #[test]
+    fn dragging_the_diamond_sets_h_and_k_coarse_with_no_pan() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let diamond = handle_px(&app, 0);
+        handle_input(&mut app, left_button(diamond, true), 0);
+        assert!(app.dragging);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grabbing);
+        assert_eq!(
+            app.state.scrub_mode[TransformParam::H],
+            Some(crate::scrub::ScrubMode::Coarse)
+        );
+        assert_eq!(
+            app.state.scrub_mode[TransformParam::K],
+            Some(crate::scrub::ScrubMode::Coarse)
+        );
+        // +50, +30 px in small steps: h = 2.0, k = -3.6, the camera still.
+        let mut t = 0i64;
+        for i in 1..=5 {
+            t += 16;
+            handle_input(
+                &mut app,
+                pointer_to([diamond[0] + 10.0 * i as f32, diamond[1] + 6.0 * i as f32]),
+                t * MS,
+            );
+            frame(&mut app, t);
+        }
+        assert_eq!(*app.h_param.get(), 2.0);
+        assert_eq!(*app.k_param.get(), -3.6);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+        assert_eq!(*app.center_param.get(), [0.0, 0.0]);
+        // The drag's sets are still inside their 200 ms debounce: the URL
+        // holds the opening query.
+        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3");
+        // The loop's param step (not the camera's frame step) fires the
+        // debounce past its deadline.
+        crate::transform_section::params_step(&mut app, 300);
+        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6");
+        // Letting go flushes both and clears the modes; the pointer sits on
+        // the handle, so the open hand and the lit pair stay.
+        t += 16;
+        handle_input(&mut app, left_button([500.0, 480.0], false), t * MS);
+        assert!(!app.dragging);
+        assert_eq!(app.state.scrub_mode[TransformParam::H], None);
+        assert_eq!(app.state.scrub_mode[TransformParam::K], None);
+        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6");
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
+        assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
+    }
+
+    #[test]
+    fn dragging_the_square_sets_a_and_b() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let square = handle_px(&app, 1);
+        assert_eq!(square, [500.0, 350.0]);
+        handle_input(&mut app, left_button(square, true), 0);
+        assert!(app.dragging);
+        // -40, +60 px: b = 0.2, a = 0.8.
+        let mut t = 0i64;
+        for i in 1..=5 {
+            t += 16;
+            handle_input(
+                &mut app,
+                pointer_to([square[0] - 8.0 * i as f32, square[1] + 12.0 * i as f32]),
+                t * MS,
+            );
+            frame(&mut app, t);
+        }
+        assert!(
+            (app.b_param.get() - 0.2).abs() < 1e-9,
+            "b = {}",
+            app.b_param.get()
+        );
+        assert!(
+            (app.a_param.get() - 0.8).abs() < 1e-9,
+            "a = {}",
+            app.a_param.get()
+        );
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+        t += 16;
+        handle_input(&mut app, left_button([460.0, 410.0], false), t * MS);
+        assert_eq!(app.url.query(), "func=x2&a=0.8&h=1&k=-3&b=0.2");
+        assert_eq!(app.state.scrub_mode[TransformParam::A], None);
+        assert_eq!(app.state.scrub_mode[TransformParam::B], None);
+    }
+
+    #[test]
+    fn a_handle_drag_past_the_edge_keeps_following() {
+        // Past the canvas's right edge the grab still maps (the capture
+        // retargets the moves): the values follow, the camera never moves.
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        let diamond = handle_px(&app, 0);
+        handle_input(&mut app, left_button(diamond, true), 0);
+        handle_input(&mut app, pointer_to([950.0, 450.0]), 16 * MS);
+        frame(&mut app, 16);
+        assert!(
+            (app.h_param.get() - 11.0).abs() < 1e-9,
+            "h = {}",
+            app.h_param.get()
+        );
+        assert_eq!(*app.k_param.get(), -3.0);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3");
     }
 }

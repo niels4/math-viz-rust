@@ -118,6 +118,8 @@ pub struct Harness<'a> {
     pub camera: String,
     /// The lit parameter as last written to `views.json`.
     pub lit: String,
+    /// The cursor as last written to `views.json`.
+    pub cursor: String,
     /// The shown transform as last written to `views.json`.
     pub shown: String,
 }
@@ -154,6 +156,7 @@ pub fn run_harness(
         url: String::new(),
         camera: String::new(),
         lit: String::new(),
+        cursor: String::new(),
         shown: String::new(),
     };
     if !crate::platform_native::platform_make_dir(out) {
@@ -508,6 +511,16 @@ fn harness_frame(h: &mut Harness<'_>) {
     if lit != h.lit {
         h.lit = lit;
         h.views.extend_from_slice(h.lit.as_bytes());
+    }
+    // The cursor, whenever it changed between the plane's three
+    // (`CartesianPlane.tsx`'s `data-cursor`, read by `act.py`'s
+    // `plane_cursor`): other cursors write no line, so states that never
+    // touch the plane keep byte-identical views.
+    if let Some(cursor) = cursor_line(h.app.input.cursor)
+        && cursor != h.cursor
+    {
+        h.cursor = cursor;
+        h.views.extend_from_slice(h.cursor.as_bytes());
     }
     // The camera, whenever it changed: center, scale, whether a frame is
     // scheduled (h2-input; the behaviour checks read these against the
@@ -892,6 +905,21 @@ fn lit_line(lit: &[crate::state::TransformParam]) -> String {
         .map(|param| format!("\"{}\"", param.as_str()))
         .collect();
     format!("{{\"lit\": [{}]}}\n", params.join(", "))
+}
+
+/// One `cursor` line: the canvas's cursor in the reference's `data-cursor`
+/// words, or `None` off the plane's three (the crosshair at rest, the open
+/// hand over a handle, the closed hand on a press or drag). `None` writes
+/// no line, so states off the plane keep byte-identical views. Pure, so
+/// the shape is testable without the app.
+fn cursor_line(cursor: crate::input::Cursor) -> Option<String> {
+    let name = match cursor {
+        crate::input::Cursor::Crosshair => "pan",
+        crate::input::Cursor::Grab => "grab-hover",
+        crate::input::Cursor::Grabbing => "grab-active",
+        _ => return None,
+    };
+    Some(format!("{{\"cursor\": \"{name}\"}}\n"))
 }
 
 /// One `shown` line: the transform the plane draws, with whether a flip is
@@ -1295,6 +1323,27 @@ mod tests {
             camera_line([0.0, 0.0], 0.5, true),
             "{\"camera\": {\"center\": [0, 0], \"scale\": 0.5, \"animating\": true}}\n"
         );
+    }
+
+    #[test]
+    fn cursor_line_names_the_plane_cursors_in_data_cursor_words() {
+        use crate::input::Cursor;
+        assert_eq!(
+            cursor_line(Cursor::Crosshair),
+            Some("{\"cursor\": \"pan\"}\n".to_string())
+        );
+        assert_eq!(
+            cursor_line(Cursor::Grab),
+            Some("{\"cursor\": \"grab-hover\"}\n".to_string())
+        );
+        assert_eq!(
+            cursor_line(Cursor::Grabbing),
+            Some("{\"cursor\": \"grab-active\"}\n".to_string())
+        );
+        // Off the plane's three no line is written, so states off the plane
+        // keep byte-identical views.
+        assert_eq!(cursor_line(Cursor::Default), None);
+        assert_eq!(cursor_line(Cursor::Pointer), None);
     }
 
     #[test]

@@ -845,8 +845,10 @@ pub fn sync_hover(app: &mut App) {
     match hit_param(app.input.hover) {
         Some(param) => app.state.set_hover(&[param], true),
         // On nothing: the pointer's side goes empty (taking the lead with an
-        // empty list lights exactly what the source's off leaves: the focus
-        // side, if any).
+        // empty list lights what the source's off leaves: the focus side,
+        // if any — the exception is the source's off with a stale list,
+        // which is a no-op where this clears; see `set_hover`: the lit
+        // answer is the same either way).
         None => app.state.set_hover(&[], true),
     }
 }

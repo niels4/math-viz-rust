@@ -26,6 +26,34 @@ pub const SIDEBAR_RADIUS: f32 = 4.0;
 /// The page's sidebar box, for the settings menu's later use and tests.
 pub const SIDEBAR_ID: &str = "Sidebar";
 
+/// The plane's two handles from the drawn transform: the shift diamond at
+/// the vertex, then the scale square at the unit point, in that order so
+/// the square wins a tie (as `FunctionViewer.tsx` builds them at
+/// `251c080`, replacing h6-handles' `transform_handles` call). The draw
+/// and the input dispatch build the same handles from the same `shown`
+/// values, so a press hit-tests what the frame paints.
+#[must_use]
+pub fn build_handles(app: &App) -> Vec<crate::plot::PlotHandle> {
+    let live = crate::flip::live_transform(app);
+    let shown = crate::flip::shown_transform(&app.flip, live);
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let base = crate::functions::base(slug);
+    vec![
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Diamond,
+            at: crate::plot::PlotPoint {
+                x: shown.h,
+                y: shown.k,
+            },
+        },
+        crate::plot::PlotHandle {
+            kind: crate::plot::HandleKind::Square,
+            at: crate::transform_curves::unit_point(base, unit, shown),
+        },
+    ]
+}
+
 /// Lays out the page in `app`'s Clay context and returns the frame's render
 /// commands. The caller opens the layout first and ends it after.
 pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
@@ -192,19 +220,7 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
     let slug = *app.func_param.get();
     let unit = crate::functions::unit_x(slug);
     let base = crate::functions::base(slug);
-    let handles = vec![
-        crate::plot::PlotHandle {
-            kind: crate::plot::HandleKind::Diamond,
-            at: crate::plot::PlotPoint {
-                x: shown.h,
-                y: shown.k,
-            },
-        },
-        crate::plot::PlotHandle {
-            kind: crate::plot::HandleKind::Square,
-            at: crate::transform_curves::unit_point(base, unit, shown),
-        },
-    ];
+    let handles = build_handles(app);
     let lines = crate::transform_curves::transform_lines(&app.state.lit(), base, unit, shown);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
