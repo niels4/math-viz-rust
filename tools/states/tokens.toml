@@ -143,3 +143,22 @@ token = "--ordinal-12"
 [[pair]]
 selector = "body"
 token = "--shadow-color"
+
+# h4-readout: the readout's per-parameter inks, resolved per theme. The values
+# live on the sidebar ([data-theme] on .sidebar); the terms inherit them, so
+# the form line's letter terms (always present, even at defaults) select them.
+[[pair]]
+selector = '[data-testid="function-form"] [data-param="a"]'
+token = "--param-a"
+
+[[pair]]
+selector = '[data-testid="function-form"] [data-param="k"]'
+token = "--param-k"
+
+[[pair]]
+selector = '[data-testid="function-form"] [data-param="b"]'
+token = "--param-b"
+
+[[pair]]
+selector = '[data-testid="function-form"] [data-param="h"]'
+token = "--param-h"

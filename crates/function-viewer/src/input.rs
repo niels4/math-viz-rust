@@ -138,6 +138,18 @@ pub enum HitKind {
     ReturnToCenter,
     /// The Cartesian plane's canvas (h2-input; h2-input declares the region).
     Plane,
+    /// A function-picker option; `Hit.index` names the option in picker
+    /// order (h3's selector declares the regions).
+    Selector,
+    /// A readout term; `Hit.index` names the parameter in A B H K order, in
+    /// both lines (h4-readout's readout declares the regions).
+    ReadoutTerm,
+    /// A transform row; `Hit.index` names the parameter in `TransformParam`
+    /// order (h4-rows' transform_row declares the regions).
+    TransformRow,
+    /// A transform row's number field; `Hit.index` names the parameter
+    /// (h4-rows; the row's focus stop).
+    TransformField,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -354,6 +366,9 @@ pub fn collect_regions(app: &mut App) {
     let (input, scroll) = (&mut app.input, &app.scroll);
     input.regions.clear();
     input.stops.clear();
+    // The last frame's texts the I-beam shows over: like the regions, they
+    // are re-noted every layout (h4-readout's runs note theirs post-pass).
+    input.texts.clear();
     for d in &input.declared {
         let mut r = d.region;
         if !d.keep_box {
@@ -475,6 +490,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if event.down {
                 press(app);
                 crate::settings::press_down(app);
+                crate::transform_row::press_down(app);
                 if app.input.pressed.kind == HitKind::Plane {
                     // SDL's numbering starts at 1; the camera takes the DOM's,
                     // where the primary button is 0 (only 0 drags, there).
@@ -490,6 +506,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 }
                 release(app);
                 crate::settings::click(app, down);
+                crate::selector::click(app, down);
                 // The overlay button's click (the press started and the
                 // release lands on it, as the button's `onClick` needs both):
                 // the camera back to its defaults, flushed.
@@ -528,12 +545,16 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.mods = event.mods;
             // The page milestones route their keys from here.
-            crate::settings::key(app, &event);
+            if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
+                crate::transform_row::key(app, &event);
+            }
         }
         Input::Text(event) => {
             if crate::trace() {
                 println!("input text {:?}", event.text);
             }
+            // The focused transform field takes the typed text (h4-rows).
+            crate::transform_row::text(app, &event.text);
         }
         Input::Window(event) => {
             app.size = event.size;
@@ -613,9 +634,17 @@ pub fn retarget(app: &mut App) {
         hit = pressed;
     }
     if hit != app.input.hover {
+        let before = app.input.hover;
         app.input.hover = hit;
+        // The highlight follows the pointer across the transform rows (leave
+        // then enter, as the DOM fires them); h4-rows owns this sync.
+        crate::transform_row::sync_hover(app, before, hit);
         app.dirty = true;
     }
+    // The highlight model follows the hover: terms and rows light (or drop)
+    // as the pointer moves across them (h4-readout; the row kinds map in
+    // `readout::hit_param` too).
+    crate::readout::sync_hover(app);
     update_cursor(app);
 }
 

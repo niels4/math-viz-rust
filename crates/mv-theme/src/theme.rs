@@ -324,7 +324,7 @@ mod tests {
 
     struct Outside {
         slug: Slug,
-        names: [&'static str; 3],
+        names: &'static [&'static str],
         p3: [i32; 3],
     }
 
@@ -382,7 +382,7 @@ mod tests {
                 continue;
             }
             for n in o.names {
-                if n == name {
+                if *n == name {
                     assert!(!in_srgb, "{at} is inside sRGB: linear {lin:?}");
                     assert_eq!(
                         drawn, o.p3,
@@ -455,6 +455,7 @@ mod tests {
         Token::Background,
         Token::BackgroundMuted,
         Token::Card,
+        Token::Section,
         Token::Foreground,
         Token::ForegroundMuted,
         Token::Primary,
@@ -486,6 +487,10 @@ mod tests {
         Token::Ordinal11,
         Token::Ordinal12,
         Token::ShadowColor,
+        Token::ParamA,
+        Token::ParamK,
+        Token::ParamB,
+        Token::ParamH,
     ];
 
     #[test]
@@ -494,7 +499,26 @@ mod tests {
         let fixture = load_fixture();
         // Every colour of the six themes at this pin lies inside sRGB (linear sRGB of each
         // fixture oklch within -0.0005..1.0005); nothing is named outside.
-        let outside: &[Outside] = &[];
+        let outside: &[Outside] = &[
+            // The readout's vivid parameter inks, outside sRGB but inside the
+            // Display P3 the port draws in (h4-readout sources them from
+            // SideBar.module.css): the port's P3 bytes, measured here.
+            Outside {
+                slug: Slug::ArcticIce,
+                names: &["--param-a"],
+                p3: [251, 177, 144],
+            },
+            Outside {
+                slug: Slug::CleanTeal,
+                names: &["--param-k"],
+                p3: [119, 104, 0],
+            },
+            Outside {
+                slug: Slug::SageEditorial,
+                names: &["--param-k"],
+                p3: [115, 68, 13],
+            },
+        ];
         let mut tokens = P3Tally {
             inside: 0,
             very: 0,
@@ -555,10 +579,12 @@ mod tests {
                 );
             }
         }
-        // The expected count: 201 tokens with a colour, all inside sRGB; the
-        // three dark shadow colours transparent; the 24 mixes inside too.
-        assert_eq!(tokens.inside, 201);
-        assert_eq!(tokens.outside, 0);
+        // The expected count: 228 tokens with a colour (201 plus the sidebar's
+        // --section and 21 inside-sRGB --param-* inks), all inside sRGB; the
+        // three dark shadow colours transparent; three --param-* inks outside
+        // sRGB at their oklch's bytes (h4-readout); the 24 mixes inside too.
+        assert_eq!(tokens.inside, 228);
+        assert_eq!(tokens.outside, 3);
         assert_eq!(tokens.transparent, 3);
         assert_eq!(mixes.outside, 0);
         for (what, tally) in [("tokens", &tokens), ("the page's mixes", &mixes)] {

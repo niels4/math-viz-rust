@@ -52,7 +52,10 @@ COMPUTED = re.compile(
 
 PROBE_JS = r"""
 ({ colours, size, columns }) => {
-  const host = document.body;
+  // Under the readout's form line, so the sidebar's per-theme --param-*
+  // inks (which inherit from .sidebar[data-theme], not the body) resolve;
+  // every theme-file token inherits identically there.
+  const host = document.querySelector('[data-testid="function-form"]') ?? document.body;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
   host.appendChild(probe);

@@ -1,0 +1,10 @@
+# sidebar-default (H3): the page at rest at 1440 x 900, density 2, on a dark
+# system in Arctic Ice, graphing x. Time 0 is the first frame; the shot waits
+# 2 s, as default.act does.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot sidebar-default

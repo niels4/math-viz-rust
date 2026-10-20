@@ -1,0 +1,21 @@
+# rows-zero-scale (H4): 0 typed into b's field with a=2 set — Enter puts the
+# old value back ("1.00") and the URL keeps a=2 with no b.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query a=2
+wait 2000
+click 360 537
+wait 150
+key Backspace
+key Backspace
+key Backspace
+key Backspace
+wait 100
+type "0"
+wait 200
+key Enter
+wait 400
+shot rows-zero-scale
