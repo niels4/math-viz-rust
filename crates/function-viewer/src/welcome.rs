@@ -648,6 +648,10 @@ pub fn enter_route(app: &mut App) {
             app.input.hover = Hit::default();
             app.input.focus = Hit::default();
             app.input.focus_visible = false;
+            // A fresh mount hovers nothing until the pointer acts: the
+            // browser applies no `:hover` without a mouse move after the
+            // route's components mount (retarget holds off while set).
+            app.input.hover_fresh = true;
             app.camera_frame_at = 0;
             crate::plane_input::init_camera_from_url(app);
             crate::transform_section::init_params_from_url(app);
@@ -659,6 +663,7 @@ pub fn enter_route(app: &mut App) {
             app.input.hover = Hit::default();
             app.input.focus = Hit::default();
             app.input.focus_visible = false;
+            app.input.hover_fresh = true;
             app.dirty = true;
         }
     }

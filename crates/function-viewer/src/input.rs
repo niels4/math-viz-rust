@@ -249,6 +249,12 @@ pub struct InputState {
     pub keyed: bool,
     /// The keyboard's focus is to come into view after the next layout.
     pub reveal: bool,
+    /// A fresh mount hovers nothing until the pointer acts (h10-page: the
+    /// browser applies no `:hover` without a mouse move after the route's
+    /// components mount, as the menu's own hold has it). Set by
+    /// `welcome::enter_route`, cleared by the next pointer fact; `retarget`
+    /// retargets to nothing while it stands.
+    pub hover_fresh: bool,
     /// The cursor shown.
     pub cursor: Cursor,
     /// The last frame's targets, in the order they were declared.
@@ -484,7 +490,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if event.pos != app.input.pointer {
                     // A real move re-arms hover: a pick's hold lasts only
                     // until the pointer moves, as Chromium re-hovers then.
+                    // It also ends a fresh mount's hover hold (h10-page).
                     crate::settings::pointer_moved(app);
+                    app.input.hover_fresh = false;
                 }
                 app.input.pointer = event.pos;
             }
@@ -521,6 +529,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 app.input.time = outer;
                 return;
             }
+            // A press ends a fresh mount's hover hold (h10-page): the click
+            // acts where it lands, as the browser's would.
+            app.input.hover_fresh = false;
             if event.down {
                 press(app);
                 crate::settings::press_down(app);
@@ -584,9 +595,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             // A wheel carries the pointer's position: it is in the window,
             // as a motion would have it (without this a wheel before any
-            // motion finds no hover and the plane never zooms).
+            // motion finds no hover and the plane never zooms). A wheel is
+            // a pointer act, so it ends a fresh mount's hover hold too.
             app.input.pointer = event.pos;
             app.input.over = true;
+            app.input.hover_fresh = false;
             retarget(app);
             // A wheel over a value box steps it (ignored while typed into,
             // when the page may scroll instead).
@@ -725,7 +738,7 @@ pub fn retarget(app: &mut App) {
     let over = app.input.over;
     let pointer = app.input.pointer;
     let pressed = app.input.pressed;
-    let mut hit = if over && !app.settings.hover_held {
+    let mut hit = if over && !app.settings.hover_held && !app.input.hover_fresh {
         hit_at(app.input.regions.as_slice(), pointer)
     } else {
         Hit::default()

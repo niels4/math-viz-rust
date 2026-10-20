@@ -11,4 +11,6 @@ reduced-motion on
 wait 2000
 click 233 553
 wait 2000
+move 720 48
+wait 300
 shot welcome-cta-click

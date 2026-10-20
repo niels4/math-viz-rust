@@ -263,6 +263,7 @@ impl App {
                 focus_visible: false,
                 keyed: false,
                 reveal: false,
+                hover_fresh: false,
                 cursor: crate::input::Cursor::Default,
                 regions: Vec::new(),
                 stops: Vec::new(),

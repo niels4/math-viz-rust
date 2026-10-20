@@ -15,4 +15,6 @@ click 104 48
 wait 1000
 click 233 553
 wait 2000
+move 720 48
+wait 300
 shot route-roundtrip
