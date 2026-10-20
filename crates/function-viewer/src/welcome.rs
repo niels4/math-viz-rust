@@ -561,20 +561,14 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
         &mcolors,
     );
     // The 1 px `--border` at radius 4 over the ink (the DOM's border above
-    // the canvas): the command walk's border shape, stroked in the translated
-    // pass — the frame box inset half a px, corners shrunk the same.
-    let border_box = clay::BoundingBox {
-        x: -crate::plane::CANVAS_BORDER,
-        y: -crate::plane::CANVAS_BORDER,
-        width: HERO_WIDTH,
-        height: HERO_HEIGHT,
-    };
+    // the canvas): the command walk's border shape — the frame box inset
+    // half a px, corners shrunk the same.
     let width = crate::plane::CANVAS_BORDER;
     let inset = clay::BoundingBox {
-        x: border_box.x + width / 2.0,
-        y: border_box.y + width / 2.0,
-        width: (border_box.width - width).max(0.0),
-        height: (border_box.height - width).max(0.0),
+        x: frame.x + width / 2.0,
+        y: frame.y + width / 2.0,
+        width: (frame.width - width).max(0.0),
+        height: (frame.height - width).max(0.0),
     };
     app.vg.begin_path();
     crate::draw::rounded_rect(
@@ -585,7 +579,6 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
     app.vg.stroke_color(theme.colors[mv_theme::Token::Border]);
     app.vg.stroke_width(width);
     app.vg.stroke();
-    app.vg.restore();
 }
 
 /// The backdrop's call: paper and lights behind the frame, after the page
