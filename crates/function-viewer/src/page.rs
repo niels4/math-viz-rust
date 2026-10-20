@@ -208,6 +208,11 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time
         &crate::overlay::corner_boxes(&overlay),
         ocolors.chrome,
     );
+    // The button and its tip show off the default camera only (`moved`).
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
+        app.overlay_tip_since = None;
+        return;
+    }
     let button = crate::overlay::overlay_button_box(&canvas);
     let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
