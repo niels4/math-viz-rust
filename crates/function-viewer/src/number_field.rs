@@ -15,18 +15,24 @@
 
 /// The text in the box while you type (`draft` in `TransformRow.tsx`):
 /// `None` at rest (the box shows the value), `Some` once typed into — kept
-/// verbatim, however partial, until Enter or blur commits.
+/// verbatim, however partial, until Enter or blur commits. `selected` is the
+/// browser's select-all: the next typed text replaces the box's text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FieldState {
     /// The uncommitted text, if any.
     pub draft: Option<String>,
+    /// The box's text stands selected (Ctrl/Command+A).
+    pub selected: bool,
 }
 
 impl FieldState {
     /// A field at rest.
     #[must_use]
     pub fn new() -> Self {
-        Self { draft: None }
+        Self {
+            draft: None,
+            selected: false,
+        }
     }
 
     /// Keystrokes replace the draft whole (the DOM input owns the caret; a
@@ -42,9 +48,8 @@ impl FieldState {
     }
 }
 
-/// What the box shows: the draft as typed, else `value.toFixed(2)` — two
-/// decimals through [`mv_numfmt::round_to`] (ties away from zero, as
-/// `toFixed`; Rust's `{:.2}` alone rounds ties to even), ASCII minus.
+/// What the box shows: the draft as typed, else `value.toFixed(2)` — exact
+/// through [`mv_numfmt::to_fixed`], ASCII minus as `toFixed` prints.
 #[must_use]
 pub fn display_value(value: f64) -> String {
     display_draft(&None, value)
@@ -56,14 +61,7 @@ pub fn display_draft(draft: &Option<String>, value: f64) -> String {
     if let Some(text) = draft {
         return text.clone();
     }
-    let rounded = mv_numfmt::round_to(value, 2);
-    if rounded == 0.0 && value == 0.0 {
-        // `(-0).toFixed(2)` is `"0.00"`; Rust prints `"-0.00"`. A negative
-        // value that rounds to zero keeps its minus (see the tests).
-        "0.00".to_owned()
-    } else {
-        format!("{rounded:.2}")
-    }
+    mv_numfmt::to_fixed(value, 2)
 }
 
 /// Enter or blur with the taken draft: the commit rule (`commit`).

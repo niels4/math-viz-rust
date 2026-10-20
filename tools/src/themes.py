@@ -113,7 +113,43 @@ def read_themes(ref: Path) -> list[Theme]:
     for theme in themes[1:]:
         if theme.colour_tokens() != first:
             sys.exit(f"{theme.slug} defines other tokens than {themes[0].slug}")
+    params = read_sidebar_params(ref)
+    for theme in themes:
+        for name in SIDEBAR_PARAMS:
+            theme.declarations[name] = params[theme.slug][name]
     return themes
+
+
+# The sidebar's per-theme parameter inks (h4-rows, from SideBar.module.css):
+# `--param-a/k/b/h` live under `.sidebar[data-theme="<slug>"]`, not in the
+# theme files, so they merge into each theme's declarations in `read_themes`
+# above, in the file's order, after the theme files' own tokens.
+SIDEBAR_PARAMS = ("--param-a", "--param-k", "--param-b", "--param-h")
+
+
+def read_sidebar_params(ref: Path) -> dict[str, dict[str, str]]:
+    """Each theme's parameter inks as SideBar.module.css writes them."""
+    css = (
+        ref
+        / "src"
+        / "components"
+        / "views"
+        / "FunctionViewer"
+        / "SideBar"
+        / "SideBar.module.css"
+    ).read_text()
+    out: dict[str, dict[str, str]] = {}
+    for slug in SLUGS:
+        block = re.search(r'&\[data-theme="' + slug + r'"\]\s*\{(.*?)\}', css, re.S)
+        if block is None:
+            sys.exit(f'SideBar.module.css defines no [data-theme="{slug}"] block')
+        found = {
+            m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block.group(1))
+        }
+        if list(found) != list(SIDEBAR_PARAMS):
+            sys.exit(f"{slug}: the sidebar's params are not {', '.join(SIDEBAR_PARAMS)}")
+        out[slug] = found
+    return out
 
 
 def read_pairs() -> list[tuple[str, str]]:

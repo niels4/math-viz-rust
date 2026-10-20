@@ -57,6 +57,12 @@ pub enum Type {
     Maths,
     /// The picker's italic `x` runs: STIX Two Text italic 400, 20 px.
     MathsItalic,
+    /// A transform row's name: Work Sans 600, 15 px.
+    RowName,
+    /// A transform row chip's letter: STIX Two Text italic 400, 19 px.
+    ChipLetter,
+    /// A transform row's number field: Roboto Mono 500, 17 px.
+    FieldText,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -144,6 +150,29 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 25.0,
         },
+        // The row name's 18 px line box, measured on the reference.
+        Type::RowName => TypeStyle {
+            face: Face::WorkSans600,
+            size: 15.0,
+            tracking: 0.0,
+            line_height: 18.0,
+        },
+        // The chip letter's 24 px line box, measured on the reference.
+        Type::ChipLetter => TypeStyle {
+            face: Face::Stix400Italic,
+            size: 19.0,
+            tracking: 0.0,
+            line_height: 24.0,
+        },
+        // The field's 22 px line box, measured on the reference. The CSS
+        // `tabular-nums` is a no-op behind a monospace face, so the style
+        // carries no features (the plane's mono labels do the same).
+        Type::FieldText => TypeStyle {
+            face: Face::RobotoMono500,
+            size: 17.0,
+            tracking: 0.0,
+            line_height: 22.0,
+        },
     }
 }
 
@@ -160,6 +189,9 @@ fn type_from_id(id: u16) -> Type {
         8 => Type::Heading,
         9 => Type::Maths,
         10 => Type::MathsItalic,
+        11 => Type::RowName,
+        12 => Type::ChipLetter,
+        13 => Type::FieldText,
         _ => unreachable!("clay font id names a text style"),
     }
 }

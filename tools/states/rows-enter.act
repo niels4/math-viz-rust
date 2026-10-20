@@ -1,0 +1,17 @@
+# rows-enter (H4): Enter after typing "2.5" into a's field — the value set,
+# the URL updated (a=2.5), the box showing "2.50".
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 331 432
+wait 150
+key a ctrl
+wait 100
+type "2.5"
+wait 200
+key Enter
+wait 400
+shot rows-enter

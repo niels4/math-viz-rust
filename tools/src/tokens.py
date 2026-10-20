@@ -52,7 +52,10 @@ COMPUTED = re.compile(
 
 PROBE_JS = r"""
 ({ colours, size, columns }) => {
-  const host = document.body;
+  // The probe inherits the page's custom properties from its host: the
+  // sidebar (h4-rows: the --param-* inks live under its [data-theme] rules),
+  // else the body where every other token resolves.
+  const host = document.querySelector('#root > div > div:nth-child(2)') || document.body;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
   host.appendChild(probe);

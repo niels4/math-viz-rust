@@ -143,3 +143,21 @@ token = "--ordinal-12"
 [[pair]]
 selector = "body"
 token = "--shadow-color"
+
+# H4 at 5714319: the transform rows' parameter inks, one per theme under the
+# sidebar's [data-theme] rules (SideBar.module.css), read on the sidebar.
+[[pair]]
+selector = "#root > div > div:nth-child(2)"
+token = "--param-a"
+
+[[pair]]
+selector = "#root > div > div:nth-child(2)"
+token = "--param-k"
+
+[[pair]]
+selector = "#root > div > div:nth-child(2)"
+token = "--param-b"
+
+[[pair]]
+selector = "#root > div > div:nth-child(2)"
+token = "--param-h"

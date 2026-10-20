@@ -68,13 +68,14 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::sizing_fixed(SIDEBAR_WIDTH),
                 height: mv_clay::sizing_grow(crate::ui::ZERO_MINMAX),
             };
-            // `--space-card` inside the 1 px border: Clay's border takes no
-            // layout space, the browser's `border-box` does.
+            // `--space-inset` (12) inside the 1 px border at the h4 hash
+            // (`--space-card` before): Clay's border takes no layout space,
+            // the browser's `border-box` does.
             side.layout.padding = clay::Padding {
-                left: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                right: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                top: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
-                bottom: (crate::top_bar::TOPBAR_PAD + crate::top_bar::TOPBAR_BORDER) as u16,
+                left: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                right: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                top: (crate::sidebar::SIDE_PAD + 1.0) as u16,
+                bottom: (crate::sidebar::SIDE_PAD + 1.0) as u16,
             };
             side.backgroundColor = crate::ui::ink(
                 crate::ui::current_theme(app),
@@ -234,6 +235,8 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
+    // The transform rows' inset rings, focus rings and chevrons (h4-rows).
+    crate::transform_row::paint_rows(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }

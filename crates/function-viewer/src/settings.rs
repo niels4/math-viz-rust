@@ -837,8 +837,14 @@ pub fn press_down(app: &mut App) {
         HitKind::Gear | HitKind::SettingsLightDark | HitKind::SettingsTheme => {}
         // An outside press closes the menu (the reference closes on outside
         // click; the down half lands here, the up half in `click`): the
-        // plane's canvas and button are both outside it, as is h3's picker.
-        HitKind::None | HitKind::ReturnToCenter | HitKind::Plane | HitKind::Selector => {
+        // plane's canvas and button are both outside it, as is h3's picker
+        // and h4-rows' transform rows.
+        HitKind::None
+        | HitKind::ReturnToCenter
+        | HitKind::Plane
+        | HitKind::Selector
+        | HitKind::TransformRow
+        | HitKind::TransformField => {
             close_menu(app);
         }
     }

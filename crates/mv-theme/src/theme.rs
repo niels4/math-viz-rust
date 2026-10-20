@@ -455,6 +455,7 @@ mod tests {
         Token::Background,
         Token::BackgroundMuted,
         Token::Card,
+        Token::Section,
         Token::Foreground,
         Token::ForegroundMuted,
         Token::Primary,
@@ -486,15 +487,37 @@ mod tests {
         Token::Ordinal11,
         Token::Ordinal12,
         Token::ShadowColor,
+        Token::ParamA,
+        Token::ParamK,
+        Token::ParamB,
+        Token::ParamH,
     ];
 
     #[test]
     fn every_colour_in_display_p3_is_the_browsers_colour() {
         use crate::color::Space;
         let fixture = load_fixture();
-        // Every colour of the six themes at this pin lies inside sRGB (linear sRGB of each
-        // fixture oklch within -0.0005..1.0005); nothing is named outside.
-        let outside: &[Outside] = &[];
+        // Three parameter inks lie outside sRGB (linear sRGB past -0.0005 or
+        // 1.0005); each is named with the bytes the port draws in Display P3
+        // (h4-rows: measured in `crates/mv-theme/tests/p3probe.rs`, removed
+        // after — the named values are pinned here).
+        let outside: &[Outside] = &[
+            Outside {
+                slug: Slug::ArcticIce,
+                names: ["--param-a", "--param-a", "--param-a"],
+                p3: [251, 177, 144],
+            },
+            Outside {
+                slug: Slug::CleanTeal,
+                names: ["--param-k", "--param-k", "--param-k"],
+                p3: [119, 104, 0],
+            },
+            Outside {
+                slug: Slug::SageEditorial,
+                names: ["--param-k", "--param-k", "--param-k"],
+                p3: [115, 68, 13],
+            },
+        ];
         let mut tokens = P3Tally {
             inside: 0,
             very: 0,
@@ -555,10 +578,11 @@ mod tests {
                 );
             }
         }
-        // The expected count: 201 tokens with a colour, all inside sRGB; the
+        // The expected count: 231 tokens with a colour (201 plus --section
+        // and the four --param-* inks in six themes), 228 inside sRGB; the
         // three dark shadow colours transparent; the 24 mixes inside too.
-        assert_eq!(tokens.inside, 201);
-        assert_eq!(tokens.outside, 0);
+        assert_eq!(tokens.inside, 228);
+        assert_eq!(tokens.outside, 3);
         assert_eq!(tokens.transparent, 3);
         assert_eq!(mixes.outside, 0);
         for (what, tally) in [("tokens", &tokens), ("the page's mixes", &mixes)] {

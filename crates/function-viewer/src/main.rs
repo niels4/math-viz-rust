@@ -53,6 +53,7 @@ pub mod scroll;
 pub mod selector;
 pub mod settings;
 pub mod sidebar;
+pub mod state;
 pub mod svgpath;
 pub mod theme_state;
 pub mod top_bar;
@@ -966,9 +967,11 @@ impl Main {
         // The page query at start: `--query` (empty without it).
         app.url = crate::url::Url::from_query(&options.query);
         // The camera and its params start from that query (h2-input); the
-        // picked function and its shown curve start there too (h3).
+        // picked function and its shown curve start there too (h3); the
+        // transform params start there as well (h4-rows).
         crate::plane_input::init_camera_from_url(&mut app);
         crate::selector::init_func_from_url(&mut app);
+        crate::transform_section::init_params_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1115,9 +1118,11 @@ impl Main {
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
         app.url = crate::url::Url::new(&platform_read_hash());
         // The camera and its params start from that query (h2-input); the
-        // picked function and its shown curve start there too (h3).
+        // picked function and its shown curve start there too (h3); the
+        // transform params start there as well (h4-rows).
         crate::plane_input::init_camera_from_url(&mut app);
         crate::selector::init_func_from_url(&mut app);
+        crate::transform_section::init_params_from_url(&mut app);
         println!(
             "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
@@ -1345,6 +1350,7 @@ impl Main {
                     // (h2-input owns the camera's half).
                     app.url.sync_from_hash(&platform_read_hash());
                     crate::plane_input::external_url_synced(app);
+                    crate::transform_section::external_params_synced(app);
                     return AppResult::Continue;
                 }
                 // Anything else (notably `ReducedMotion`) falls through to

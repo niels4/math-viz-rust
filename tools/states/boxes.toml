@@ -42,3 +42,15 @@ radio_0 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(1)"
 radio_1 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(2)"
 radio_2 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(3)"
 radio_3 = "#root > div > div:nth-child(2) fieldset div > label:nth-child(4)"
+# H4 at 5714319: the Transform card (the sidebar's section child), its rows
+# (the row divs; the readout's terms are spans, so div selects the rows),
+# a's chip (the aria-hidden span), a's field (the row's input) and a's left
+# chevron (the row's first svg).
+card_transform = "#root > div > div:nth-child(2) > section"
+row_a = "div[data-param=\"a\"]"
+row_k = "div[data-param=\"k\"]"
+row_b = "div[data-param=\"b\"]"
+row_h = "div[data-param=\"h\"]"
+chip_a = "div[data-param=\"a\"] > span[aria-hidden=\"true\"]"
+field_a = "div[data-param=\"a\"] input"
+arrows_a = "div[data-param=\"a\"] svg"

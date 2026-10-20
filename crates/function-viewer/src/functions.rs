@@ -120,25 +120,18 @@ fn parse_shift(raw: Option<&str>) -> Option<f64> {
     n.is_finite().then_some(n)
 }
 
-/// `transformParam`'s serialiser: `String(Number(v.toFixed(3)))`. The value
-/// rounds to three decimals through [`mv_numfmt::round_to`] (ties away from
-/// zero, as `toFixed`), re-parses (as `Number` does, so `2.5` writes `"2.5"`
-/// and `-0.000` writes `"0"`), then prints shortest-round-trip with an ASCII
-/// minus (never `format_number`'s U+2212: the URL is ASCII, as `url.rs`
-/// requires). Values at or above 1e21 would print JS-exponentially; Rust's
-/// `{}` prints them long instead — a known gap no typed value reaches.
+/// `transformParam` serialiser: `String(Number(v.toFixed(3)))`, through
+/// `mv-numfmt` (exact `to_fixed`, then `js_to_string` on the re-parse, nested
+/// as the TS nests them: `format_scale` in `camera.rs` is the precedent).
 // Always `Some`: the `Option` satisfies the def's fn-pointer field type (a
 // `None` would delete the key, which this serialiser never does, as the TS
 // `(v) => String(...)` never returns `null`).
 #[allow(clippy::unnecessary_wraps)]
 fn serialize_transform(value: &f64) -> Option<String> {
-    let text = format!("{:.3}", mv_numfmt::round_to(*value, 3));
-    let back: f64 = text.parse().unwrap_or(f64::NAN);
-    if back == 0.0 {
-        Some("0".to_owned())
-    } else {
-        Some(format!("{back}"))
-    }
+    // The fixed string always parses (digits with at most one `.`), so this
+    // nests the two conversions as the TS does.
+    let n: f64 = mv_numfmt::to_fixed(*value, 3).parse().unwrap_or(f64::NAN);
+    Some(mv_numfmt::js_to_string(n))
 }
 
 /// One transform parameter's def: `transformParam(key, default, isScale)`.

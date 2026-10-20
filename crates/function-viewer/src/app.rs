@@ -101,6 +101,25 @@ pub struct App {
     /// re-pick never restarts it: the turn draws the reset curves, the next
     /// frame diffs from the last callback, not the click).
     pub plot_hold: bool,
+    /// The highlight model: the hovered and focused parameters and which
+    /// moved last (h4-readout's `state.rs` owns the state machine; both h4
+    /// milestones read and write it. h4-rows appends the field its rows need;
+    /// h4-readout's merge keeps this line).
+    pub state: crate::state::HighlightState,
+    /// The `a` page param: the live value with its flush (h4-rows; `url.rs`
+    /// owns the state machine; Enter writes it at once, as the hook's
+    /// `setValue` with `{ flush: true }` does).
+    pub a_param: crate::url::QueryParam<f64>,
+    /// The `b` page param, as above.
+    pub b_param: crate::url::QueryParam<f64>,
+    /// The `h` page param, as above.
+    pub h_param: crate::url::QueryParam<f64>,
+    /// The `k` page param, as above.
+    pub k_param: crate::url::QueryParam<f64>,
+    /// The uncommitted text per parameter: `None` at rest (the box shows the
+    /// value), `Some` once typed into (h4-rows; `number_field.rs` owns the
+    /// display and commit rules).
+    pub drafts: EnumMap<crate::state::TransformParam, crate::number_field::FieldState>,
 }
 
 impl App {
@@ -246,6 +265,15 @@ impl App {
             )),
             plot_frame_at: None,
             plot_hold: false,
+            // Nothing touched; the transform params at the URL defaults; no
+            // uncommitted text. Each `build()` re-seeds the params from the
+            // real page query (`transform_section::init_params_from_url`).
+            state: crate::state::HighlightState::touched_out(),
+            a_param: crate::url::QueryParam::new(&crate::functions::A_PARAM, ""),
+            b_param: crate::url::QueryParam::new(&crate::functions::B_PARAM, ""),
+            h_param: crate::url::QueryParam::new(&crate::functions::H_PARAM, ""),
+            k_param: crate::url::QueryParam::new(&crate::functions::K_PARAM, ""),
+            drafts: EnumMap::default(),
         }
     }
 }

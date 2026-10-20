@@ -1,0 +1,11 @@
+# rows-hover-a (H4): the pointer on a's row (216, 432: row a's centre at
+# 1440x900) — a lit in the row and in both readout lines through the sync.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 216 432
+wait 200
+shot rows-hover-a

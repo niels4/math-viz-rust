@@ -141,6 +141,12 @@ pub enum HitKind {
     /// A function-picker option; `Hit.index` names the option in picker
     /// order (h3's selector declares the regions).
     Selector,
+    /// A transform row; `Hit.index` names the parameter in `TransformParam`
+    /// order (h4-rows' transform_row declares the regions).
+    TransformRow,
+    /// A transform row's number field; `Hit.index` names the parameter
+    /// (h4-rows; the row's focus stop).
+    TransformField,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -478,6 +484,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if event.down {
                 press(app);
                 crate::settings::press_down(app);
+                crate::transform_row::press_down(app);
                 if app.input.pressed.kind == HitKind::Plane {
                     // SDL's numbering starts at 1; the camera takes the DOM's,
                     // where the primary button is 0 (only 0 drags, there).
@@ -532,14 +539,16 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             app.input.mods = event.mods;
             // The page milestones route their keys from here.
-            if !crate::settings::key(app, &event) {
-                crate::selector::key(app, &event);
+            if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
+                crate::transform_row::key(app, &event);
             }
         }
         Input::Text(event) => {
             if crate::trace() {
                 println!("input text {:?}", event.text);
             }
+            // The focused transform field takes the typed text (h4-rows).
+            crate::transform_row::text(app, &event.text);
         }
         Input::Window(event) => {
             app.size = event.size;
@@ -619,7 +628,11 @@ pub fn retarget(app: &mut App) {
         hit = pressed;
     }
     if hit != app.input.hover {
+        let before = app.input.hover;
         app.input.hover = hit;
+        // The highlight follows the pointer across the transform rows (leave
+        // then enter, as the DOM fires them); h4-rows owns this sync.
+        crate::transform_row::sync_hover(app, before, hit);
         app.dirty = true;
     }
     update_cursor(app);

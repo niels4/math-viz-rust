@@ -1,0 +1,15 @@
+# rows-typed (H4): "2.5" typed into a's field, Enter not pressed — the box
+# shows the draft, the URL is unchanged.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 331 432
+wait 150
+key a ctrl
+wait 100
+type "2.5"
+wait 200
+shot rows-typed
