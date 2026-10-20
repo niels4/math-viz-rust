@@ -15,6 +15,7 @@ use mv_sys::clay;
 use mv_text::{Face, Features, Style};
 
 use crate::grid::{GridLabel, GridLayout, layout_grid, layout_labels};
+use crate::plane_geometry::{HandlePath, handle_path, line_path, to_px};
 use crate::scale_legend::{LegendColors, legend_geometry, paint_legend};
 
 /// The font size of every text on the plane (`constants.ts`).
@@ -329,10 +330,13 @@ pub fn plane_texts(
 }
 
 /// Paints the plane over the canvas's content box: the grid, the axes, the
-/// curves, and, once the font has loaded, the labels and the scale legend
-/// (the `drawCartesianPlane` order: grid, curves, legend).
-// Nine paint inputs (the plane's six plus the frame's curves with their
-// ink): a bundle struct would hide the draw order this signature documents.
+/// lines of the lit parameter, the curves, the handles, and, once the font
+/// has loaded, the labels and the scale legend (the `drawCartesianPlane`
+/// order: dashed curves, lines, solid curves, handles, legend). h6-curve
+/// splits `curves` into its dashed and solid passes around `lines`.
+// Twelve paint inputs (the plane's six, the frame's curves, handles and
+// lines with their inks): a bundle struct would hide the draw order this
+// signature documents.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_plane(
     fonts: &mut mv_text::Fonts,
@@ -344,6 +348,9 @@ pub fn paint_plane(
     font_ready: bool,
     curves: &[crate::plot::PlotCurve],
     line: [f32; 4],
+    handles: &[crate::plot::PlotHandle],
+    lines: &[crate::plot::PlotLine],
+    primary: [f32; 4],
 ) {
     let width = f64::from(content.width);
     let height = f64::from(content.height);
@@ -379,7 +386,11 @@ pub fn paint_plane(
     } else {
         None
     };
+    // h6-curve splits this into its dashed and solid passes; `lines`
+    // paints between them, `handles` after the solid pass.
+    paint_lines(vg, &grid, lines, primary);
     paint_curves(vg, content.width, content.height, &grid, curves, line);
+    paint_handles(vg, &grid, handles, primary, colors.page);
     if let Some((fonts, geometry)) = legend {
         paint_legend(fonts, vg, &geometry, &colors.legend);
     }
@@ -388,6 +399,235 @@ pub fn paint_plane(
     // The CSS border stays Clay's: the canvas element's Border command strokes
     // the border box inset half a px, the border's exact pixels.
     vg.restore();
+}
+
+/// A lit parameter's arrow: 2.5 px, solid, full alpha (`lineLooks.arrow`).
+pub const ARROW_WIDTH: f32 = 2.5;
+
+/// A lit scale's dashed box side: 1.5 px, `[5, 4]`, 0.8 alpha
+/// (`lineLooks.dashed`).
+pub const DASHED_WIDTH: f32 = 1.5;
+
+/// The dashed look's dash pattern, in px (`lineLooks.dashed.dash`).
+pub const DASHED_DASH: [f64; 2] = [5.0, 4.0];
+
+/// The dashed look's alpha (`lineLooks.dashed.alpha`).
+pub const DASHED_ALPHA: f32 = 0.8;
+
+/// A measured box side: 3 px, solid, full alpha (`lineLooks.measured`).
+pub const MEASURED_WIDTH: f32 = 3.0;
+
+/// Every line's ticks: 2 px (`tickWidth`).
+pub const LINE_TICK_WIDTH: f32 = 2.0;
+
+/// The smallest dash piece that survives, in px (the first port's
+/// `mv-plane/src/dash.rs` cutoff: sub-pixel slivers never cover a pixel).
+const MIN_PIECE_PX: f64 = 0.01;
+
+/// Cuts a shaft by a dash pattern from an offset, in px: the `[on, off]`
+/// intervals along its length (`lineDashOffset` is where the first piece
+/// starts), each as its own subpath so one stroke paints them all. The
+/// first port's `dash_polyline` technique (`mv-plane/src/dash.rs`); the
+/// painter strokes solid shafts directly, so this only serves the dashed
+/// look (h6-curve's dashed original reuses it through `pub(crate)`).
+pub(crate) fn dash_pieces(
+    points: &[[f64; 2]],
+    pattern: [f64; 2],
+    offset: f64,
+) -> Vec<Vec<[f64; 2]>> {
+    let period = pattern[0] + pattern[1];
+    if period <= 0.0 || points.len() < 2 {
+        return Vec::new();
+    }
+    // The distance along the shaft at each vertex.
+    let mut along = vec![0.0; points.len()];
+    for i in 1..points.len() {
+        let dx = points[i][0] - points[i - 1][0];
+        let dy = points[i][1] - points[i - 1][1];
+        along[i] = along[i - 1] + dx.hypot(dy);
+    }
+    let length = along[points.len() - 1];
+    let at = |seg: usize, d: f64| -> [f64; 2] {
+        let span = along[seg + 1] - along[seg];
+        let t = if span == 0.0 {
+            0.0
+        } else {
+            (d - along[seg]) / span
+        };
+        let a = points[seg];
+        let b = points[seg + 1];
+        [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+    };
+    // The dash intervals from the offset, as the canvas lays them: the dash
+    // starts `offset` into its pattern.
+    let mut o = offset % period;
+    if o < 0.0 {
+        o += period;
+    }
+    let mut intervals = Vec::new();
+    let mut pos = -o;
+    while pos < length {
+        let from = pos.max(0.0);
+        let to = (pos + pattern[0]).min(length);
+        if to - from >= MIN_PIECE_PX {
+            intervals.push([from, to]);
+        }
+        pos += period;
+    }
+    // Each interval as its own subpath.
+    let mut dashes = Vec::new();
+    let mut seg = 0;
+    for interval in intervals {
+        while seg + 2 < points.len() && along[seg + 1] <= interval[0] {
+            seg += 1;
+        }
+        let mut dash = vec![at(seg, interval[0])];
+        let mut end_seg = seg;
+        while end_seg + 2 < points.len() && along[end_seg + 1] < interval[1] {
+            end_seg += 1;
+            dash.push(points[end_seg]);
+        }
+        dash.push(at(end_seg, interval[1]));
+        dashes.push(dash);
+        seg = end_seg;
+    }
+    dashes
+}
+
+/// The shaft's look: width, dash pattern and alpha (`lineLooks`).
+fn line_look(kind: crate::plot::LineKind) -> (f32, Option<[f64; 2]>, f32) {
+    match kind {
+        crate::plot::LineKind::Arrow => (ARROW_WIDTH, None, 1.0),
+        crate::plot::LineKind::Dashed => (DASHED_WIDTH, Some(DASHED_DASH), DASHED_ALPHA),
+        crate::plot::LineKind::Measured => (MEASURED_WIDTH, None, 1.0),
+    }
+}
+
+/// Paints the shift and scale handles: the diamond filled with the page
+/// colour and stroked in primary, the rounded square filled with the page
+/// colour with its inner rounded square stroked in primary (`drawHandle`,
+/// `handleStroke` 2.5, round joins). Handles and lines paint in
+/// `theme.primary` — not the parameter colours: the source sets
+/// `strokeStyle`/`fillStyle` to primary for every handle and line (probed).
+/// `background` is the page colour showing through the cleared canvas.
+pub fn paint_handles(
+    vg: &mut mv_nvg::Context,
+    grid: &GridLayout,
+    handles: &[crate::plot::PlotHandle],
+    primary: [f32; 4],
+    background: [f32; 4],
+) {
+    vg.line_cap(mv_nvg::LineCapType::BUTT);
+    vg.line_join(mv_nvg::LineCapType::ROUND);
+    vg.stroke_width(crate::plane_geometry::HANDLE_STROKE as f32);
+    vg.stroke_color(primary);
+    vg.fill_color(background);
+    for handle in handles {
+        let at = to_px(grid, handle.at);
+        match handle_path(handle.kind, at) {
+            HandlePath::Diamond { points } => {
+                vg.begin_path();
+                vg.move_to(points[0][0] as f32, points[0][1] as f32);
+                for point in &points[1..] {
+                    vg.line_to(point[0] as f32, point[1] as f32);
+                }
+                vg.close_path();
+                vg.fill();
+                vg.stroke();
+            }
+            HandlePath::Square {
+                outer,
+                outer_radius,
+                inner,
+                inner_radius,
+            } => {
+                vg.begin_path();
+                vg.rounded_rect(
+                    outer[0] as f32,
+                    outer[1] as f32,
+                    outer[2] as f32,
+                    outer[3] as f32,
+                    outer_radius as f32,
+                );
+                vg.fill();
+                vg.begin_path();
+                vg.rounded_rect(
+                    inner[0] as f32,
+                    inner[1] as f32,
+                    inner[2] as f32,
+                    inner[3] as f32,
+                    inner_radius as f32,
+                );
+                vg.stroke();
+            }
+        }
+    }
+    // The source restores the context after each handle; the port leaves it
+    // as the source leaves it (butt caps, miter joins) so the legend's bar
+    // strokes as probed.
+    vg.line_join(mv_nvg::LineCapType::MITER);
+}
+
+/// Paints one lit parameter's lines: the shaft (cut past the arrowhead, in
+/// the look's width, dash and alpha), a tick across each end, and the filled
+/// arrowhead (`drawLine`). Zero-length lines draw nothing (the source's
+/// early return through `line_path`'s `None`). `label` stays undrawn: the
+/// source carries and draws none at this hash.
+pub fn paint_lines(
+    vg: &mut mv_nvg::Context,
+    grid: &GridLayout,
+    lines: &[crate::plot::PlotLine],
+    primary: [f32; 4],
+) {
+    vg.line_cap(mv_nvg::LineCapType::BUTT);
+    vg.line_join(mv_nvg::LineCapType::MITER);
+    vg.stroke_color(primary);
+    vg.fill_color(primary);
+    for line in lines {
+        let from = to_px(grid, line.from);
+        let to = to_px(grid, line.to);
+        let Some(path) = line_path(line.kind, from, to) else {
+            continue;
+        };
+        let (width, dash, alpha) = line_look(line.kind);
+        vg.global_alpha(alpha);
+        // The shaft, in one path (each dash piece its own subpath).
+        vg.begin_path();
+        match dash {
+            None => {
+                vg.move_to(path.shaft[0][0] as f32, path.shaft[0][1] as f32);
+                vg.line_to(path.shaft[1][0] as f32, path.shaft[1][1] as f32);
+            }
+            Some(pattern) => {
+                // `lineDashOffset` is half the dash on (`dash[0] / 2`).
+                for piece in dash_pieces(&path.shaft, pattern, pattern[0] / 2.0) {
+                    vg.move_to(piece[0][0] as f32, piece[0][1] as f32);
+                    for point in &piece[1..] {
+                        vg.line_to(point[0] as f32, point[1] as f32);
+                    }
+                }
+            }
+        }
+        vg.stroke_width(width);
+        vg.stroke();
+        // A tick across each end, in `tickWidth` at the shaft's alpha.
+        vg.begin_path();
+        vg.move_to(path.start_tick[0][0] as f32, path.start_tick[0][1] as f32);
+        vg.line_to(path.start_tick[1][0] as f32, path.start_tick[1][1] as f32);
+        vg.move_to(path.end_tick[0][0] as f32, path.end_tick[0][1] as f32);
+        vg.line_to(path.end_tick[1][0] as f32, path.end_tick[1][1] as f32);
+        vg.stroke_width(LINE_TICK_WIDTH);
+        vg.stroke();
+        if let Some(head) = path.head {
+            vg.begin_path();
+            vg.move_to(head[0][0] as f32, head[0][1] as f32);
+            vg.line_to(head[1][0] as f32, head[1][1] as f32);
+            vg.line_to(head[2][0] as f32, head[2][1] as f32);
+            vg.close_path();
+            vg.fill();
+        }
+        vg.global_alpha(1.0);
+    }
 }
 
 #[cfg(test)]

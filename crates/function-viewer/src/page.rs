@@ -134,7 +134,7 @@ fn plane_box(app: &App) -> Option<clay::BoundingBox> {
 /// after the layout (the button's box derives from the canvas's), before the
 /// regions resolve.
 fn declare_plane_button(app: &mut App) {
-    if !crate::overlay::button_visible() {
+    if !crate::overlay::button_visible(app.camera.center, app.camera.scale) {
         return;
     }
     let Some(canvas) = plane_box(app) else {
@@ -159,7 +159,7 @@ fn declare_plane_button(app: &mut App) {
 /// legend on the content box, then the overlay's brackets and button. Runs
 /// after the Clay commands (over the page background), before the
 /// transition's fade.
-fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
+fn draw_plane(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Time) {
     let Some(canvas) = plane_box(app) else {
         return;
     };
@@ -173,6 +173,18 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     // through `plot.rs`): the whole curve at rest, the old fading under the
     // drawing new one mid-switch.
     let curves = crate::plot::curves(&app.shown);
+    // The transform the plane shows: the live values (h6-curve's merge reads
+    // its flip-aware `shown` here instead; the two call lines stay).
+    let live = crate::transform_curves::Transform {
+        a: *app.a_param.get(),
+        b: *app.b_param.get(),
+        h: *app.h_param.get(),
+        k: *app.k_param.get(),
+    };
+    let slug = *app.func_param.get();
+    let unit = crate::functions::unit_x(slug);
+    let handles = crate::transform_curves::transform_handles(slug, unit, live);
+    let lines = crate::transform_curves::transform_lines(app.state.lit(), slug, unit, live);
     // Natively fonts are always loaded, so the plane always shows its text;
     // the pre-font grid-only state is recorded, not reproduced.
     crate::plane::paint_plane(
@@ -185,6 +197,9 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
         true,
         &curves,
         theme.colors[mv_theme::Token::ChartLine],
+        &handles,
+        &lines,
+        theme.colors[mv_theme::Token::Primary],
     );
     let overlay = crate::overlay::overlay_box(&canvas);
     let ocolors = crate::overlay::overlay_colors(theme);
@@ -197,6 +212,18 @@ fn draw_plane(app: &mut App, theme: &mv_theme::Theme) {
     let hovered = app.input.hover.kind == HitKind::ReturnToCenter;
     let focused = app.input.focus.kind == HitKind::ReturnToCenter;
     crate::overlay::paint_button(&mut app.vg, &button, &ocolors, hovered, focused);
+    // The tooltip's hover clock: armed while the pointer is on the button,
+    // dropped the moment it leaves (the CSS `:hover` rule).
+    if hovered {
+        if app.overlay_tip_since.is_none() {
+            app.overlay_tip_since = Some(now);
+        }
+    } else {
+        app.overlay_tip_since = None;
+    }
+    if crate::overlay::tip_visible(app.overlay_tip_since, focused, app.input.focus_visible, now) {
+        crate::overlay::paint_tip(&mut app.fonts, &mut app.vg, &button, &ocolors);
+    }
 }
 
 /// Paints one frame: the page background, the layout, and the transition's
@@ -233,7 +260,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         .active
         .map(|active| (active, Transition::progress(active, now)));
     draw_commands(app, density, &commands);
-    draw_plane(app, &theme);
+    draw_plane(app, &theme, now);
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);

@@ -132,6 +132,10 @@ pub struct App {
     pub scrub_rest: Option<(crate::state::TransformParam, crate::app_loop::Time)>,
     /// The parameter whose rest tip shows (resolved when the timer fires).
     pub scrub_resting: Option<crate::state::TransformParam>,
+    /// When the return-to-centre hover began, on the app's clock; `None`
+    /// while the pointer is elsewhere (h6-handles; the tooltip shows past
+    /// its 400 ms delay).
+    pub overlay_tip_since: Option<crate::app_loop::Time>,
 }
 
 impl App {
@@ -294,6 +298,7 @@ impl App {
             scrub_hold: None,
             scrub_rest: None,
             scrub_resting: None,
+            overlay_tip_since: None,
         }
     }
 }
