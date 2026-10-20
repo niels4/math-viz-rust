@@ -10,6 +10,7 @@ click 331.5 450.5
 type "2.5"
 key ArrowUp
 key ArrowDown shift
+wait 400
 shot box-arrows-typing
 key Escape
 wait 500

@@ -370,7 +370,10 @@ fn field(app: &mut App, param: TransformParam, shown: &str, field_ink: clay::Col
         y: clay::LayoutAlignmentY::Center,
     };
     crate::ui::ui_scope(app, mv_clay::id(FIELD_ID, index), &decl, |app| {
-        let selected = app.drafts[param].is_selected(shown);
+        // The selection shows only while focused: leaving the field (Esc,
+        // reset, clicking away) keeps the caret but drops the paint, as the
+        // blurred DOM input does.
+        let selected = app.input.focus == field_hit(param) && app.drafts[param].is_selected(shown);
         let mut run = crate::ui::empty_decl();
         run.layout.sizing = clay::Sizing {
             width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
