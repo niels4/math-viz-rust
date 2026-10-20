@@ -1,0 +1,346 @@
+//! The flip animation: a damped spring turning the curve through flat.
+//!
+//! Ported from math-viz2 at `5cef052`
+//! (`src/components/views/FunctionViewer/useShownTransform.ts`): the flip
+//! steps through [`ShownTransform::step`], once per frame on the app's
+//! clock, exactly like the hook's `requestAnimationFrame` loop. The coder
+//! owns the `flip` value (h6-curve appends `App.state.flip:
+//! Option<Flip>`) and wires the app's reduced-motion setting in as
+//! `can_animate`, as `plot::Shown::switch_to` does.
+
+use crate::state::TransformParam;
+use crate::transform_curves::Transform;
+
+/// How long the flip takes, in ms (`durationMs`).
+pub const DURATION_MS: f64 = 1000.0;
+
+/// The spring settles this far into the flip (`springSettleMs`): the curve
+/// has rung through flat and rests on the new value by 702 ms of the
+/// second it is given.
+pub const SPRING_SETTLE_MS: f64 = 702.0;
+
+/// The first frame of a flip counts as one frame in (`firstFrameMs`, as in
+/// `plot.rs` and `camera.rs`): the rAF loop's first callback carries no
+/// measured gap.
+pub const FIRST_FRAME_MS: f64 = 1000.0 / 60.0;
+
+/// The flip spring's stiffness (`stiffness`).
+pub const STIFFNESS: f64 = 170.0;
+
+/// The flip spring's damping (`damping`).
+pub const DAMPING: f64 = 26.0;
+
+/// A pending flip: the parameter, the value it flips from and to
+/// (`flipAtom`), and the press identity. `seq` is the hook's object
+/// identity: the creator sets it from a counter that advances on every
+/// press, so a second press with the same values still counts as a new flip
+/// (the hook's `flip !== seenFlip` compares atoms, not values).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Flip {
+    pub param: TransformParam,
+    pub from: f64,
+    pub to: f64,
+    pub seq: u64,
+}
+
+/// The damped spring's share of the way from `from` to `to` at `ms` after
+/// the flip (`springAt`): 1 minus the decaying oscillation at
+/// `t = ((ms / duration) * settle) / 1000`, with `decay = damping / 2` and
+/// `ringing = sqrt(stiffness - decay²)`.
+#[must_use]
+pub fn spring_at(ms: f64) -> f64 {
+    let decay = DAMPING / 2.0;
+    let ringing = (STIFFNESS - decay * decay).sqrt();
+    let t = ((ms / DURATION_MS) * SPRING_SETTLE_MS) / 1000.0;
+    1.0 - (-decay * t).exp() * ((ringing * t).cos() + (decay / ringing) * (ringing * t).sin())
+}
+
+/// A flip in flight: what the plane showed when it started, what it turns
+/// toward, and the ms since (`Jump`). Like `plot::Shown`, the next step is
+/// the switch's first frame and carries [`FIRST_FRAME_MS`].
+struct Jump {
+    from: Transform,
+    to: Transform,
+    elapsed: f64,
+    first_frame: bool,
+}
+
+/// What the flip animation shows: the pending flip it has seen (the hook's
+/// `seenFlip`) and the jump in flight, if any. The live transform stays
+/// with the caller (the query params); `step` blends the two.
+#[derive(Default)]
+pub struct ShownTransform {
+    jump: Option<Jump>,
+    seen: Option<Flip>,
+}
+
+impl ShownTransform {
+    /// The steady state: no flip seen, nothing in flight.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Whether a flip is still turning the curve (the hook's rAF loop is
+    /// still scheduled; the vitest's `frames.size`).
+    #[must_use]
+    pub fn is_animating(&self) -> bool {
+        self.jump.is_some()
+    }
+
+    /// The transform one frame shows (`shownDuring(jump, transform)`): the
+    /// live values, except each parameter still travelling toward the
+    /// jump's target, which blends from `from` to `to` at the spring's
+    /// share. A value typed mid-turn differs from the target and shows at
+    /// once, as the TypeScript's `===` check does.
+    pub fn shown(&self, transform: Transform) -> Transform {
+        let Some(jump) = &self.jump else {
+            return transform;
+        };
+        let share = spring_at(jump.elapsed);
+        let mut out = transform;
+        for param in [
+            TransformParam::A,
+            TransformParam::B,
+            TransformParam::H,
+            TransformParam::K,
+        ] {
+            if transform.get(param) == jump.to.get(param) {
+                out = out.with(
+                    param,
+                    jump.from.get(param) + (jump.to.get(param) - jump.from.get(param)) * share,
+                );
+            }
+        }
+        out
+    }
+
+    /// Adopt a flip the animation has not seen, without advancing (the
+    /// hook's render-phase step): the jump starts at elapsed 0 with its
+    /// first frame pending, so the press's own turn still draws the old
+    /// value. With no new flip, or motion reduced, only the seen mark moves.
+    pub fn adopt(&mut self, flip: Option<Flip>, transform: Transform, can_animate: bool) {
+        if self.seen != flip {
+            self.seen = flip;
+            if let Some(pending) = flip
+                && can_animate
+            {
+                let from = self.shown(transform.with(pending.param, pending.from));
+                self.jump = Some(Jump {
+                    from,
+                    to: transform.with(pending.param, pending.to),
+                    elapsed: 0.0,
+                    first_frame: true,
+                });
+            }
+        }
+    }
+
+    /// One animation frame: adopt through [`adopt`](Self::adopt), advance
+    /// the jump by the frame's `dt`, and return the transform to show
+    /// (`from` is what the plane shows with the flipped param at its old
+    /// value, `to` is the live transform with it at its new value). Past
+    /// the duration the flip ends and the live transform shows whole. At
+    /// rest the state is untouched and the live transform returns, so
+    /// stepping past the end is harmless (the hook's loop simply no longer
+    /// runs).
+    pub fn step(
+        &mut self,
+        flip: Option<Flip>,
+        transform: Transform,
+        dt: f64,
+        can_animate: bool,
+    ) -> Transform {
+        self.adopt(flip, transform, can_animate);
+        let finished = if let Some(jump) = self.jump.as_mut() {
+            let dt = if jump.first_frame { FIRST_FRAME_MS } else { dt };
+            jump.first_frame = false;
+            if jump.elapsed + dt >= DURATION_MS {
+                true
+            } else {
+                jump.elapsed += dt;
+                false
+            }
+        } else {
+            false
+        };
+        if finished {
+            self.jump = None;
+        }
+        self.shown(transform)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `toBeCloseTo(expected, 2)`: within half a hundredth (the `plot.rs`
+    /// precedent).
+    fn assert_close_to(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 0.005,
+            "expected {actual} to be close to {expected}"
+        );
+    }
+
+    /// The test rig: the live transform (the query params the box writes at
+    /// once), the pending flip, and the last plane output. Frames run 1000/60
+    /// ms apart, exactly like the vitest `runFrames`.
+    struct Rig {
+        live: Transform,
+        flip: Option<Flip>,
+        shown: ShownTransform,
+        plane: Transform,
+        can_animate: bool,
+        presses: u64,
+    }
+
+    impl Rig {
+        fn at_a2() -> Self {
+            let live = Transform {
+                a: 2.0,
+                ..Transform::IDENTITY
+            };
+            Self {
+                live,
+                flip: None,
+                shown: ShownTransform::new(),
+                plane: live,
+                can_animate: true,
+                presses: 0,
+            }
+        }
+
+        /// The flip button: the flip pends and the value writes through at
+        /// once (the box shows the new value while the plane still turns).
+        /// Every press advances the identity, as each click mints a fresh
+        /// flip object.
+        fn click_flip(&mut self) {
+            let value = self.live.a;
+            self.flip = Some(Flip {
+                param: TransformParam::A,
+                from: value,
+                to: -value,
+                seq: self.presses,
+            });
+            self.presses += 1;
+            self.live.a = -value;
+        }
+
+        fn frames(&mut self, count: i32) {
+            for _ in 0..count {
+                self.plane =
+                    self.shown
+                        .step(self.flip, self.live, FIRST_FRAME_MS, self.can_animate);
+            }
+        }
+
+        /// The press's own turn: adopt without advancing, then draw (the
+        /// hook's render phase runs before any frame passes).
+        fn press(&mut self) {
+            self.shown.adopt(self.flip, self.live, self.can_animate);
+            self.plane = self.shown.shown(self.live);
+        }
+    }
+
+    #[test]
+    fn flipping_a_2_turns_the_curve_over_through_flat_while_the_box_shows_minus_2_at_once() {
+        let mut rig = Rig::at_a2();
+        assert_close_to(rig.plane.a, 2.0);
+
+        rig.click_flip();
+        // The box shows the new value at once; the plane still shows the old.
+        assert_eq!(rig.live.a, -2.0);
+        assert_close_to(rig.plane.a, 2.0);
+
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.07);
+
+        rig.frames(6);
+        assert_close_to(rig.plane.a, -0.19);
+
+        rig.frames(31);
+        assert_close_to(rig.plane.a, -1.96);
+
+        rig.frames(18);
+        assert_close_to(rig.plane.a, -2.0);
+        assert!(!rig.shown.is_animating());
+    }
+
+    #[test]
+    fn a_value_typed_while_the_curve_turns_over_shows_at_once() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.07);
+
+        // Typing -1 and pressing Enter writes the live value at once.
+        rig.live.a = -1.0;
+        rig.frames(1);
+        assert_close_to(rig.plane.a, -1.0);
+    }
+
+    #[test]
+    fn with_reduced_motion_flipping_a_2_shows_minus_2_at_once() {
+        let mut rig = Rig::at_a2();
+        rig.can_animate = false;
+        assert_close_to(rig.plane.a, 2.0);
+
+        rig.click_flip();
+        rig.frames(1);
+        assert_close_to(rig.plane.a, -2.0);
+        assert!(!rig.shown.is_animating());
+    }
+
+    #[test]
+    fn the_press_turn_draws_2_00_before_any_frame_passes() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        // The box shows the new value at once; the press's own turn still
+        // draws the old one, as the hook adopts the jump during render.
+        assert_eq!(rig.live.a, -2.0);
+        rig.press();
+        assert_eq!(rig.plane.a, 2.0);
+        assert!(rig.shown.is_animating());
+    }
+
+    #[test]
+    fn a_re_flip_mid_spring_restarts_from_the_displayed_position() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.07);
+
+        // Pressing flip again turns back from the displayed 1.07, not from
+        // the box's -2: the hook blends the in-flight jump from the shown
+        // value (`shownDuring(jump, {...transform, [param]: flip.from})`).
+        rig.click_flip();
+        assert_eq!(rig.live.a, 2.0);
+        rig.frames(6);
+        assert_close_to(rig.plane.a, 1.28);
+        assert!(rig.shown.is_animating());
+    }
+
+    #[test]
+    fn a_second_press_with_the_same_values_restarts_the_animation() {
+        let mut rig = Rig::at_a2();
+
+        rig.click_flip();
+        rig.frames(61);
+        assert_close_to(rig.plane.a, -2.0);
+        assert!(!rig.shown.is_animating());
+
+        // Typing the value back and pressing flip again pends the same
+        // {param, from, to} with a fresh identity: the hook compares atoms,
+        // not values, so the animation restarts instead of being swallowed.
+        rig.live.a = 2.0;
+        rig.click_flip();
+        rig.frames(1);
+        assert!(rig.shown.is_animating());
+        assert_close_to(rig.plane.a, 1.96);
+    }
+}

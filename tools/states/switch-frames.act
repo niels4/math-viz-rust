@@ -1,0 +1,14 @@
+# switch-frames (H3): frames of the x-to-x2 switch on the paused clock.
+# shot switch-f0 shows the render-phase curves (old whole, new at draw 0);
+# the frames lines shoot at +83, +450 and +1000 ms after the click.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 174.5 187
+shot switch-f0
+frames switch-f83 every 83 for 83
+frames switch-f450 every 367 for 367
+frames switch-f1000 every 550 for 550

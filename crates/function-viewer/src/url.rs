@@ -81,6 +81,13 @@ pub struct QueryParam<T: 'static> {
 }
 
 impl<T: 'static> QueryParam<T> {
+    /// Whether a debounced write waits for its deadline (the loop stays
+    /// awake for it, as for an animating camera).
+    #[must_use]
+    pub fn has_pending(&self) -> bool {
+        self.pending.is_some()
+    }
+
     /// Binds the def to the query: the initial value parses as
     /// `queryParamAtom`'s does (`parse(raw) ?? default`), with `last_raw`
     /// seeded, as the hook's mount-time `syncFromUrl` leaves it.

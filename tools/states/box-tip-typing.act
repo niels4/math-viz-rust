@@ -1,0 +1,13 @@
+# box-tip-typing (h5-box): the typing tip while a's field has the focus.
+# Enter apply - Esc cancel - arrows nudge 0.1.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 331.5 450.5
+wait 300
+shot box-tip-typing
+key Escape
+wait 500

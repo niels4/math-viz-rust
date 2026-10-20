@@ -1,0 +1,16 @@
+# box-arrows-typing (h5-box): type into a's box, ArrowUp, then Shift+ArrowDown.
+# Nudges measure from the typed text (2.5 -> 2.60 -> 2.59 on the scale).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 331.5 450.5
+type "2.5"
+key ArrowUp
+key ArrowDown shift
+wait 400
+shot box-arrows-typing
+key Escape
+wait 500

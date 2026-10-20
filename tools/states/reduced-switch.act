@@ -1,0 +1,12 @@
+# reduced-switch (H3): with reduced motion, picking x2 shows it whole at
+# once: no fade, no draw-on, no frames to run.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 174.5 187
+wait 500
+shot reduced-switch

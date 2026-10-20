@@ -1,0 +1,14 @@
+# box-drag-out (h5-box): k's box dragged far out of the row, still held.
+# The value follows the pointer, the row stays lit, no text selects.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 494.5
+down
+move 631.5 694.5 over 120
+shot box-drag-out
+up
+wait 1200

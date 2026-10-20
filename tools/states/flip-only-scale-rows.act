@@ -1,0 +1,9 @@
+# flip-only-scale-rows (H5): at rest — toggles on the a and b rows only, none
+# on k or h; the reset slot keeps 24 px on every row.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot flip-only-scale-rows

@@ -1,0 +1,14 @@
+# box-esc (h5-box): from k=2, open the field, type, Esc restores 2.00.
+# Focus leaves nowhere; the URL shows k=2 again.
+query k=2
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 331.5 494.5
+type "7"
+key Escape
+wait 800
+shot box-esc

@@ -51,6 +51,24 @@ pub enum Type {
     MenuHelp,
     /// A selected theme row's label: Work Sans 600, 16 px.
     StrongBody,
+    /// The sidebar Function card's legend: Work Sans 700, 17 px.
+    Heading,
+    /// The function picker's option runs: STIX Two Text 400, 20 px.
+    Maths,
+    /// The picker's italic `x` runs: STIX Two Text italic 400, 20 px.
+    MathsItalic,
+    /// A transform row's name: Work Sans 600, 15 px.
+    RowName,
+    /// A transform row chip's letter: STIX Two Text italic 400, 19 px.
+    ChipLetter,
+    /// A transform row's number field: Roboto Mono 500, 17 px.
+    FieldText,
+    /// A scrub box's tip: Work Sans 400, 13 px.
+    TipText,
+    /// A scrub tip's key cap: Roboto Mono 600, 12 px.
+    KeyText,
+    /// The Transform card's Reset all: Work Sans 600, 13 px.
+    ResetAll,
 }
 
 /// A style's face, em size, tracking and line box, as its CSS class sets them.
@@ -118,6 +136,72 @@ pub fn type_style(ty: Type) -> TypeStyle {
             tracking: 0.0,
             line_height: 19.0,
         },
+        // The card legend's 28 px line box, measured on the reference.
+        Type::Heading => TypeStyle {
+            face: Face::WorkSans700,
+            size: 17.0,
+            tracking: 0.0,
+            line_height: 28.0,
+        },
+        // The option runs' 25 px line box, measured on the reference.
+        Type::Maths => TypeStyle {
+            face: Face::Stix400,
+            size: 20.0,
+            tracking: 0.0,
+            line_height: 25.0,
+        },
+        Type::MathsItalic => TypeStyle {
+            face: Face::Stix400Italic,
+            size: 20.0,
+            tracking: 0.0,
+            line_height: 25.0,
+        },
+        // The row name's 18 px line box, measured on the reference.
+        Type::RowName => TypeStyle {
+            face: Face::WorkSans600,
+            size: 15.0,
+            tracking: 0.0,
+            line_height: 18.0,
+        },
+        // The chip letter's 24 px line box, measured on the reference.
+        Type::ChipLetter => TypeStyle {
+            face: Face::Stix400Italic,
+            size: 19.0,
+            tracking: 0.0,
+            line_height: 24.0,
+        },
+        // The field's 22 px line box, measured on the reference. The CSS
+        // `tabular-nums` is a no-op behind a monospace face, so the style
+        // carries no features (the plane's mono labels do the same).
+        Type::FieldText => TypeStyle {
+            face: Face::RobotoMono500,
+            size: 17.0,
+            tracking: 0.0,
+            line_height: 22.0,
+        },
+        // The tip's 15 px line box under a value box, measured on the
+        // reference (`ScrubValue.module.css .tip`: 400 13 px/15 px).
+        Type::TipText => TypeStyle {
+            face: Face::WorkSans400,
+            size: 13.0,
+            tracking: 0.0,
+            line_height: 15.0,
+        },
+        // A key cap's 16 px line box in the typing tip (`.key`: 600
+        // 12 px/16 px; the 21 px cap height is the layout's).
+        Type::KeyText => TypeStyle {
+            face: Face::RobotoMono600,
+            size: 12.0,
+            tracking: 0.0,
+            line_height: 16.0,
+        },
+        // Reset all's 15 px line box (`line-height: 15px`).
+        Type::ResetAll => TypeStyle {
+            face: Face::WorkSans600,
+            size: 13.0,
+            tracking: 0.0,
+            line_height: 15.0,
+        },
     }
 }
 
@@ -131,6 +215,15 @@ fn type_from_id(id: u16) -> Type {
         5 => Type::OptionText,
         6 => Type::MenuHelp,
         7 => Type::StrongBody,
+        8 => Type::Heading,
+        9 => Type::Maths,
+        10 => Type::MathsItalic,
+        11 => Type::RowName,
+        12 => Type::ChipLetter,
+        13 => Type::FieldText,
+        14 => Type::TipText,
+        15 => Type::KeyText,
+        16 => Type::ResetAll,
         _ => unreachable!("clay font id names a text style"),
     }
 }
@@ -274,6 +367,9 @@ mod tests {
             (Type::OptionText, "System"),
             (Type::MenuHelp, "Always dark."),
             (Type::StrongBody, "Arctic Ice"),
+            (Type::Heading, "Function"),
+            (Type::Maths, "sin "),
+            (Type::MathsItalic, "x"),
         ];
         app.clay
             .as_mut()

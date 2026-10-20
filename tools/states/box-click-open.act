@@ -1,0 +1,12 @@
+# box-click-open (h5-box): a click that never drags opens the field.
+# The field shows 1.00 selected; the typing tip shows under the box.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+click 331.5 450.5
+shot box-click-open
+key Escape
+wait 500

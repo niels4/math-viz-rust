@@ -1,0 +1,16 @@
+# box-drag-ctrl (h5-box): k's box dragged 30 px, Ctrl pressed mid-drag.
+# The value snaps to the whole (0.6 -> 1) with the warning outline.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 494.5
+down
+move 361.5 494.5 over 80
+hold Control
+shot box-drag-ctrl
+up
+release Control
+wait 1200

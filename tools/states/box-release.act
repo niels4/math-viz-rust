@@ -1,0 +1,14 @@
+# box-release (h5-box): k's box dragged 50 px and released.
+# The URL carries k=1 after the debounce flush.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 331.5 494.5
+down
+move 381.5 494.5 over 80
+up
+wait 1200
+shot box-release
