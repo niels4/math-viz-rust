@@ -21,7 +21,7 @@ pub fn platform_signals() {
     let added = unsafe { SetConsoleCtrlHandler(Some(on_console_ctrl), 1) };
     if added == 0 {
         eprintln!(
-            "function-viewer-rust: signals: no console handler; Ctrl-C waits for the window's next event"
+            "math-viz2-rust: signals: no console handler; Ctrl-C waits for the window's next event"
         );
         return;
     }

@@ -15,6 +15,106 @@ pub const SNOWFLAKE_PATHS: [&str; 2] = [
     "M12 2l-2 2.5M12 2l2 2.5M12 22l-2-2.5M12 22l2-2.5",
 ];
 
+/// The page's own icons: the wordmark flake and the settings gear.
+///
+/// Ported from math-viz2's `src/components/icons/icons.tsx` (`Logo`,
+/// `GearIcon`) and `TopBar/icons.tsx`: the flake's two stroke groups are the
+/// favicon's mark above; the gear is a 3.2 hub with its toothed ring path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IconKind {
+    Logo,
+    Gear,
+}
+
+/// An icon to paint: its kind and its ink, already resolved to a colour.
+#[derive(Clone, Copy, Debug)]
+pub struct Icon {
+    pub kind: IconKind,
+    pub ink: mv_nvg::Color,
+}
+
+/// The gear's toothed ring, as `GearIcon` writes it (viewBox 24).
+pub const GEAR_PATH: &str = "M19.4 13.5a7.5 7.5 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 2h-4l-.5 2.6a7.6 7.6 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5L10 22h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4-2-1.5z";
+
+/// The gear hub's radius, as `GearIcon` writes it.
+pub const GEAR_HUB_RADIUS: f32 = 3.2;
+
+/// The icons' viewBox, as both components write it.
+pub const ICON_VIEWBOX: f32 = 24.0;
+
+/// The icons' stroke width, as both components write it.
+pub const ICON_STROKE: f32 = 1.8;
+
+/// Paints an icon in a `size` box at `at`: the viewBox scaled to the box,
+/// stroked round in its ink.
+pub fn draw_icon(vg: &mut mv_nvg::Context, at: [f32; 2], size: f32, icon: &Icon) {
+    vg.save();
+    vg.translate(at[0], at[1]);
+    let scale = size / ICON_VIEWBOX;
+    vg.scale(scale, scale);
+    vg.stroke_color(icon.ink);
+    vg.stroke_width(ICON_STROKE);
+    vg.line_cap(mv_nvg::LineCapType::ROUND);
+    match icon.kind {
+        IconKind::Logo => {
+            for d in SNOWFLAKE_PATHS {
+                vg.begin_path();
+                if !crate::svgpath::draw_path(vg, d) {
+                    eprintln!("math-viz2-rust: icon path NanoVG can't draw: {d:?}");
+                }
+                vg.stroke();
+            }
+        }
+        IconKind::Gear => {
+            vg.line_join(mv_nvg::LineCapType::ROUND);
+            vg.begin_path();
+            vg.circle(ICON_VIEWBOX / 2.0, ICON_VIEWBOX / 2.0, GEAR_HUB_RADIUS);
+            vg.stroke();
+            vg.begin_path();
+            if !crate::svgpath::draw_path(vg, GEAR_PATH) {
+                eprintln!("math-viz2-rust: icon path NanoVG can't draw: {GEAR_PATH:?}");
+            }
+            vg.stroke();
+        }
+    }
+    vg.restore();
+}
+
+// Frame-lived icon payloads: layout boxes an `Icon` per custom element, and
+// the paint reads it back. The boxes outlive the call, so they live in a
+// frame store cleared by the frame's draw.
+thread_local! {
+    // Each icon boxed: pushing to the `Vec` may move it, while the boxed
+    // icon the Clay config points at never moves.
+    #[allow(clippy::vec_box)]
+    static CUSTOMS: std::cell::RefCell<Vec<Box<Icon>>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Empties the frame's icon store; the frame's draw calls it first.
+pub fn clear_customs() {
+    CUSTOMS.with(|store| store.borrow_mut().clear());
+}
+
+/// The Clay custom config painting `icon`.
+pub fn custom_data(icon: Icon) -> mv_sys::clay::CustomElementConfig {
+    let ptr = CUSTOMS.with(|store| {
+        let mut store = store.borrow_mut();
+        store.push(Box::new(icon));
+        std::ptr::from_ref::<Icon>(store.last().expect("icon just pushed"))
+            .cast_mut()
+            .cast::<std::ffi::c_void>()
+    });
+    mv_sys::clay::CustomElementConfig { customData: ptr }
+}
+
+/// The icon a custom command paints, if it is one.
+pub fn custom_of(
+    command: &mv_sys::clay::RenderCommand,
+) -> Option<(&Icon, mv_sys::clay::CornerRadius)> {
+    mv_clay::custom_of::<Icon>(command)
+}
+
 /// The favicon's tile and mark colours.
 pub const FAVICON_TILE: [u8; 4] = [0x10, 0x19, 0x21, 0xff];
 pub const FAVICON_MARK: [u8; 4] = [0x70, 0xc0, 0xa0, 0xff];
@@ -41,7 +141,7 @@ pub fn set_window_icon(app: &mut App) {
         match sdl3::surface::Surface::new(n as u32, n as u32, sdl3::pixels::PixelFormat::RGBA32) {
             Ok(surface) => surface,
             Err(e) => {
-                eprintln!("function-viewer-rust: SDL_CreateSurface: {e}");
+                eprintln!("math-viz2-rust: SDL_CreateSurface: {e}");
                 return;
             }
         };
@@ -55,10 +155,7 @@ pub fn set_window_icon(app: &mut App) {
     unpremultiply(&mut top_down);
     surface_fill(&mut surface, &top_down);
     if !app.window_mut().set_icon(&surface) {
-        eprintln!(
-            "function-viewer-rust: SDL_SetWindowIcon: {}",
-            sdl3::get_error()
-        );
+        eprintln!("math-viz2-rust: SDL_SetWindowIcon: {}", sdl3::get_error());
     }
 }
 
@@ -78,7 +175,7 @@ pub fn draw_favicon(vg: &mut mv_nvg::Context) {
     for d in SNOWFLAKE_PATHS {
         vg.begin_path();
         if !crate::svgpath::draw_path(vg, d) {
-            eprintln!("function-viewer-rust: path data NanoVG can't draw: {d:?}");
+            eprintln!("math-viz2-rust: path data NanoVG can't draw: {d:?}");
         }
         vg.stroke();
     }

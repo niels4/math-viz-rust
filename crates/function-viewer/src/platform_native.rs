@@ -135,7 +135,7 @@ pub fn platform_window_made(
     {
         if space != mv_theme::Space::Srgb {
             println!(
-                "function-viewer-rust: colour space: SDL can't tag a window {} here; drawing in sRGB",
+                "math-viz2-rust: colour space: SDL can't tag a window {} here; drawing in sRGB",
                 mv_theme::color::SPACE_WORDS[space],
             );
         }
@@ -159,7 +159,7 @@ pub fn platform_init(app: &mut App) {
         sdl3::sys::video::SDL_GL_SetSwapInterval(i32::from(app.r#loop.pace != Pace::Display));
     }
     println!(
-        "function-viewer-rust: frames paced {}; the window's display refreshes at {:.0} Hz",
+        "math-viz2-rust: frames paced {}; the window's display refreshes at {:.0} Hz",
         if app.r#loop.pace == Pace::Display {
             "by the display"
         } else {
@@ -218,7 +218,7 @@ pub fn platform_pace(app: &mut App, awake: bool) {
         };
         sdl3::hint::set("SDL_MAIN_CALLBACK_RATE", value);
         if crate::trace() {
-            println!("function-viewer-rust: loop: callback rate {value}");
+            println!("math-viz2-rust: loop: callback rate {value}");
         }
     }
 }
@@ -376,7 +376,7 @@ pub fn platform_field_editing(_editing: bool) {}
 pub fn platform_prefs_store(dir: &str) -> String {
     if !dir.is_empty() {
         if let Err(err) = std::fs::create_dir_all(dir) {
-            eprintln!("function-viewer-rust: could not make {dir}: {err}");
+            eprintln!("math-viz2-rust: could not make {dir}: {err}");
         }
         let dir = dir.trim_end_matches('/');
         return format!("{dir}/prefs.json");
@@ -384,7 +384,7 @@ pub fn platform_prefs_store(dir: &str) -> String {
     match sdl3::filesystem::get_pref_path("mathviz", "math-viz2-rust") {
         Ok(base) => base.join("prefs.json").to_string_lossy().into_owned(),
         Err(err) => {
-            eprintln!("function-viewer-rust: SDL_GetPrefPath: {err}");
+            eprintln!("math-viz2-rust: SDL_GetPrefPath: {err}");
             String::new()
         }
     }
@@ -407,10 +407,7 @@ pub fn platform_save_prefs(app: &mut App, text: &str) -> bool {
         return false;
     }
     if let Err(err) = std::fs::write(&app.prefs_store, text) {
-        eprintln!(
-            "function-viewer-rust: could not write {}: {err}",
-            app.prefs_store
-        );
+        eprintln!("math-viz2-rust: could not write {}: {err}", app.prefs_store);
         return false;
     }
     true
@@ -421,7 +418,7 @@ pub fn platform_read_file(path: &str) -> (Vec<u8>, bool) {
     match std::fs::read(path) {
         Ok(data) => (data, true),
         Err(err) => {
-            eprintln!("function-viewer-rust: could not read {path}: {err}");
+            eprintln!("math-viz2-rust: could not read {path}: {err}");
             (Vec::new(), false)
         }
     }
@@ -430,7 +427,7 @@ pub fn platform_read_file(path: &str) -> (Vec<u8>, bool) {
 /// Makes a directory and its parents (the harness's shot directory).
 pub fn platform_make_dir(path: &str) -> bool {
     if let Err(err) = std::fs::create_dir_all(path) {
-        eprintln!("function-viewer-rust: could not make {path}: {err}");
+        eprintln!("math-viz2-rust: could not make {path}: {err}");
         return false;
     }
     true
@@ -439,7 +436,7 @@ pub fn platform_make_dir(path: &str) -> bool {
 /// Writes a whole file (the harness's JSON and the PNG).
 pub fn platform_write_file(path: &str, text: &str) -> bool {
     if let Err(err) = std::fs::write(path, text) {
-        eprintln!("function-viewer-rust: could not write {path}: {err}");
+        eprintln!("math-viz2-rust: could not write {path}: {err}");
         return false;
     }
     true
@@ -456,7 +453,7 @@ pub fn platform_write_file(path: &str, text: &str) -> bool {
 /// `Display P3`).
 pub fn platform_write_png(path: &str, size: [i32; 2], rgba: &[u8], space: mv_theme::Space) -> bool {
     let Some(png) = encode_png(size, rgba) else {
-        eprintln!("function-viewer-rust: could not write {path}");
+        eprintln!("math-viz2-rust: could not write {path}");
         return false;
     };
     let out = {
@@ -474,7 +471,7 @@ pub fn platform_write_png(path: &str, size: [i32; 2], rgba: &[u8], space: mv_the
         }
     };
     if let Err(err) = std::fs::write(path, &out) {
-        eprintln!("function-viewer-rust: could not write {path}: {err}");
+        eprintln!("math-viz2-rust: could not write {path}: {err}");
         return false;
     }
     true

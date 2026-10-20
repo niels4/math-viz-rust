@@ -28,6 +28,7 @@ pub mod icons;
 pub mod input;
 #[cfg(not(target_os = "emscripten"))]
 pub mod live;
+pub mod page;
 #[cfg(target_os = "macos")]
 pub mod platform_darwin;
 #[cfg(not(target_os = "emscripten"))]
@@ -41,6 +42,9 @@ pub mod platform_windows;
 pub mod prefs;
 pub mod scroll;
 pub mod svgpath;
+pub mod theme_state;
+pub mod top_bar;
+pub mod transition;
 pub mod typography;
 pub mod ui;
 
@@ -881,7 +885,7 @@ impl Main {
 
         let gl = load_gl(&video);
         println!(
-            "function-viewer-rust: GL {}",
+            "math-viz2-rust: GL {}",
             // SAFETY: `VERSION` returns a live string while the context stands.
             unsafe { gl.get_parameter_string(glow::VERSION) }
         );
@@ -942,10 +946,12 @@ impl Main {
             crate::prefs::load_prefs(&mut app);
             app.prefs = appearance(app.prefs, &options, app.system_scheme);
         }
+        // The theme state takes the stored triple and the platform's scheme.
+        crate::prefs::take_prefs_themes(&mut app);
         // The page query at start: `--query` (empty without it).
         app.url = options.query.clone();
         println!(
-            "function-viewer-rust: system {}, motion {}; showing {}",
+            "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
             if app.reduced_motion {
                 "reduced"
@@ -1041,7 +1047,7 @@ impl Main {
 
         let gl = load_gl(&video);
         println!(
-            "function-viewer-rust: GL {}",
+            "math-viz2-rust: GL {}",
             // SAFETY: `VERSION` returns a live string while the context stands.
             unsafe { gl.get_parameter_string(glow::VERSION) }
         );
@@ -1090,7 +1096,7 @@ impl Main {
         // loaded with one (`#function-viewer?center=1,2&scale=2`).
         app.url = platform_read_hash();
         println!(
-            "function-viewer-rust: system {}, motion {}; showing {}",
+            "math-viz2-rust: system {}, motion {}; showing {}",
             mv_theme::SCHEME_WORDS[app.system_scheme],
             if app.reduced_motion {
                 "reduced"
@@ -1210,7 +1216,7 @@ impl Main {
                 AppResultWithState::Continue(main)
             }
             Err(err) => {
-                eprintln!("function-viewer-rust init: {err}");
+                eprintln!("math-viz2-rust init: {err}");
                 // No state exists to hand SDL's quit callback (which asserts
                 // non-null), so exit outright: the `[ERROR]` lines above are
                 // the harness's failure signal.

@@ -30,24 +30,91 @@ fn face_from_id(id: u16) -> Face {
     }
 }
 
+/// The page's text styles, rebuilt from math-viz2's CSS: one per class that
+/// sets type (TopBar's wordmark, title and subtitle at this hash; the
+/// settings menu's come with h1-settings).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Type {
+    /// `TopBar.module.css .wordmark_text`: Work Sans 700, 24 px, 0.01 em.
+    Wordmark,
+    /// `TopBar.module.css .title`: Work Sans 700, 20 px.
+    Title,
+    /// `TopBar.module.css .subtitle`: Work Sans 600, 12 px, 0.08 em, uppercase.
+    Subtitle,
+    /// The sidebar stub's copy at this hash: Work Sans 400, 16 px.
+    Body,
+}
+
+/// A style's face, em size, tracking and line box, as its CSS class sets them.
+pub struct TypeStyle {
+    pub face: Face,
+    pub size: f32,
+    pub tracking: f32,
+    pub line_height: f32,
+}
+
+/// The style a type sets: sizes and tracking from the CSS above (0.01 em of
+/// 24 px is 0.24 px; 0.08 em of 12 px is 0.96 px), line boxes from the
+/// reference's measured boxes (28, 24 and 14 px).
+pub fn type_style(ty: Type) -> TypeStyle {
+    match ty {
+        Type::Wordmark => TypeStyle {
+            face: Face::WorkSans700,
+            size: 24.0,
+            tracking: 0.24,
+            line_height: 28.0,
+        },
+        Type::Title => TypeStyle {
+            face: Face::WorkSans700,
+            size: 20.0,
+            tracking: 0.0,
+            line_height: 24.0,
+        },
+        Type::Subtitle => TypeStyle {
+            face: Face::WorkSans600,
+            size: 12.0,
+            tracking: 0.96,
+            line_height: 14.0,
+        },
+        // The stub's `normal` line box, measured on the reference.
+        Type::Body => TypeStyle {
+            face: Face::WorkSans400,
+            size: 16.0,
+            tracking: 0.0,
+            line_height: 19.0,
+        },
+    }
+}
+
+fn type_from_id(id: u16) -> Type {
+    match id {
+        0 => Type::Wordmark,
+        1 => Type::Title,
+        2 => Type::Subtitle,
+        3 => Type::Body,
+        _ => unreachable!("clay font id names a text style"),
+    }
+}
+
 /// Clay's measure of text: a word of a text element at a time, with the whole
 /// text's own kerning across its spaces, so the words and Clay's spaces add
 /// up to the text's advance; a space alone is Clay's own, between words. The
-/// height is the config's line box.
+/// height is the style's line box.
 pub fn measure_text(
     app: &mut App,
     slice: &clay::StringSlice,
     config: &clay::TextElementConfig,
 ) -> clay::Dimensions {
-    // The theme rides in the font id's high byte, as before; the measure
-    // needs only the face, so the theme half is unread here.
+    // The font id names the text style; the style owns the face, size and
+    // tracking, so the config's own numbers stay unread here.
+    let typed = type_style(type_from_id(config.fontId & 0xff));
     let style = Style {
-        face: face_from_id(config.fontId & 0xff),
-        size: f32::from(config.fontSize),
-        tracking: 0.0,
+        face: typed.face,
+        size: typed.size,
+        tracking: typed.tracking,
         features: Features::default(),
     };
-    let height = f32::from(config.lineHeight);
+    let height = typed.line_height;
     // Clay hands slices of the text it lays out; both pointers stay valid
     // for the measuring call, and the app's texts are retained for the
     // frame, so the reads are always valid UTF-8.
@@ -80,13 +147,65 @@ pub fn measure_text(
     }
 }
 
+/// Lays out one line of text in a style: the Clay text element with the
+/// style's id, size and line box, in `ink` (a Clay 0-to-255 colour).
+pub fn text(app: &mut App, id: clay::ElementId, ty: Type, content: &str, ink: clay::Color) {
+    let styled = type_style(ty);
+    let mut sizing = crate::ui::empty_decl();
+    sizing.layout.sizing = clay::Sizing {
+        width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+        height: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
+    };
+    crate::ui::ui_scope(app, id, &sizing, |app| {
+        let config = clay::TextElementConfig {
+            userData: content.len() as *mut std::ffi::c_void,
+            textColor: ink,
+            fontId: ty as u16,
+            fontSize: styled.size as u16,
+            letterSpacing: 0,
+            lineHeight: styled.line_height as u16,
+            wrapMode: clay::TextWrapMode::None,
+            textAlignment: clay::TextAlignment::Left,
+        };
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        clay.text(content, &config);
+    });
+}
+
+/// Paints a Clay text command in its style's face and box: the shaped run at
+/// the box's left, on the style's baseline.
+pub fn draw_text(app: &mut App, command: &clay::RenderCommand) {
+    // The walk only calls this on text commands, so the payload is there.
+    let data = mv_clay::text_of(command).expect("text command holds text");
+    let b = command.boundingBox;
+    let styled = type_style(type_from_id(data.fontId & 0xff));
+    let style = Style {
+        face: styled.face,
+        size: styled.size,
+        tracking: styled.tracking,
+        features: Features::default(),
+    };
+    // Clay hands a slice of the text it laid out, valid for the draw.
+    let line: &str = data.stringContents.as_str();
+    let y = b.y + mv_text::baseline(&mut app.fonts, styled.face, styled.size, styled.line_height);
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        style,
+        b.x,
+        y,
+        line,
+        crate::draw::nvg_color(data.textColor),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     /// Clay measures text through the text package: a text element laid out
     /// by Clay is as wide as the text package's advance of the whole text and
-    /// as tall as its line box, in every face.
+    /// as tall as its style's line box, in every page style.
     #[test]
     fn clay_measures_through_text() {
         let _guard = mv_clay::tests_lock();
@@ -94,11 +213,11 @@ mod tests {
         assert!(mv_text::init(&mut app.fonts));
         crate::ui::init_clay(&mut app);
 
-        let faces = [
-            (Face::WorkSans400, "Function Viewer", 24.0),
-            (Face::WorkSans600, "Horizontal shift", 15.0),
-            (Face::Stix400Italic, "x", 19.0),
-            (Face::RobotoMono500, "12.5", 13.0),
+        let lines = [
+            (Type::Wordmark, "MathViz"),
+            (Type::Title, "Function Viewer"),
+            (Type::Subtitle, "FUNCTIONS · TRANSFORMATIONS"),
+            (Type::Body, "Sidebar!"),
         ];
         app.clay
             .as_mut()
@@ -114,14 +233,15 @@ mod tests {
         let mut decl = crate::ui::empty_decl();
         decl.layout.layoutDirection = clay::LayoutDirection::TopToBottom;
         crate::ui::ui_scope(&mut app, mv_clay::id("Texts", 0), &decl, |app| {
-            for (face, text, size) in &faces {
+            for (ty, text) in &lines {
+                let styled = type_style(*ty);
                 let config = clay::TextElementConfig {
                     userData: text.len() as *mut std::ffi::c_void,
                     textColor: [0.0, 0.0, 0.0, 255.0],
-                    fontId: *face as u16,
-                    fontSize: *size as u16,
+                    fontId: *ty as u16,
+                    fontSize: styled.size as u16,
                     letterSpacing: 0,
-                    lineHeight: *size as u16,
+                    lineHeight: styled.line_height as u16,
                     wrapMode: clay::TextWrapMode::None,
                     textAlignment: clay::TextAlignment::Left,
                 };
@@ -140,24 +260,26 @@ mod tests {
             if command.commandType != clay::RenderCommandType::Text {
                 continue;
             }
-            let (face, text, size) = faces[found];
+            let (ty, text) = lines[found];
             found += 1;
+            let styled = type_style(ty);
             let style = Style {
-                face,
-                size,
-                tracking: 0.0,
+                face: styled.face,
+                size: styled.size,
+                tracking: styled.tracking,
                 features: Features::default(),
             };
             let want = mv_text::measure(&mut app.fonts, style, text);
             let b = command.boundingBox;
             assert!(
-                (b.width - want).abs() < 1e-3 && b.height == size,
-                "{face:?} {text:?}: Clay laid it out {} x {}, the text package measures {want} x {size}",
+                (b.width - want).abs() < 1e-3 && b.height == styled.line_height,
+                "{ty:?} {text:?}: Clay laid it out {} x {}, the text package measures {want} x {}",
                 b.width,
                 b.height,
+                styled.line_height,
             );
         }
-        assert_eq!(found, faces.len());
+        assert_eq!(found, lines.len());
         crate::ui::release_clay(&mut app);
         mv_text::destroy(&mut app.fonts);
     }

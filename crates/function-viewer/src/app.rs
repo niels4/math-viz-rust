@@ -58,6 +58,15 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub gl: Option<glow::Context>,
+    /// The theme picks: the light/dark selector, one theme per scheme, and
+    /// the system's scheme. The page draws the resolved theme.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub theme: crate::theme_state::ThemeState,
+    /// The theme cross-fade in flight, with the last stable frame's pixels.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub transition: crate::transition::Transition,
 }
 
 impl App {
@@ -181,6 +190,8 @@ impl App {
             // Uninitialised shaping fonts; `app_init` runs `mv_text::init`.
             fonts: mv_text::uninit(),
             url: String::new(),
+            theme: crate::theme_state::ThemeState::default(),
+            transition: crate::transition::Transition::default(),
         }
     }
 }
