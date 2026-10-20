@@ -137,6 +137,7 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     );
     let commands = layout_page(app);
     paint_bar_shadow(app, &theme);
+    paint_menu_shadow(app, &theme);
     let fading = app
         .transition
         .active
@@ -166,15 +167,45 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
     if ink[3] <= 0.0 {
         return;
     }
+    let Some(b) = element_box(app, mv_clay::id("TopBar", 0)) else {
+        return;
+    };
+    paint_shadow(
+        app,
+        b,
+        crate::top_bar::TOPBAR_RADIUS,
+        ink,
+    );
+}
+
+/// Paints the settings menu's shadow: 0 6 px 18 px in the shadow colour,
+/// skipped where transparent (the dark themes) and while closed.
+fn paint_menu_shadow(app: &mut App, theme: &mv_theme::Theme) {
+    if !app.settings.open {
+        return;
+    }
+    let ink = theme.colors[mv_theme::Token::ShadowColor];
+    if ink[3] <= 0.0 {
+        return;
+    }
+    let Some(b) = element_box(app, mv_clay::id(crate::settings::layout::MENU_ID, 0)) else {
+        return;
+    };
+    paint_shadow(app, b, crate::settings::layout::MENU_RADIUS, ink);
+}
+
+/// The laid-out box of an element, if the frame laid it out.
+fn element_box(app: &App, id: clay::ElementId) -> Option<clay::BoundingBox> {
     let data = app
         .clay
         .as_ref()
         .expect("clay context initialised")
-        .get_element_data(mv_clay::id("TopBar", 0));
-    if !data.found {
-        return;
-    }
-    let b = data.boundingBox;
+        .get_element_data(id);
+    data.found.then_some(data.boundingBox)
+}
+
+/// Paints a 0 6 px 18 px shadow behind the box.
+fn paint_shadow(app: &mut App, b: clay::BoundingBox, radius: f32, ink: mv_nvg::Color) {
     let shadow = ink;
     let transparent = [shadow[0], shadow[1], shadow[2], 0.0];
     let blur = 18.0;
@@ -184,7 +215,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         b.y + 6.0,
         b.width,
         b.height,
-        crate::top_bar::TOPBAR_RADIUS,
+        radius,
         feather,
         shadow,
         transparent,
@@ -196,11 +227,7 @@ fn paint_bar_shadow(app: &mut App, theme: &mv_theme::Theme) {
         b.width + blur * 4.0,
         b.height + blur * 4.0,
     );
-    crate::draw::rounded_rect(
-        &mut app.vg,
-        b,
-        crate::ui::corner_radius_all(crate::top_bar::TOPBAR_RADIUS),
-    );
+    crate::draw::rounded_rect(&mut app.vg, b, crate::ui::corner_radius_all(radius));
     app.vg.path_winding(mv_nvg::Winding::CW);
     app.vg.fill_paint(&paint);
     app.vg.fill();

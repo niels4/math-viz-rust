@@ -816,7 +816,9 @@ pub fn press_down(app: &mut App) {
 
 /// Routes a click: the release whose down-hit and up-hit agree. The gear
 /// toggles the menu; a cell or row picks through the `App` setters (which
-/// save and start the transition); anything else is no change.
+/// save and start the transition); anything else is no change. A pick drops
+/// hover, as the reference's re-render does: the view transition replaces
+/// the hovered nodes, and Chromium does not re-hover without a mouse move.
 pub fn click(app: &mut App, down: Hit) {
     let up = app.input.hover;
     if down != up {
@@ -833,6 +835,7 @@ pub fn click(app: &mut App, down: Hit) {
             app.set_light_dark(option);
             app.input.focus = down;
             app.input.focus_visible = false;
+            app.input.hover = Hit::default();
         }
         HitKind::SettingsTheme => {
             let scheme = app.theme.resolved_scheme();
@@ -840,6 +843,7 @@ pub fn click(app: &mut App, down: Hit) {
                 app.set_theme_slug(*slug);
                 app.input.focus = down;
                 app.input.focus_visible = false;
+                app.input.hover = Hit::default();
             }
         }
         _ => {}
@@ -922,6 +926,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                         .expect("focus names a cell");
                     let next = arrow_index(at, LIGHT_DARK_ORDER.len(), arrow);
                     app.set_light_dark(LIGHT_DARK_ORDER[next]);
+                    app.input.hover = Hit::default();
                     crate::input::set_focus(
                         app,
                         Hit {
@@ -937,6 +942,7 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
                     let slugs = shown_slugs(scheme);
                     let next = arrow_index(index, slugs.len(), arrow);
                     app.set_theme_slug(slugs[next]);
+                    app.input.hover = Hit::default();
                     crate::input::set_focus(
                         app,
                         Hit {
