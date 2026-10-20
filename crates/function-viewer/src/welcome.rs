@@ -65,12 +65,13 @@ impl Route {
 /// The still the hero graphs (h10-loop's `welcomeStill`, through h10-p-loop's
 /// `welcome_loop`: sin x at a 3, k 0, b 1.48, h 1). h10-loop replaces this
 /// constant with the loop's state, one line.
-pub(crate) const WELCOME_STILL: crate::transform_curves::Transform = crate::transform_curves::Transform {
-    a: 3.0,
-    b: 1.48,
-    h: 1.0,
-    k: 0.0,
-};
+pub(crate) const WELCOME_STILL: crate::transform_curves::Transform =
+    crate::transform_curves::Transform {
+        a: 3.0,
+        b: 1.48,
+        h: 1.0,
+        k: 0.0,
+    };
 
 /// The welcome page's mark: 28 px, stroked in `--primary`, at (32, 30).
 pub(crate) const MARK_SIZE: f32 = 28.0;

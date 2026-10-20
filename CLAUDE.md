@@ -34,6 +34,9 @@ s-core owns this section (each porter appends examples under its crate's bullet)
 - function-viewer (h5-p-scrub): the scrub maths keep the TS shapes (`ScrubMode` enum, `scrub_mode`/`wheel_dx` plain args since h4's rows are unmerged); `quantize` is `mv-numfmt::quantize` exactly (the TS rounds `|v|` then re-applies the sign — including negative exact halves — which is what that helper does, so no local rounding); `shown` formats via `round_to` plus a plain print (the field shows the keyboard hyphen, never `format_number`'s U+2212), `-0` normalised to `0`; the tape is an enum (`Shift`/`Scale`, never a `kind` field), `multiples` keeps an f64 counter exactly like the TS loop (the `1e20` case falls out empty through identical float ops), and label text is `String(Number(toFixed))` including the ECMA-262 exponential rule outside `[1e-6, 1e21)` and the first-hyphen-only true-minus replace (`−5e-7` keeps its exponent hyphen).
 - function-viewer (h6-p-transform): the transform is `Transform { a, b, h, k }` (a struct — the fixed keys read as the TS literals do — with `get`/`with` for the two indexed uses, not an `EnumMap`); a transformed function is data (`TransformedFunction { base, transform }` with `value(x)`), never a closure, since a transformed curve cannot be a `fn` pointer; `transform_curves` returns `TransformedCurve { func, alpha, draw_to, dashed }` (the dashed flag rides the new curve type, `plot::PlotCurve` untouched) with the original untransformed under `Transform::IDENTITY`; the flip is `ShownTransform { jump, seen }` with `step(flip, transform, dt, can_animate)` (adoption split into pub `adopt`, which the press turn calls before any frame passes, plus `pub shown` for that turn's draw; the first-frame `FIRST_FRAME_MS`, the `durationMs` finish, the per-param `===` passthrough for typed-mid values; `Flip.seq` is the press identity behind the hook's `flip !== seenFlip`, set from a counter where the flip is created); the params type is `state::TransformParam` (h4's; this module's own copy deleted at the h6 merge); `plane_geometry` is pure canvas positions (`to_px`, `clamp_curve_y` with `OVERSHOOT_PX`, `handle_path`, `line_path` with `None` for zero length, `line_tick_halves` as the painter's single source) while widths, dashes and alphas stay the painters' (h6-handles); `PlotLine.label` is always `None` from `transform_lines` (the TS carries no label).
 - function-viewer (h7-p-state): the highlight holds ordered lists (`hover`/`focus: Vec<TransformParam>`, `lead: Touch::{Hover, Focus}` defaulting to hover): `lit()` is the scrubbed params in a-b-h-k order while any `scrub_mode` entry is `Some`, else the lead side's list while non-empty, else the other's; `set_hover/set_focus(&[params], on)` store-and-take-lead on `on` and clear only on element-for-element equality off (`same_params`), so a handle's stale end never clears a newer list; an unconditional drop passes `&[]` with `on` (the emptied side is unreadable whichever side leads, exactly as the source's off leaves it). `scrub_mode: EnumMap<TransformParam, Option<ScrubMode>>` is the `scrubModeAtoms` record; `Jump { param, from, to }` is the atom's element and `Jumps { list, seq }` the `jumpsAtom` list, every `set`/`single` bumping `seq` even with equal values (the hook's fresh-array identity), so the flip's call stays one line (`app.state.jumps.single(param, from, to)`). The flip animation is unchanged apart from the identity: `ShownTransform { jump, seen: u64 }` with `step(&Jumps, transform, dt, can_animate)` folding every jump over the transform for the `from`/`to` ends; `transform_lines(lit: &[T], g, u, transform)` draws the dashed box once while a or b is lit, then one line per lit param in list order; `unit_point` is public; `transformHandles` is gone (the plane builds its own handles).
+- function-viewer (h8-p-points): `point_format.rs` (`format.ts`: fixed/sci slots, `≈`, the `m×10ⁿ` rule from 1e5), `visible_range.rs` (the plane's visible plot range from size and camera; `visible_range::visible_range`), `moved_by.rs` (`MovedBy::{new, update, moved}` fed `(dragging, x, y)` every frame, the linger clearing lazily at most one frame late); `P_PARAM` on `functions.rs` (a number param, default 2); `state.rs` appends `p_dragging`, `q_x`, `transform_drag` (`transformed` public). Lengths count `chars()` (ASCII + U+2212); off-side strings are `Option<OffSide>`.
+- function-viewer (h8-p-marker): `plane_geometry` holds the markers as pure positions (`PlotMarker`, `MarkerShape::{Bullseye, Ring}`, `PlotLabel` with pre-formatted coords, `MarkerArc` with `MarkerInk`, `DropLines { vertical, horizontal }`, `LabelLayout` with `dir: Option<Direction>` and `arrow: Option<[f64; 2]>`, `guide_x -> Option<f64>`); geometry stays f64 (f32 is the painter boundary); the TS `clamp` import is a private local (f64::clamp panics on negative ranges); `arrow_path` is tip-first; label faces are literal line boxes; the point tokens equal the source's ordinals per theme (no new ordinal tokens).
+- function-viewer (h10-p-loop): `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`, `STEPS` in source order, 451 frames) with `LOOP_MS` from `total_frames * 1000 / FPS` via `const fn`; `LoopState` is flat (`func, a, b, h, k`); `Easing` is a four-value struct evaluated by `ease_drag` (a closure is neither const-buildable nor `Copy`); `dragged` delegates to `scrub::scrubbed` (no re-rounding); JS `%` on non-negative floats is Rust's `%`; `WelcomeClock` is the rAF accumulator as a step function in the same file (first frame `plot::FIRST_FRAME_MS`, later frames `min(now - last, 50)`); `fit_scale.rs` (`fit_scale` returns `1.0` on a non-positive side — the caller keeps its stored fit; `paper_fit` verbatim, `1e-9` included).
 
 ## Harness notes
 
@@ -681,7 +684,20 @@ no new tokens (all eight tabled).
   f32-vs-f64 accumulation was measured at 0.006 px and ruled out. Matching
   WebKit would break the spec/Blink/Gecko match, so the port keeps the
   spec math. h6-curve's 27 px dash-phase cluster at CSS (788.5,102.5) is
-  the top of this same strip.
+  the top of this same strip. Of the proof's 347 px, 252 lie in the
+  x1577-1858 steep-run zone (the drift); the other ~95 are glyph ink (below).
+- Native vs ref-Chromium and vs ref-Firefox each carry 160 apart px in 46
+  canvas clusters (largest 8 px, max 155, max-221 run at device
+  (2128-2132,1023)): axis tick labels and the P marker-label edge, colour
+  [147,168,173] vs background, at identical columns in all engines (only
+  ink weight differs). Category (a) glyph ink, with the nuance that the
+  port coincides with WebKit here while Blink and Gecko coincide with each
+  other (ref-webkit-vs-ref-chromium carries ~95 px of the same signature
+  outside the drift zone). No defect: labels correct, same size, within
+  1 device px.
+- One 2 px cluster native vs ref-webkit at device (1848-1849,979), max 32
+  ([108,125,131] vs [137,157,162]), on the solid transformed curve where it
+  crosses a grid line. Category (b)/(c), one-row AA / NanoVG-vs-Canvas2D edge.
 - SwiftShader AA at curve-stroke edges peaks at 41 on isolated pixels
   (marker-p-values: exactly 2 px >15 whole-frame — (1599,331) at 41,
   (1730,817) at 40, both single AA pixels on drifted dash ends, 0 flat),
@@ -1093,6 +1109,56 @@ no new tokens (all eight tabled).
   `!important` rule beats SDL's inline cursor), SystemCursor on native. `tools/run states`
   only takes `[MmHh]<digits>` group names: a non-history group (here FIXCURSOR) is
   appended to milestones.toml for `all` but run by passing its state names explicitly.
+
+### wrap (the documents, the release check and the fix-forward tail)
+
+- README.md rewritten in math-viz-rust's shape (toolchain trimmed, setup,
+  build and run with both routes, the harness, one line per module as the
+  plan's module map stands, release, unverified platforms, where the port
+  stands at 68e1c7b, your own checks with how to check each, known gaps);
+  decisions.md consolidated (not-ported list, the run's calls, every
+  deliberate difference with its state, the measured engine quirks, the bar
+  with the largest named cluster of each category); CLAUDE.md consolidated
+  (every milestone block kept as written, in merge order; h10-loop and
+  h10-fit fold in at phase 2, when the H10 union's numbers land too).
+- Fix-forward code items, each committed: readout_width reuses
+  number_style(); slider_tip_p trailing space dropped; point_slider key()
+  threads Ignored as false through the chain; settings.rs/page.rs theme
+  clones scoped or borrowed (page.rs's draw keeps one documented clone;
+  split_at_mut reviewed and kept); mv-numfmt digits moved not cloned;
+  act.py detail.command after --window; welcome_loop allows deleted,
+  ease_drag #[must_use], fit_scale WebKit in backticks; scrub_value dead
+  chevrons deleted; points_section mark() drops _shape, letter() renames
+  _letter, paint_readout's allow carries its reason; plane_input allows
+  carry reasons, HOLD_CAMERA_STEP names the FFI constraint; paint_extras
+  doc names draw_page; live.rs gains LiveWhat::Hash (the hash verb works in
+  --live runs); web/library.js mirrors the capture guards (no active
+  pointer, button 0 for mouse, clear on up/cancel/blur); x_field already
+  uses escapes; h4-readout progress keeps the porter's p_param attribution;
+  h6-p-transform's brace and the to_fixed switches verified done at merge.
+- Readout spacing from the CSS (the union's h-plate item, fixed not named):
+  the h term sat 2 CSS px left (minus 3 px pad unmodeled, form frac pad 3
+  instead of round(0.15em)=2, sup margin 1 px unmodeled, Term paint arm 3
+  px off) plus square value-bar ends; layout now matches the reference DOM
+  within 0.03 px run by run; readout-lit-hk -7707 flat px. Covers the h4
+  value-line items too (same Term-arm root cause).
+- f-zone census narrowed to the 5 measured editing states + points-default
+  (all 0); blur (185) and esc (368) censused as glyph ink (a).
+  Cap-plate re-judged vs ref-h9: port 0 px Secondary caps in both states
+  (walk, kept deliberately); ref 8260 px in focus-radio, timing-dependent
+  in flip-focus — the settled walk record confirmed.
+- Evidence hygiene: h9's two screenshots renamed (not diff maps); h8
+  field 6x crops unswapped (open=primary ring, invalid=destructive);
+  h10-seam records the 20 outside-gear entries (all Secondary, max 27);
+  h10-hero's 5 px corrected to 9 (22 rows vs 20) with the pixels lens's
+  recount superseding the table; h10-page names the Chromium 41-57s and the
+  Firefox menu islands; h10-hero shift gloss reworded; fix-cursor's M3 and
+  census corrected to the kept pointer and reference-cursors.json;
+  h10-page's CTA restricted to Enter, welcome.rs narrowed to pub(crate),
+  shape allow reasoned, hover-hold comments reworded to determinism.
+- h10-loop and h10-fit blocks and the H10 union's category maxima fold in
+  at phase 2 (merge claude-port at h10-fit's merge); docs/ is rebuilt by
+  ./build.sh pages and proved by tools/run pages as the last commit.
 
 
 ## Long runs

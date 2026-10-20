@@ -1056,8 +1056,7 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
             Part::Text(run) if run.hidden => {}
             Part::Text(run) => {
                 let size = size_px(&run.size, form);
-                let width = run.pad_left
-                    + run_advance(app, &run.text, size, run.italic, !form);
+                let width = run.pad_left + run_advance(app, &run.text, size, run.italic, !form);
                 run_spacer(app, width, run_box_height(&run.size, form), ids);
             }
             Part::Term(run) => {
@@ -1128,7 +1127,8 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
             }
             Part::Sup { digit } => {
                 let sup = size_px(&RunSize::Sup, form);
-                let width = SUP_MARGIN_LEFT + run_advance(app, &digit.to_string(), sup, false, false);
+                let width =
+                    SUP_MARGIN_LEFT + run_advance(app, &digit.to_string(), sup, false, false);
                 run_spacer(app, width, line_h, ids);
             }
         }
