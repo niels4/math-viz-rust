@@ -48,7 +48,7 @@ export REACT_REF_PORT=5190   # math-viz2 serves #function-viewer here
 - **Native frame to PNG:** `build/native/function-viewer --png out.png --size 1440x900 --density 2` draws the page into a hidden window's offscreen framebuffer at that size, writes it, and quits. In Display P3 (the default on macOS) the PNG carries the Display P3 profile; `--space srgb` writes the sRGB frame the harness compares with the browsers.
 - **Theme, mode and space:** `--theme clean-teal`, `--mode light`, `--space srgb` override the stored prefs for one run (a script sets all three itself).
 - **Harness runs:** `--script tools/states/default.act --out DIR` plays a state script and writes shots, `views.json`, `motion.json` and `time.json`; `--window` draws to the visible window instead of the offscreen buffer; `--time 300` redraws the script's last state 300 more times and reports median, 95th percentile and slowest; `--trace` logs each input and timer. The harness passes the script's `route` line as `--route` on every run.
-- **GitHub Pages:** `./build.sh pages` builds the web app with the release flags (no path of this machine in the bundle, checked) and writes it into `docs/` at the repo root (with `.nojekyll`), committed, so the repository hosts it from Pages (Settings › Pages › main, `/docs`); every URL in the bundle is relative, so it serves from the repository subpath, at `/` (the root route) and `/#function-viewer`.
+- **GitHub Pages:** `./build.sh pages` builds the web app with the release flags (no path of this machine in the bundle, checked) and writes it into `docs/` at the repo root (with `.nojekyll`), committed, so the repository hosts it from Pages (Settings › Pages › main, `/docs`); every URL in the bundle is relative, so it serves from the repository subpath, at `/` (the root route) and `/#function-viewer`. Proved by `tools/run pages [--port P] [--base /math-viz2-rust/] [--engines ...]`: it serves `docs/` from the subpath on a local port and runs the web smoke plus the `welcome-route`, `default` and `url-roundtrip` states in each engine, every report at zero problems and the path unmoved. Rebuilt only by `./build.sh pages`, as wrap's last step and by hand before a deploy — never by `./build.sh check` or a milestone branch (a stale `docs/` in between is expected).
 - **Browser:** serve `build/web/` as static files and open it, for example `python3 -m http.server 8000 --directory build/web` and `http://localhost:8000/`. A browser won't load wasm from `file://`. The main loop pauses while nothing moves and any input resumes it; `Module.iterations` and `Module.frames` count its turns and its frames. The prefs are `localStorage['mathviz-function-viewer-rust']`, the port's own key. `?trace` in the address logs each input and timer to the console; `?space=p3` or `?space=srgb` overrides the colour space, and the console says which it took.
 - **Panic switch:** `MV_PANIC_AT_FRAME=1` (or `--panic-at-frame`, the web's way in through `Module.arguments`) panics in the first frame, so the sweep can prove it sees a crash on each build. Natively the process exits non-zero with `panicked at <file>:<line>` on stderr (101 through the SDL loop: the first panic poisons the loop's lock and the quit path panics unwrapping it); on the web the same lines reach the console as errors.
 - **Smoke:** `tools/setup && tools/run states H0 --targets ref,web,native` runs the first state group on every target (needs the export in Setup); the report's identity columns read identical at threshold 0.
@@ -61,12 +61,14 @@ served by Vite in tmux session `math-viz2-rust-ref` (port 5190, page `#function-
 history milestone has its own fixed reference worktree and port (h1's on 5191, h2's on 5192,
 and so on). Nothing in `tools/` hard-codes a port or a checkout path beyond a default: every
 command reads the reference from the environment, `REACT_REF` (the checkout) and
-`REACT_REF_PORT` (its port), and the web build's server from `WEB_PORT` where one is needed.
+`REACT_REF_PORT` (its port), and the web build's server from `WEB_PORT` where one is needed,
+served from the subpath in `WEB_BASE` (default `/`) where one is served from it.
 
 - **Targets:** `ref`, `web`, `native` (`tools/run act --target ...`). The web build needs no
   server (`act`, `states`, `release` and `keys` route `build/web/` from disk at an origin no
   server listens on); `web`, `tabs`, `raf` and `loop` on the web target need one on `WEB_PORT`,
-  which a milestone starts in its own tmux window on a free port from 5200 and stops after.
+  which a milestone starts in its own tmux window on a free port from 5200 and stops after;
+  `pages` serves `docs/` from a subpath on a server it starts and stops itself (t-pages).
 - **Scripts** (`tools/states/*.act`): lines before the first action say how the page opens
   (`size`, `density`, `scheme`, `mode`, `theme`, `reduced-motion`, `space`, `query`, `route`); after it,
   `size`, `scheme` and `reduced-motion` change it live. Positions are logical pixels, times

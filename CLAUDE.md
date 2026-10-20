@@ -921,6 +921,27 @@ no new tokens (all eight tabled).
   against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
   (53/100); at dpr 1 it is 0.52.
 
+### t-pages (the GitHub Pages proof)
+
+- `WEB_BASE` (default `/`, must start and end with `/`) beside `WEB_PORT`: one helper,
+  `act.web_origin()`, returns `http://localhost:<WEB_PORT><WEB_BASE>`; `url_for`'s web
+  branch and the served URLs in `tabs.py`, `raf.py` and `loop.py` use it (`main.py`'s
+  `web()` builds no URL of its own). The routed origin (no server) is unchanged, and every
+  command behaves as before when `WEB_BASE` is unset.
+- `tools/run pages [--port P] [--base B]` stages the committed `docs/` under
+  `.local/pages-root/<B>/`, serves it with `http.server` on 127.0.0.1, and runs the web
+  smoke plus `welcome-route`, `default` and `url-roundtrip` in all three engines: each
+  `report.json` zero problems, `location.pathname` still the base after every run (read
+  after the last action through `on_shot`; every proof script ends in a shot), the
+  roundtrip href holding `#function-viewer` past the base, the wasm's streaming
+  instantiation noted from the consoles. Report in `.local/shots/pages/report.json`.
+- The web smoke never ran in this repo until t-pages: `web()` still loaded the Odin
+  tar's `hover-row-1`, which t0-harness deleted, so `tools/run web` tracebacked. The new
+  `pages-smoke.act` hovers row a with boxes probed on the reference at 68e1c7b (45,800 /
+  1,543 / 1,102 changed px in row / term / unit box, 0 elsewhere). `docs/` is written only
+  by `./build.sh pages` (wrap's last step); item (5) dropped: the release flags landed in
+  6a79410 (claude0).
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
