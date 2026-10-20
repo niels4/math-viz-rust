@@ -19,9 +19,11 @@ pub mod app;
 // is declared under this name.
 #[path = "loop.rs"]
 pub mod app_loop;
+pub mod camera;
 pub mod draw;
 pub mod fixture;
 pub mod flex;
+pub mod grid;
 #[cfg(not(target_os = "emscripten"))]
 pub mod harness;
 pub mod icons;
