@@ -951,8 +951,6 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
             Part::Term(run) => {
                 let size = size_px(&run.size, form);
                 let width = run_advance(app, &run.text, size, run.italic, !form);
-                let lit = app.state.is_lit(run.param);
-                let theme = crate::ui::current_theme(app).clone();
                 let mut outer = crate::ui::empty_decl();
                 outer.layout.sizing = clay::Sizing {
                     width: mv_clay::sizing_fit(crate::ui::ZERO_MINMAX),
@@ -965,9 +963,9 @@ fn layout_parts(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) 
                     bottom: TERM_PADDING_BOTTOM as u16,
                 };
                 outer.cornerRadius = crate::ui::corner_radius_all(TERM_RADIUS);
-                if lit {
-                    outer.backgroundColor = term_tint(&theme, run.param);
-                }
+                // No Clay background: the lit tint paints opaque and
+                // pre-blended in the post-pass (a translucent Clay fill
+                // would blend twice: once here, once there).
                 let n = ids.term;
                 ids.term += 1;
                 crate::ui::ui_scope(app, mv_clay::id(READOUT_TERM_ID, n), &outer, |app| {
@@ -1050,14 +1048,6 @@ fn frac_row(app: &mut App, parts: &[Part], form: bool, ids: &mut LayoutIds) {
             layout_parts(app, parts, form, ids);
         },
     );
-}
-
-/// The term's lit tint: its ink at 18 percent over the card, as the
-/// color-mix tint reads (an oklch mix toward transparent paints as its ink
-/// at that alpha over the backdrop).
-fn term_tint(theme: &mv_theme::Theme, param: TransformParam) -> clay::Color {
-    let ink = crate::ui::ink(theme, param.colour_token());
-    [ink[0], ink[1], ink[2], ink[3] * TERM_TINT]
 }
 
 /// A fixed run spacer.
@@ -1345,7 +1335,12 @@ fn paint_frac_row(
 }
 
 /// Paints a lit term: the tint box with its edge lines (value line) or the
-/// inset underline (form line).
+/// inset underline (form line). The tint paints as the browser composites
+/// it: the ink at 18% over the opaque section backdrop, in the encoded
+/// space both sides paint. (The port's framebuffer blends linear while the
+/// reference composites gamma, so a translucent fill reads ~30 levels
+/// light; the backdrop is always the opaque card, so the composite paints
+/// opaque and matches the reference's bytes.)
 fn paint_lit(
     app: &mut App,
     theme: &mv_theme::Theme,
@@ -1354,7 +1349,13 @@ fn paint_lit(
     form: bool,
 ) {
     let ink = crate::draw::nvg_color(crate::ui::ink(theme, param.colour_token()));
-    let tint = [ink[0], ink[1], ink[2], ink[3] * TERM_TINT];
+    let backdrop = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Section));
+    let tint = [
+        ink[0] * TERM_TINT + backdrop[0] * (1.0 - TERM_TINT),
+        ink[1] * TERM_TINT + backdrop[1] * (1.0 - TERM_TINT),
+        ink[2] * TERM_TINT + backdrop[2] * (1.0 - TERM_TINT),
+        1.0,
+    ];
     app.vg.begin_path();
     crate::draw::rounded_rect(
         &mut app.vg,
