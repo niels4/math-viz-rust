@@ -490,7 +490,12 @@ fn state_scripts_parse() {
 fn expect_parse(dir: &str, minimum: usize) {
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
     let mut scripts = 0;
-    let entries = std::fs::read_dir(format!("{root}/{dir}")).unwrap();
+    // git drops an emptied directory, so a fresh clone has no tools/live:
+    // a missing directory holds zero scripts.
+    let Ok(entries) = std::fs::read_dir(format!("{root}/{dir}")) else {
+        assert_eq!(minimum, 0, "{dir} is missing");
+        return;
+    };
     for entry in entries {
         let entry = entry.unwrap();
         let path = entry.path();
