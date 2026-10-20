@@ -1,0 +1,13 @@
+# handle-hover-shift (h7-plane): the pointer resting on the shift diamond
+# (x2 at a=2, h=1, k=-3: diamond at plot (1,-3) = page (978,640)).
+# h and k lit in the readout and the rows, both arrows, cursor grab-hover.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 300
+shot handle-hover-shift

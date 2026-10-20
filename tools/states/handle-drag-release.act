@@ -1,0 +1,21 @@
+# handle-drag-release (h7-plane): the shift drag settled (wait 300 lets the
+# renders and the debounce catch up, so the handle sits exactly under the
+# pointer), a 1 px nudge re-hits deterministically, then up: the URL holds
+# h=2.02&k=-3.6, the modes are cleared, the cursor is grab-hover with h,k lit.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=2&h=1&k=-3
+wait 500
+move 978 640
+wait 200
+down
+wait 150
+move 1028 670 over 160
+wait 300
+move 1029 670
+up
+wait 600
+shot handle-drag-release

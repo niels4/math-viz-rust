@@ -1,0 +1,10 @@
+# curve-b (H6): x² at b=2 at rest, through (2, 1): y = (x/2)².
+# Behaviour: views shown line {a:1, b:2, h:0, k:0}; url line func=x2&b=2.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&b=2
+wait 2000
+shot curve-b

@@ -1,0 +1,17 @@
+# reset-frames (H7): x2 at a=3; the row's reset click eases the curve from 3
+# back to 1 on the spring while the box shows 1.00 from the first frame.
+# The ported test pins 2.53 after 6 frames, 1.91 after 12, 1.02 after 43 and
+# 1.00 after 61: frames at 0, 100, 200, 700 and 1000 ms after the click.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=x2&a=3
+wait 2000
+click 254 450.5
+shot reset-f0
+frames reset-f100 every 100 for 100
+frames reset-f200 every 100 for 100
+frames reset-f700 every 500 for 500
+frames reset-f1000 every 300 for 300

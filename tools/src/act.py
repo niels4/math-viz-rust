@@ -297,6 +297,24 @@ def plane_camera(
     )
 
 
+def plane_cursor(page: Page) -> str | None:
+    """The canvas's data-cursor (CartesianPlane.tsx: pan / grab-hover /
+    grab-active), read after a scripted input for the cursor behaviour check
+    of the handle and pan-cursor states (h7-plane)."""
+    return page.locator("canvas").get_attribute("data-cursor")
+
+
+def plane_lit(page: Page) -> str:
+    """The lit params in document order, as the user's handle-drag probe reads
+    them: [data-param][data-lit] (readout spans and transform-row divs). Plain
+    [data-lit] also matches param-less divs, so the [data-param] guard is
+    load-bearing."""
+    return page.evaluate(
+        """[...document.querySelectorAll("[data-param][data-lit]")]"""
+        """.map((e) => `${e.dataset.param}:${e.tagName.toLowerCase()}`).join(" ")"""
+    )
+
+
 def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
@@ -788,9 +806,13 @@ def check_views(out: Path) -> list[str]:
     string), theme (a slug), scaled (layer boxes [x, y, w, h] in logical px). A line holding only
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
     frame 0). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
-    camera, written whenever it changes (h2-input). A line holding only `lit` ("a", "b", "h",
-    "k" or null) is the highlighted parameter, written whenever the highlight moves
-    (h4-readout; h4-rows reuses it for its rows)."""
+    camera, written whenever it changes (h2-input). A line holding only `lit` (a list of
+    "a"/"b"/"h"/"k", or null at rest) is the highlighted parameters in order, written whenever
+    the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
+    one parameter to the list, still accepting the old single-parameter shape). A line holding only `cursor`
+    (pan / grab-hover / grab-active) is the canvas's cursor, written whenever it changes between
+    the plane's three (h7-plane). A line holding only `shown` ({a, b, h, k,
+    animating}) is the transform the plane draws, written whenever it changes (h6-curve)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -830,8 +852,30 @@ def check_views(out: Path) -> list[str]:
             continue
         if set(view) == {"lit"}:
             lit: object = view.get("lit")
-            if lit is not None and lit not in ("a", "b", "h", "k"):
-                problems.append(f"views.json line {number}: 'lit' is not a parameter or null")
+            params: list[object] | None = (
+                [lit] if isinstance(lit, str) else (cast(list[object], lit) if isinstance(lit, list) else None)
+            )
+            if lit is not None and (
+                params is None
+                or not all(isinstance(param, str) and param in ("a", "b", "h", "k") for param in params)
+            ):
+                problems.append(f"views.json line {number}: 'lit' is not a parameter list or null")
+            continue
+        if set(view) == {"cursor"}:
+            if view.get("cursor") not in ("pan", "grab-hover", "grab-active"):
+                problems.append(f"views.json line {number}: 'cursor' is not a plane cursor")
+            continue
+        if set(view) == {"shown"}:
+            shown_raw: object = view.get("shown")
+            if not isinstance(shown_raw, dict):
+                problems.append(f"views.json line {number}: 'shown' is not an object")
+                continue
+            shown = cast(dict[str, object], shown_raw)
+            for param in ("a", "b", "h", "k"):
+                if not _is_num(shown.get(param)):
+                    problems.append(f"views.json line {number}: 'shown.{param}' is not a number")
+            if not isinstance(shown.get("animating"), bool):
+                problems.append(f"views.json line {number}: 'shown.animating' is not a bool")
             continue
         for key in VIEW_KEYS:
             if key not in view:

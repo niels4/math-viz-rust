@@ -475,13 +475,18 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             // A drag the plane holds keeps panning under capture, wherever
             // the pointer is, as `setPointerCapture` keeps the hook's moves
             // coming; a scrub the value box holds keeps scrubbing the same
-            // way; anything else retargets.
+            // way; anything else retargets, and an unpressed move over the
+            // plane runs the handles' hover dispatch after it (h7-plane:
+            // the retarget's highlight syncs run first, as the DOM's
+            // leave-then-enter does, then the plane's hover order).
             if app.input.pressed.kind == HitKind::Plane && !event.left {
                 crate::plane_input::plane_move(app);
             } else if crate::scrub_value::captured(app) && !event.left {
                 crate::scrub_value::pointer_moved(app);
             } else {
                 retarget(app);
+                crate::plane_input::plane_hover(app);
+                crate::plane_input::plane_cursor(app);
             }
         }
         Input::Button(event) => {
@@ -520,6 +525,13 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 // the press the down hit names.
                 crate::scrub_value::release_up(app, down, event.pos, event.clicks);
                 release(app);
+                // The release cleared the press the cursor rule read: over
+                // the plane the hover rule's cursor wins back (h7-plane: a
+                // release onto a handle shows the open hand, as the press's
+                // `hovering` never cleared).
+                if down.kind == HitKind::Plane {
+                    crate::plane_input::plane_cursor(app);
+                }
                 crate::settings::click(app, down);
                 crate::selector::click(app, down);
                 // The transform buttons' click (h5-buttons: the press started
