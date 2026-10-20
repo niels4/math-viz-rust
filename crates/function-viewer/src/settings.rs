@@ -45,47 +45,34 @@ pub mod swatch {
     pub const POINT_RADIUS: f32 = 2.25;
 }
 
-/// A swatch to paint: the theme whose palette it shows (each row paints its
-/// own theme's background, curve ink and point ink).
-#[derive(Clone, Copy, Debug)]
-pub struct Swatch {
-    pub theme: ThemeSlug,
+/// Paints all three rows' swatches over the frame, from their laid-out boxes:
+/// the theme's background rounded to 5 px with a 1 px border outline, the
+/// curve in chart-line, the point in chart-accent. A post-pass like the gear
+/// chrome, so the frame needs no second custom payload type beside the icons'.
+pub fn paint_swatches(app: &mut App) {
+    if !app.settings.open {
+        return;
+    }
+    let scheme = app.theme.resolved_scheme();
+    let slugs = shown_slugs(scheme);
+    let mut boxes = [[0.0; 2]; 3];
+    {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        for (i, spot) in boxes.iter_mut().enumerate() {
+            let data = clay.get_element_data(mv_clay::id("MenuSwatch", i as u32));
+            if data.found {
+                *spot = [data.boundingBox.x, data.boundingBox.y];
+            }
+        }
+    }
+    for (at, slug) in boxes.iter().zip(slugs.iter()) {
+        draw_swatch(app, *at, *slug);
+    }
 }
 
-// Frame-lived swatch payloads, as `icons.rs` keeps its icons: layout boxes a
-// `Swatch` per custom element, the paint reads it back.
-thread_local! {
-    #[allow(clippy::vec_box)]
-    static SWATCHES: std::cell::RefCell<Vec<Box<Swatch>>> =
-        const { std::cell::RefCell::new(Vec::new()) };
-}
-
-/// Empties the frame's swatch store; the frame's draw calls it with the icons'.
-pub fn clear_swatch_customs() {
-    SWATCHES.with(|store| store.borrow_mut().clear());
-}
-
-/// The Clay custom config painting `swatch`.
-pub fn custom_data(swatch: Swatch) -> clay::CustomElementConfig {
-    let ptr = SWATCHES.with(|store| {
-        let mut store = store.borrow_mut();
-        store.push(Box::new(swatch));
-        std::ptr::from_ref::<Swatch>(store.last().expect("swatch just pushed"))
-            .cast_mut()
-            .cast::<std::ffi::c_void>()
-    });
-    clay::CustomElementConfig { customData: ptr }
-}
-
-/// The swatch a custom command paints, if it is one.
-pub fn swatch_of(command: &clay::RenderCommand) -> Option<(&Swatch, clay::CornerRadius)> {
-    mv_clay::custom_of::<Swatch>(command)
-}
-
-/// Paints a swatch in its box: the theme's background rounded to 5 px with a
-/// 1 px border outline, the curve in chart-line, the point in chart-accent.
-pub fn draw_swatch(app: &mut App, at: [f32; 2], swatch: &Swatch) {
-    let theme = &app.themes[port_slug(swatch.theme)];
+/// Paints one swatch in its box.
+pub fn draw_swatch(app: &mut App, at: [f32; 2], slug: ThemeSlug) {
+    let theme = &app.themes[port_slug(slug)];
     let bg = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Background));
     let border = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Border));
     let line = crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::ChartLine));
@@ -649,12 +636,12 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
         crate::ui::ink(&page, mv_theme::Token::Card)
     };
     crate::ui::ui_scope(app, mv_clay::id("MenuRow", index as u32), &decl, |app| {
+        // The swatch box: painted by the post-pass from this element's data.
         let mut swatch_decl = crate::ui::empty_decl();
         swatch_decl.layout.sizing = clay::Sizing {
             width: mv_clay::sizing_fixed(swatch::WIDTH as f32),
             height: mv_clay::sizing_fixed(swatch::HEIGHT as f32),
         };
-        swatch_decl.custom = custom_data(Swatch { theme: slug });
         crate::ui::ui_scope(
             app,
             mv_clay::id("MenuSwatch", index as u32),

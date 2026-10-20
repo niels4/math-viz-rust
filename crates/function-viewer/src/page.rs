@@ -119,7 +119,6 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
 /// fade when one is in flight.
 pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     crate::icons::clear_customs();
-    crate::settings::clear_swatch_customs();
     let size = app.size;
     let pixels = app.pixels;
     let density = if size[0] > 0.0 {
@@ -143,14 +142,18 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         .active
         .map(|active| (active, Transition::progress(active, now)));
     draw_commands(app, density, &commands);
-    // The gear's hover border and focus ring, over the layout.
+    // The rows' swatches, then the gear's hover border and focus ring.
+    crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
-    } else {
-        snapshot_frame(app);
     }
     app.vg.end_frame();
+    if fading.is_none() {
+        // After the flush: `read_pixels` inside the frame would read the
+        // unflushed (stale) backbuffer, so the fade's snapshot waits here.
+        snapshot_frame(app);
+    }
     crate::input::update_cursor(app);
 }
 
@@ -260,8 +263,6 @@ fn draw_commands(app: &mut App, density: f32, commands: &[clay::RenderCommand]) 
                         bb.width.min(bb.height),
                         icon,
                     );
-                } else if let Some((swatch, _)) = crate::settings::swatch_of(command) {
-                    crate::settings::draw_swatch(app, [bb.x, bb.y], swatch);
                 }
             }
             clay::RenderCommandType::None
