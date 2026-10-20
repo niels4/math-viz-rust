@@ -1,0 +1,9 @@
+# points-off-left (h8-points-row): p=-6&k=6: P left of the view.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query p=-6&k=6
+wait 2000
+shot points-off-left

@@ -1,0 +1,10 @@
+# points-default (h8-points-row): the Points card at rest at 1440x900,
+# density 2, dark system, Arctic Ice. x1 at p = 2: P "pinned", f(2.00) =
+# 2.00; Q "point at the plane", f(-) = -.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot points-default
