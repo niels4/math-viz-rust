@@ -802,6 +802,68 @@ no new tokens (all eight tabled).
   shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
   for the union `gamut all`, not a defect.
 
+### h9 (Arctic Ice Secondary recolor)
+
+- One CSS line (`--secondary` `oklch(0.2885 0.0208 248.55)` →
+  `oklch(0.34 0.05 242)`, Arctic Ice only): no Rust change; `tools/run
+  themes` + `tools/run tokens` + `tools/run dom --fixture` against ref-h9
+  touch exactly three files (themes.rs header hash + Secondary l/c/h;
+  tokens.json arctic-ice `--secondary` computed/oklch/rgb/engines;
+  page.json `"reference"` header). Consumers all resolve
+  `Token::Secondary` at run time (gear plate, hovered settings
+  row/swatch, hovered selector row, hovered value box, flip/reset
+  hovers, Reset-all hover, overlay button hover, tip key caps).
+- Measured draws, all engines agree: old plate rgb (35,44,53), new
+  (31,59,80) (tokens.json engines rows chromium+firefox identical;
+  sampled off the PNGs). Fail-pass on `default` vs ref-h9 WebKit: before
+  2847 flat px apart in the gear box (4636 changed), after 0 flat
+  (1107 changed, stroke/AA edges only). Base-vs-new native diff on
+  `default`: 4452 px changed, all inside the gear box, max 27.
+- Census vs union-h8 (the level's evidence): all 87 H1/H3/H4/H5/H6
+  states identical in chromium+firefox; webkit identical except
+  flip-focus +3546 and settings-focus-radio +3487 inside their
+  pre-existing focus-divergence clusters (same box/max) and
+  theme-switch-frames mids +0.5% (fade-timing family). Triangulation
+  (new port vs ref-h8 on 5198 + direct ref-h8-vs-ref-h9 diff) proves the
+  growth is ref-side: the reference paints its focused-box tip caps
+  Secondary (8140 px at CSS (54,485.5,310.5,503)), recolored h8→h9.
+- Finding (open, sibling-owned, not fixed here): in those two states the
+  port's focused-box key-help bar paints 0 px Secondary (section/muted
+  family in both builds; the typing-variant tip follows the token —
+  rows-typed paints 9164 px Secondary in the same box), so its cap
+  plates don't resolve `Token::Secondary` although `tip.rs key_cap`
+  sets it. Pre-existing at union-h8 (same shape), exposed by the
+  recolor. Owner: h8-points-field's tip/input code (wrap/field settles
+  the mechanism — suspect a second bar path beside `layout_tip`, since
+  `scrub_value::tip` early-returns unless typing/resting).
+
+### h10-p-loop (the welcome loop and the fit-to-window scale)
+
+- `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
+  `STEPS` in source order, 451 frames) with `LOOP_MS` computed as the
+  source computes it (`total_frames * 1000 / FPS` via `const fn`, so a
+  step edit moves the constant). `LoopState` is flat (`func, a, b, h, k`),
+  not `{ func } & Transform`; `Easing` is a four-value struct evaluated
+  by `ease_drag` because a closure is neither const-buildable nor `Copy`
+  (clippy's `double_must_use` also bars `#[must_use]` on
+  `cubic_bezier`, whose `impl Fn` return is already must-use).
+  `dragged` delegates to `scrub::scrubbed` (no re-rounding; the −1.19 /
+  2.44 / 1.74 / 1.15 literals fall out of its `quantize`).
+- JS `%` on a non-negative float is Rust's `%` (both keep the dividend's
+  sign); `loop_at` keeps `%` as the source has it and documents the
+  negative-`ms` case rather than switching to `rem_euclid`.
+- `WelcomeClock` is the rAF accumulator as a step function in the same
+  file (first frame adds `plot::FIRST_FRAME_MS` regardless of the gap,
+  later frames `min(now - last, 50)`); `state(false)` is the still and
+  `is_animating(false)` is false, so the coder's frame loop schedules no
+  frames under reduced motion.
+- `fit_scale.rs`: `fit_scale` returns `1.0` on a non-positive side — the
+  hook instead keeps its previous value, so the caller retains its stored
+  fit and only calls this once laid out (said in the doc). `paper_fit`
+  is the `WelcomePage.tsx` line verbatim, `1e-9` included. Verified
+  against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
+  (53/100); at dpr 1 it is 0.52.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
