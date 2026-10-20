@@ -187,13 +187,45 @@ pub fn declare_plane_region(app: &mut App) {
     );
 }
 
-/// The shift handle's two lit parameters, then the scale handle's (the
+/// A plane handle: the diamond shifting h/k, the square scaling a/b (the
 /// `shiftParams`/`scaleParams` lists at `251c080`, in build order so the
-/// square wins a tie through `hit_test`'s last-index rule).
-fn handle_params(index: usize) -> &'static [TransformParam] {
-    match index {
-        0 => &[TransformParam::H, TransformParam::K],
-        _ => &[TransformParam::A, TransformParam::B],
+/// square wins a tie through `hit_test`'s last-index rule). Carried as
+/// `Option<HandleId>` in `App::hovered`/`App::dragged`, so no press maps to
+/// no handle rather than silently to the shift pair.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HandleId {
+    /// The diamond: sets h and k.
+    Shift,
+    /// The square: sets a and b.
+    Scale,
+}
+
+impl HandleId {
+    /// The handle at the hit-test index (shift 0, scale 1); `None` for any
+    /// other index, which the two-handle test never reports.
+    fn from_index(index: usize) -> Option<HandleId> {
+        match index {
+            0 => Some(HandleId::Shift),
+            1 => Some(HandleId::Scale),
+            _ => None,
+        }
+    }
+
+    /// The handle's index in the built pair (its hit-test slot).
+    fn index(self) -> usize {
+        match self {
+            HandleId::Shift => 0,
+            HandleId::Scale => 1,
+        }
+    }
+}
+
+/// The shift handle's two lit parameters, then the scale handle's (the
+/// `shiftParams`/`scaleParams` lists at `251c080`).
+fn handle_params(id: HandleId) -> &'static [TransformParam] {
+    match id {
+        HandleId::Shift => &[TransformParam::H, TransformParam::K],
+        HandleId::Scale => &[TransformParam::A, TransformParam::B],
     }
 }
 
@@ -253,7 +285,7 @@ pub fn plane_hover(app: &mut App) {
         return;
     };
     let handles = crate::page::build_handles(app);
-    let index = hit_test(&grid, &handles, at);
+    let index = hit_test(&grid, &handles, at).and_then(HandleId::from_index);
     if index == app.hovered {
         return;
     }
@@ -316,9 +348,9 @@ pub fn plane_down(app: &mut App, button: PointerButton) {
     // the drag path picks the hover up from the first move.
     if let (Some(grid), Some(px)) = (plane_grid(app), canvas_at(app)) {
         let handles = crate::page::build_handles(app);
-        if let Some(index) = hit_test(&grid, &handles, px) {
+        if let Some(index) = hit_test(&grid, &handles, px).and_then(HandleId::from_index) {
             let point = from_px(&grid, px);
-            let anchor = handles[index].at;
+            let anchor = handles[index.index()].at;
             app.grab = [anchor.x - point.x, anchor.y - point.y];
             app.dragged = Some(index);
             app.dragging = true;
@@ -373,7 +405,7 @@ fn drag_move(app: &mut App) {
     let [gx, gy] = app.grab;
     let now_ms = (app.input.time / MS).max(0) as u64;
     match app.dragged {
-        Some(1) => {
+        Some(HandleId::Scale) => {
             let slug = *app.func_param.get();
             let unit = crate::functions::unit_x(slug);
             let h = *app.h_param.get();
@@ -384,10 +416,13 @@ fn drag_move(app: &mut App) {
                 now_ms,
             );
         }
-        _ => {
+        Some(HandleId::Shift) => {
             app.h_param.set(point.x + gx, now_ms);
             app.k_param.set(point.y + gy, now_ms);
         }
+        // No press without a drag: unreachable while `dragging` holds (set
+        // together in `plane_down`), and nothing may flush here.
+        None => {}
     }
     app.dirty = true;
 }
@@ -424,18 +459,21 @@ pub fn plane_up(app: &mut App) {
     if app.dragging {
         app.dragging = false;
         match app.dragged.take() {
-            Some(1) => {
+            Some(HandleId::Scale) => {
                 app.state.scrub_mode[TransformParam::A] = None;
                 app.state.scrub_mode[TransformParam::B] = None;
                 app.a_param.flush(&mut app.url);
                 app.b_param.flush(&mut app.url);
             }
-            _ => {
+            Some(HandleId::Shift) => {
                 app.state.scrub_mode[TransformParam::H] = None;
                 app.state.scrub_mode[TransformParam::K] = None;
                 app.h_param.flush(&mut app.url);
                 app.k_param.flush(&mut app.url);
             }
+            // No press without a drag: unreachable while `dragging` holds
+            // (set together in `plane_down`), and nothing may flush here.
+            None => {}
         }
         app.dirty = true;
     }
@@ -995,7 +1033,7 @@ mod tests {
         assert_eq!(diamond, [450.0, 450.0]);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         assert!(app.hovering);
-        assert_eq!(app.hovered, Some(0));
+        assert_eq!(app.hovered, Some(HandleId::Shift));
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
     }
@@ -1012,7 +1050,7 @@ mod tests {
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         handle_input(&mut app, pointer_to(square), 32 * MS);
         assert!(!app.hovering);
-        assert_eq!(app.hovered, Some(1));
+        assert_eq!(app.hovered, Some(HandleId::Scale));
         assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
         assert_eq!(app.state.lit(), vec![TransformParam::A, TransformParam::B]);
     }
