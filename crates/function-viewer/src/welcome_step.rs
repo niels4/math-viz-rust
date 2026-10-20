@@ -133,8 +133,9 @@ pub fn welcome_step(app: &mut App, now: Time) -> bool {
         state
             .shown
             .switch_to(crate::functions::base(next.func), true);
-        state.current = next;
     }
+    // The tour's values flow every frame; only the function switch animates.
+    state.current = next;
     if !state.shown.is_switching() {
         return true;
     }
@@ -258,6 +259,24 @@ mod tests {
         assert!((showing[0].alpha - 0.50).abs() < 0.005);
         assert!(showing[1].draw_to > 0.0);
         assert!(showing[1].draw_to < 0.01);
+    }
+
+    #[test]
+    fn values_flow_every_frame_not_only_at_switches() {
+        // Regression: `current` assigned only on func change froze drags
+        // between switches (the loop lines held k 0.00 through the k drag).
+        let mut app = welcome_app();
+        app.welcome = WelcomeState::fresh_entered(false);
+        assert!(welcome_step(&mut app, at(0)));
+        let mut now = 0;
+        for _ in 0..110 {
+            assert!(frame(&mut app, &mut now));
+        }
+        assert_eq!(
+            app.welcome.current,
+            crate::welcome_loop::loop_at(app.welcome.clock.elapsed())
+        );
+        assert!(app.welcome.current.k < -1.0);
     }
 
     #[test]
