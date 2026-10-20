@@ -420,7 +420,9 @@ fn paint_foundation(
     stroke_inset(vg, card, RULER_BORDER, RULER_RADIUS, colors.rim);
     vg.begin_path();
     crate::draw::rounded_rect(vg, *tape, crate::ui::corner_radius_all(TAPE_RADIUS));
-    vg.fill_color(colors.fill);
+    // Through the walk's partial-alpha rule, as the rows' own tint paints it
+    // (an unpremultiplied fill composites a level off on some inks).
+    vg.fill_color(crate::draw::css_background(colors.fill));
     vg.fill();
     stroke_inset(vg, tape, TAPE_BORDER, TAPE_RADIUS, colors.stroke);
 }
