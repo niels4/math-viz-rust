@@ -37,6 +37,7 @@ addToLibrary({
   // A notch is 100 pixels, 3 lines or 1/80 page, as SDL's port counts them.
   mv_web_init__deps: [
     "mv_pinch",
+    "mv_hash_changed",
     "mv_reduced_motion_changed",
     "mv_model_line",
     "$stringToNewUTF8",
@@ -121,6 +122,11 @@ addToLibrary({
     matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) =>
       _mv_reduced_motion_changed(event.matches),
     );
+    // The page's hash changing under the app (an edit in the address bar,
+    // back/forward): the app re-reads it (mv_hash_changed), as math-viz2's
+    // hashchange subscription re-reads its route and search string. Our own
+    // writes go through history.replaceState, which fires no hashchange.
+    window.addEventListener("hashchange", () => _mv_hash_changed());
   },
 
   // The colour space the page draws in: Display P3 where the engine shows

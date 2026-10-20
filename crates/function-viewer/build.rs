@@ -51,7 +51,7 @@ fn main() {
             "-sEXIT_RUNTIME=0",
             "--js-library",
             "web/library.js",
-            "-sEXPORTED_FUNCTIONS=_main,_mv_pinch,_mv_prefs_stored,_mv_reduced_motion_changed,_mv_model_line",
+            "-sEXPORTED_FUNCTIONS=_main,_mv_pinch,_mv_hash_changed,_mv_prefs_stored,_mv_reduced_motion_changed,_mv_model_line",
             // Delta 5 (i4-loop): the runtime stays alive while the main loop
             // is paused. The app idles by pausing Emscripten's main loop
             // (platform_web.rs's platform_pace through library.js's
