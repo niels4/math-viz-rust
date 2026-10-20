@@ -180,6 +180,11 @@ FIXTURE_STATES = (
     # h7-sidebar: the h and k rulers only exist mid-drag, so the fixture runs
     # rows-lit-hk-drag (the shift handle held).
     "rows-lit-hk-drag",
+    # h8-points-field: the P edit tip and the open field box only exist
+    # while the field edits, so the fixture runs field-open; field-invalid
+    # pins the error tone's wider tip.
+    "field-open",
+    "field-invalid",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

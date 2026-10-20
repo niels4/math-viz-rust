@@ -27,6 +27,8 @@
 //! merge: it reads `p` through h8-p-points's `P_PARAM`, and the row reads
 //! [`XField::edit`] for the tip.
 
+use crate::app::App;
+use crate::app_loop::MS;
 use crate::number_field::{
     FieldState, backspace, collapse_end, delete_forward, home_end, insert_text, move_caret,
     select_all,
@@ -118,6 +120,13 @@ impl XField {
             base: None,
             invalid: false,
         }
+    }
+
+    /// Whether the caret covers the whole shown text (the browser's
+    /// selection paint condition, with the focus).
+    #[must_use]
+    pub fn is_selected(&self, shown: &str) -> bool {
+        self.field.is_selected(shown)
     }
 
     /// Whether the edit is open (`data-editing`).
@@ -299,6 +308,628 @@ pub fn rounded(n: f64) -> f64 {
 #[must_use]
 pub fn read(text: &str) -> Option<f64> {
     crate::point_format::parse_number(text).map(rounded)
+}
+
+// ---------------------------------------------------------------------------
+// The app half: the card's slot, tip, paint and input.
+// ---------------------------------------------------------------------------
+
+/// P's field hit (never a Tab stop: `tabIndex={-1}`).
+#[must_use]
+pub fn field_hit() -> crate::input::Hit {
+    crate::input::Hit {
+        kind: crate::input::HitKind::PointsField,
+        index: 0,
+    }
+}
+
+/// The slider's hit, for the focus the edit's end returns (h8-points-slider
+/// owns the stop; until it merges nothing holds it and the focus clears).
+fn slider_hit() -> crate::input::Hit {
+    crate::input::Hit {
+        kind: crate::input::HitKind::PointsSlider,
+        index: 0,
+    }
+}
+
+/// P's live value.
+#[must_use]
+pub fn p_value(app: &App) -> f64 {
+    *app.p_param.get()
+}
+
+/// What the field shows: the edit text, else the formatted p.
+#[must_use]
+pub fn display(app: &App) -> String {
+    app.x_field.display(p_value(app))
+}
+
+/// The display text with its `--chars` count, for the readout and the slot.
+#[must_use]
+pub fn display_chars(app: &App) -> (String, usize) {
+    let text = display(app);
+    let chars = app.x_field.chars(p_value(app));
+    (text, chars)
+}
+
+/// The field's horizontal padding: 5 px while editing, none at rest.
+fn pad(app: &App) -> f32 {
+    if app.x_field.editing() {
+        FIELD_PAD_EDITING
+    } else {
+        0.0
+    }
+}
+
+/// The field's box width: the text's chars at the `1ch` advance with the
+/// editing padding (`width: calc(var(--chars) * 1ch + 2 * var(--pad))`).
+fn field_width(app: &mut App) -> (f32, f32) {
+    let chars = app.x_field.chars(p_value(app));
+    let ch = crate::points_section::ch_advance(app);
+    (chars as f32 * ch + 2.0 * pad(app), ch)
+}
+
+/// The x slot's scope: the field's box, right-aligned in the x run, holding
+/// the hit target. A floating child of the readout scope (out of flow, like
+/// the tip), attached to its top-left. Called from the P readout's layout
+/// ([`X_SLOT_ID`] stays the paint and hit anchor).
+pub fn slot(app: &mut App, readout: mv_sys::clay::ElementId) {
+    let (text, n) = display_chars(app);
+    let (x_slot, _) = crate::points_section::x_slot(app, &text, n, true);
+    let (field_w, _) = field_width(app);
+    let open = crate::points_section::ceil_px(
+        crate::points_section::OPEN_EM * crate::points_section::MATH_SIZE,
+    );
+    let mut decl = crate::ui::empty_decl();
+    decl.layout.sizing = mv_sys::clay::Sizing {
+        width: mv_clay::sizing_fixed(field_w),
+        height: mv_clay::sizing_fixed(FIELD_HEIGHT),
+    };
+    decl.floating = mv_sys::clay::FloatingElementConfig {
+        offset: [
+            open + x_slot - field_w,
+            (crate::points_section::READOUT_HEIGHT - FIELD_HEIGHT) / 2.0,
+        ],
+        expand: mv_sys::clay::Dimensions {
+            width: 0.0,
+            height: 0.0,
+        },
+        parentId: readout.id,
+        zIndex: 0,
+        attachment: mv_sys::clay::FloatingAttachPoints {
+            element: mv_sys::clay::FloatingAttachPointType::LeftTop,
+            parent: mv_sys::clay::FloatingAttachPointType::LeftTop,
+        },
+        pointerCaptureMode: mv_sys::clay::PointerCaptureMode::Capture,
+        attachTo: mv_sys::clay::FloatingAttachToElement::ElementWithId,
+        clipTo: mv_sys::clay::FloatingClipToElement::None,
+    };
+    crate::ui::ui_scope(
+        app,
+        mv_clay::id(crate::points_section::X_SLOT_ID, 0),
+        &decl,
+        |_| {},
+    );
+    crate::input::region(
+        app,
+        mv_clay::id(crate::points_section::X_SLOT_ID, 0),
+        field_hit(),
+        crate::input::Cursor::Text,
+        crate::input::Cursor::Text,
+        false,
+        crate::ui::corner_radius_all(FIELD_RADIUS),
+    );
+}
+
+/// The tip's shared element ids.
+fn tip_ids() -> crate::tip::TipIds {
+    crate::tip::TipIds {
+        tip: P_TIP_ID,
+        text: P_TIP_TEXT_ID,
+        key: P_TIP_KEY_ID,
+        arrow: P_TIP_ARROW_ID,
+    }
+}
+
+/// The P tip's container id, for the page's tip layer (the plate's walk).
+#[must_use]
+pub fn tip_id() -> u32 {
+    mv_clay::id(P_TIP_ID, 0).id
+}
+
+/// The P tip's element ids (h8-points-field's namespace).
+pub const P_TIP_ID: &str = "PFieldTip";
+/// A P tip word or key label.
+pub const P_TIP_TEXT_ID: &str = "PFieldTipText";
+/// A P tip key cap plate.
+pub const P_TIP_KEY_ID: &str = "PFieldTipKey";
+/// A P tip arrow glyph box.
+pub const P_TIP_ARROW_ID: &str = "PFieldTipArrow";
+
+/// The P edit tip's cells: the key help, or the error tone naming the base
+/// (`PRow.tsx` lines 94 to 112).
+fn tip_cells(edit: &FieldEdit) -> (crate::tip::TipTone, Vec<crate::tip::TipCell>) {
+    use crate::tip::{ArrowDir, TipCell, TipTone};
+    if edit.invalid {
+        (
+            TipTone::Error,
+            vec![
+                TipCell::Words("Type a number such as 1.5 \u{00b7}".to_owned()),
+                TipCell::Key("Esc".to_owned()),
+                TipCell::Words(format!(
+                    "puts back {}",
+                    crate::point_format::format_number(edit.base)
+                )),
+            ],
+        )
+    } else {
+        (
+            TipTone::Default,
+            vec![
+                TipCell::Key("Enter".to_owned()),
+                TipCell::Words("apply \u{00b7}".to_owned()),
+                TipCell::Arrow(ArrowDir::Up),
+                TipCell::Arrow(ArrowDir::Down),
+                TipCell::Words("nudge 0.01".to_owned()),
+            ],
+        )
+    }
+}
+
+/// Lays out the P edit tip under the head while the field edits (the head
+/// is the `.point` block's top 30 px, so top 34 px is 4 px below it, right
+/// flush, `z-index: 3`). Called at the end of the point block.
+pub fn edit_tip(app: &mut App) {
+    let Some(edit) = app.x_field.edit() else {
+        return;
+    };
+    let (tone, cells) = tip_cells(&edit);
+    crate::tip::layout_tip(
+        app,
+        &tip_ids(),
+        0,
+        0,
+        &crate::tip::TipPlace {
+            parent: mv_clay::id(crate::points_section::P_HEAD_ID, 0).id,
+            drop: P_TIP_DROP,
+            z: 3,
+        },
+        tone,
+        &cells,
+    );
+}
+
+/// The P tip's drop below the head: top 34 px over the 30 px head.
+pub const P_TIP_DROP: f32 = 4.0;
+
+/// Paints the P tip's arrow glyphs after the tip layer walks (paths, not
+/// text, as the scrub tip's). Call from `draw_page` after the tip layer.
+pub fn paint_tip_arrows(app: &mut App) {
+    let Some(edit) = app.x_field.edit() else {
+        return;
+    };
+    let (_, cells) = tip_cells(&edit);
+    crate::tip::paint_arrows(app, &tip_ids(), 0, &cells);
+}
+
+/// The number style: 500 18 px mono, tabular, right-aligned (`.number`).
+fn number_style() -> mv_text::Style {
+    let mut features = mv_text::Features::new();
+    features.insert(mv_text::Feature::Tabular);
+    mv_text::Style {
+        face: mv_text::Face::RobotoMono500,
+        size: FIELD_FONT_SIZE,
+        tracking: 0.0,
+        features,
+    }
+}
+
+/// Paints the x run's field: the text right-aligned in the slot, with the
+/// card background and the primary inset ring while editing (destructive
+/// when invalid), the scheme selection over a fully selected text while
+/// focused, and destructive text when invalid. `readout_x` is the readout
+/// scope's x, `open`/`x_slot` its lead geometry, `number_base` the number
+/// line's baseline, `ink` the run's ink. Called from the P readout's paint.
+pub fn paint_field(
+    app: &mut App,
+    theme: &mv_theme::Theme,
+    readout_x: f32,
+    open: f32,
+    x_slot: f32,
+    number_base: f32,
+    ink: mv_sys::clay::Color,
+) {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(crate::points_section::X_SLOT_ID, 0));
+    if !data.found {
+        return;
+    };
+    let fbox = data.boundingBox;
+    let display = display(app);
+    let editing = app.x_field.editing();
+    let invalid = app.x_field.invalid();
+    let density = if app.size[0] > 0.0 {
+        app.pixels[0] as f32 / app.size[0]
+    } else {
+        1.0
+    };
+    if editing {
+        let frame = crate::draw::snap_box(fbox, density);
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            frame,
+            crate::ui::corner_radius_all(FIELD_RADIUS),
+        );
+        app.vg.fill_color(crate::draw::nvg_color(crate::ui::ink(
+            theme,
+            mv_theme::Token::Card,
+        )));
+        app.vg.fill();
+        let ring = crate::draw::nvg_color(crate::ui::ink(
+            theme,
+            if invalid {
+                mv_theme::Token::Destructive
+            } else {
+                mv_theme::Token::Primary
+            },
+        ));
+        app.vg.begin_path();
+        crate::draw::rounded_rect(
+            &mut app.vg,
+            mv_sys::clay::BoundingBox {
+                x: frame.x + FIELD_RING / 2.0,
+                y: frame.y + FIELD_RING / 2.0,
+                width: frame.width - FIELD_RING,
+                height: frame.height - FIELD_RING,
+            },
+            crate::draw::inset_radius(crate::ui::corner_radius_all(FIELD_RADIUS), FIELD_RING / 2.0),
+        );
+        app.vg.stroke_color(ring);
+        app.vg.stroke_width(FIELD_RING);
+        app.vg.stroke();
+    }
+    // The selection shows only while focused, over the fully selected text,
+    // as the scrub box's does: the plate covers the text area (the field
+    // minus its editing padding) less 2 px top and bottom.
+    let selected = app.input.focus == field_hit() && app.x_field.is_selected(&display);
+    if selected {
+        let dark = matches!(
+            app.theme.resolved_scheme(),
+            crate::theme_state::SystemScheme::Dark
+        );
+        let fill = if dark {
+            crate::scrub_value::SELECTION_DARK
+        } else {
+            crate::scrub_value::SELECTION_LIGHT
+        };
+        let pad = pad(app);
+        crate::draw::fill_rect(
+            &mut app.vg,
+            [
+                fbox.x + pad,
+                fbox.y + 2.0,
+                fbox.width - 2.0 * pad,
+                fbox.height - 4.0,
+            ],
+            crate::draw::nvg_color(fill),
+        );
+    }
+    let style = number_style();
+    let text_w = mv_text::measure(&mut app.fonts, style, &display);
+    let text_ink = if invalid {
+        crate::draw::nvg_color(crate::ui::ink(theme, mv_theme::Token::Destructive))
+    } else {
+        crate::draw::nvg_color(ink)
+    };
+    mv_text::draw(
+        &mut app.fonts,
+        &mut app.vg,
+        style,
+        readout_x + open + x_slot - text_w,
+        number_base,
+        &display,
+        text_ink,
+    );
+}
+
+/// Performs a fact's effects through `p`'s page param.
+fn apply(app: &mut App, effects: Vec<XEffect>) {
+    let now_ms = (app.input.time / MS) as u64;
+    for fx in effects {
+        match fx {
+            XEffect::Value(next) => {
+                if p_value(app) != next {
+                    app.p_param.set(next, now_ms);
+                    app.dirty = true;
+                }
+            }
+            XEffect::ValueFlush(next) => {
+                app.p_param.set_flushed(&mut app.url, next);
+                app.dirty = true;
+            }
+            XEffect::End(FieldEnd::Commit | FieldEnd::Cancel) => focus_slider(app),
+            XEffect::End(FieldEnd::Blur) => {}
+            XEffect::Focus => {
+                crate::input::set_focus(app, field_hit(), true);
+                crate::transform_row::start_text_input(app);
+                app.dirty = true;
+            }
+        }
+    }
+}
+
+/// Opens the edit with its text selected (a mouse-down, a focus, or Enter
+/// from the x-of-P slider): the focus, the selection and the platform's
+/// text input, as a focused DOM input takes keys. `visible` marks
+/// keyboard-opened focus for the ring.
+pub fn open_field(app: &mut App, visible: bool) {
+    let value = p_value(app);
+    let fx = app.x_field.open(value);
+    for effect in fx {
+        match effect {
+            XEffect::Focus => {
+                crate::input::set_focus(app, field_hit(), visible);
+                crate::transform_row::start_text_input(app);
+                app.dirty = true;
+            }
+            other => apply(app, vec![other]),
+        }
+    }
+}
+
+/// Returns the focus to the x-of-P slider after a commit or a cancel (the
+/// row's `onEditEnd`: every end but a blur). Until h8-points-slider merges
+/// nothing holds the stop and the focus clears.
+fn focus_slider(app: &mut App) {
+    let slider = slider_hit();
+    let target = if app.input.stops.contains(&slider) {
+        slider
+    } else {
+        crate::input::Hit::default()
+    };
+    crate::input::set_focus(app, target, true);
+    crate::transform_row::stop_text_input(app);
+    app.dirty = true;
+}
+
+/// Routes a pointer press: a press on the field opens it (or collapses the
+/// caret to the end while open, as the scrub box does); anything else
+/// blur-commits the open edit, as a mousedown blurs the DOM input. Call
+/// after `transform_row::press_down`.
+pub fn press_down(app: &mut App) {
+    if app.input.pressed.kind == crate::input::HitKind::PointsField {
+        if app.x_field.editing() {
+            crate::input::set_focus(app, field_hit(), false);
+            let shown = display(app);
+            collapse_end(&mut app.x_field.field, &shown);
+            app.dirty = true;
+        } else {
+            open_field(app, false);
+        }
+        return;
+    }
+    if app.x_field.editing() {
+        let value = p_value(app);
+        let fx = app.x_field.blur_out(value);
+        apply(app, fx);
+    }
+}
+
+/// Routes a key to the focused field: Enter commits, Escape cancels, the
+/// arrows nudge live or move the caret, Tab commits and walks on (the field
+/// is never a Tab stop). Call before `transform_row::key`, whose Tab arm
+/// would otherwise walk off with the edit open. Returns whether consumed.
+pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
+    use sdl3::keyboard::Keycode;
+    if !event.down || event.repeat {
+        return false;
+    }
+    if app.input.focus.kind != crate::input::HitKind::PointsField {
+        return false;
+    }
+    let value = p_value(app);
+    match event.key {
+        Keycode::Return | Keycode::KpEnter => {
+            let fx = app.x_field.key_down(XKey::Enter, value);
+            apply(app, fx);
+        }
+        Keycode::Escape => {
+            let fx = app.x_field.key_down(XKey::Escape, value);
+            apply(app, fx);
+        }
+        Keycode::Up => {
+            let fx = app.x_field.key_down(XKey::ArrowUp, value);
+            apply(app, fx);
+        }
+        Keycode::Down => {
+            let fx = app.x_field.key_down(XKey::ArrowDown, value);
+            apply(app, fx);
+        }
+        Keycode::Left => {
+            let fx = app.x_field.key_down(XKey::Left, value);
+            apply(app, fx);
+        }
+        Keycode::Right => {
+            let fx = app.x_field.key_down(XKey::Right, value);
+            apply(app, fx);
+        }
+        Keycode::Home => {
+            let fx = app.x_field.key_down(XKey::Home, value);
+            apply(app, fx);
+        }
+        Keycode::End => {
+            let fx = app.x_field.key_down(XKey::End, value);
+            apply(app, fx);
+        }
+        Keycode::Backspace => {
+            let fx = app.x_field.key_down(XKey::Backspace, value);
+            apply(app, fx);
+        }
+        Keycode::Delete => {
+            let fx = app.x_field.key_down(XKey::Delete, value);
+            apply(app, fx);
+        }
+        Keycode::Tab => {
+            tab_out(
+                app,
+                event
+                    .mods
+                    .intersects(sdl3::keyboard::Mod::LSHIFTMOD | sdl3::keyboard::Mod::RSHIFTMOD),
+            );
+        }
+        Keycode::A
+            if event.mods.intersects(
+                sdl3::keyboard::Mod::LCTRLMOD
+                    | sdl3::keyboard::Mod::RCTRLMOD
+                    | sdl3::keyboard::Mod::LGUIMOD
+                    | sdl3::keyboard::Mod::RGUIMOD,
+            ) =>
+        {
+            let shown = display(app);
+            select_all(&mut app.x_field.field, &shown);
+            app.dirty = true;
+        }
+        _ => return false,
+    }
+    true
+}
+
+/// Tab leaves the field (never a Tab stop): the edit blur-commits, and the
+/// focus walks on — forward to the slider, back to the stop before it (the
+/// DOM order around the input).
+fn tab_out(app: &mut App, shift: bool) {
+    let value = p_value(app);
+    let fx = app.x_field.blur_out(value);
+    apply(app, fx);
+    let slider = slider_hit();
+    let target = if shift {
+        crate::input::stop_beside(app, slider, -1)
+    } else if app.input.stops.contains(&slider) {
+        slider
+    } else {
+        crate::input::Hit::default()
+    };
+    crate::input::set_focus(app, target, true);
+    app.dirty = true;
+}
+
+/// Routes typed text to the focused field, replacing the selection.
+pub fn text(app: &mut App, text: &str) {
+    if text.is_empty() || app.input.focus.kind != crate::input::HitKind::PointsField {
+        return;
+    }
+    let value = p_value(app);
+    app.x_field.type_text(value, text);
+    app.dirty = true;
+}
+
+/// Lays the full page out twice, converged on the visible range, as the
+/// card's layout test does (the sidebar lays out before the plane, so the
+/// second pass reads the current range). Takes `&mut`: the measure closure
+/// keeps the app's address from `init_clay`, so the app must never move
+/// again — returning it by value would dangle that pointer into the
+/// helper's frame and fail the next measure.
+#[cfg(test)]
+fn laid_out_page(app: &mut crate::app::App, query: &str) {
+    // Callers hold `mv_clay::tests_lock` for the whole test: the layout
+    // context is global, and one lock covers every test that lays out.
+    assert!(mv_text::init(&mut app.fonts));
+    crate::ui::init_clay(app);
+    app.size = [1440.0, 900.0];
+    app.pixels = [2880, 1800];
+    app.url = crate::url::Url::from_query(query);
+    crate::transform_section::init_params_from_url(app);
+    let _commands = crate::page::layout_page(app);
+    app.visible_range = crate::visible_range::live(app);
+    assert!(
+        app.visible_range.is_some(),
+        "the laid out plane shows a range"
+    );
+}
+
+/// The field and tip boxes against the reference's (`page.json` at 96f1e84,
+/// webkit): closed in the rest state, open with the tip while editing.
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    const SLACK: f32 = 0.5;
+
+    fn check(shot: &str, name: &str, id: mv_sys::clay::ElementId) {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        laid_out_page(&mut app, "");
+        let _commands = crate::page::layout_page(&mut app);
+        check_in(&app, shot, name, id);
+    }
+
+    fn check_in(app: &App, shot: &str, name: &str, id: mv_sys::clay::ElementId) {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let data = clay.get_element_data(id);
+        assert!(data.found, "{name}: no such element");
+        let b = data.boundingBox;
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot = crate::fixture::fixture_shot(&fixture, shot).expect("shot in fixture");
+        let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+        for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+            .iter()
+            .zip(want.iter())
+            .enumerate()
+        {
+            assert!(
+                (got - want).abs() <= SLACK,
+                "{name}[{i}]: laid out {got}, reference {want}"
+            );
+        }
+    }
+
+    #[test]
+    fn closed_field_matches_the_reference() {
+        check(
+            "rows-default",
+            "field_p",
+            mv_clay::id(crate::points_section::X_SLOT_ID, 0),
+        );
+    }
+
+    #[test]
+    fn open_field_and_tip_match_the_reference() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        laid_out_page(&mut app, "");
+        app.x_field.open(p_value(&app));
+        let _commands = crate::page::layout_page(&mut app);
+        check_in(
+            &app,
+            "field-open",
+            "field_p",
+            mv_clay::id(crate::points_section::X_SLOT_ID, 0),
+        );
+        check_in(&app, "field-open", "tip_p", mv_clay::id(P_TIP_ID, 0));
+    }
+
+    #[test]
+    fn error_tip_matches_the_reference() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        laid_out_page(&mut app, "");
+        app.x_field.open(p_value(&app));
+        app.x_field.type_text(p_value(&app), "abc");
+        let _ = app.x_field.key_down(XKey::Enter, p_value(&app));
+        assert!(app.x_field.invalid());
+        let _commands = crate::page::layout_page(&mut app);
+        check_in(
+            &app,
+            "field-invalid",
+            "field_p",
+            mv_clay::id(crate::points_section::X_SLOT_ID, 0),
+        );
+        check_in(&app, "field-invalid", "tip_p", mv_clay::id(P_TIP_ID, 0));
+    }
 }
 
 #[cfg(test)]

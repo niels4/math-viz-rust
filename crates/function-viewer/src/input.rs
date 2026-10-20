@@ -164,6 +164,14 @@ pub enum HitKind {
     /// the port, which has one route (the planner's call, `decisions.md`).
     /// Never a focus stop: the port's tab walk is the milestones' own.
     Wordmark,
+    /// P's x field (h8-points-field; `index` 0). Never a Tab stop
+    /// (`tabIndex={-1}` in `XField.tsx`): focus arrives by mouse, by focus
+    /// or by Enter from the slider, and typing replaces the selected text.
+    PointsField,
+    /// The x-of-P slider (h8-points-slider; `index` 0): the track under P's
+    /// head. A Tab stop and the focus the field's end returns to; Enter on
+    /// it opens the field.
+    PointsSlider,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -513,6 +521,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 press(app);
                 crate::settings::press_down(app);
                 crate::transform_row::press_down(app);
+                crate::x_field::press_down(app);
                 if app.input.pressed.kind == HitKind::Plane {
                     // SDL's numbering starts at 1; the camera takes the DOM's,
                     // where the primary button is 0 (only 0 drags, there).
@@ -585,8 +594,13 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 println!("input {event:?}");
             }
             app.input.mods = event.mods;
-            // The page milestones route their keys from here.
-            if !crate::settings::key(app, &event) && !crate::selector::key(app, &event) {
+            // The page milestones route their keys from here. The P field
+            // runs before the transform rows: its Tab arm commits and walks
+            // on, where the rows' arm would walk off with the edit open.
+            if !crate::settings::key(app, &event)
+                && !crate::selector::key(app, &event)
+                && !crate::x_field::key(app, &event)
+            {
                 crate::transform_row::key(app, &event);
             }
             // A modifier anywhere re-reads a held scrub's mode live
@@ -602,6 +616,8 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             // The focused transform field takes the typed text (h4-rows).
             crate::transform_row::text(app, &event.text);
+            // P's focused field takes it the same way (h8-points-field).
+            crate::x_field::text(app, &event.text);
         }
         Input::Window(event) => {
             app.size = event.size;

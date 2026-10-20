@@ -362,7 +362,10 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // ring over a's tip). The walks keep Clay's order within each layer; a
     // neighbour's text fully inside the tip keeps its place ahead of the
     // tip's plate in both, so it paints the same.
-    let tip_ids = crate::scrub_value::tip_box_ids();
+    // The scrub tips' four containers plus the P edit tip's (h8-points-field):
+    // one layer above the rows' rings, as the DOM stacks positioned tips.
+    let mut tip_ids = crate::scrub_value::tip_box_ids().to_vec();
+    tip_ids.push(crate::x_field::tip_id());
     let mut tip_rects: Vec<clay::BoundingBox> = Vec::new();
     for command in &commands {
         if command.commandType == clay::RenderCommandType::Rectangle
@@ -417,6 +420,9 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // caps last, as `paint_rows` held them.
     draw_commands(app, density, &tips);
     crate::scrub_value::paint_extras(app);
+    // The P edit tip's arrows on its plate, as the scrub tip's
+    // (h8-points-field).
+    crate::x_field::paint_tip_arrows(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }

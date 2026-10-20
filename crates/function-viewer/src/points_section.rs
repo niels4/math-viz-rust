@@ -495,6 +495,9 @@ fn p_point(app: &mut App) {
         // h8-points-slider swaps its `point_slider::slider(app)` call in
         // for this stand-in at its merge (the track stays 20 px).
         slider_stand_in(app);
+        // The P edit tip (h8-points-field): floating under the head while
+        // the field edits.
+        crate::x_field::edit_tip(app);
     });
 }
 
@@ -531,12 +534,14 @@ fn p_head(app: &mut App) {
             triangle(app, mv_clay::id(P_OFF_ID, 0), dir);
         }
         role_slot(app, &model);
-        readout(
-            app,
-            mv_clay::id(P_READOUT_ID, 0),
-            Some(model.x),
-            Some(model.y),
-        );
+        let (x_text, x_chars) = crate::x_field::display_chars(app);
+        let xr = XReadout {
+            text: &x_text,
+            chars: x_chars,
+            slotted: true,
+            y: Some(model.y),
+        };
+        readout(app, mv_clay::id(P_READOUT_ID, 0), &xr, true);
     });
 }
 
@@ -568,12 +573,26 @@ fn q_head(app: &mut App) {
             y: clay::LayoutAlignmentY::Center,
         };
         crate::ui::ui_scope(app, mv_clay::id(Q_ROLE_SLOT_ID, 0), &slot, |app| {
-            let (_, role_w) = slot_shown(app, model.role(), None, "Q", None, model.x, model.y);
+            let (x_text, x_chars, slotted) = q_text(model.x);
+            let xr = XReadout {
+                text: &x_text,
+                chars: x_chars,
+                slotted,
+                y: model.y,
+            };
+            let (_, role_w) = slot_shown(app, model.role(), None, "Q", None, &xr);
             if role_w > 0.0 {
                 role_text(app, mv_clay::id(Q_ROLE_ID, 0), role_w);
             }
         });
-        readout(app, mv_clay::id(Q_READOUT_ID, 0), model.x, model.y);
+        let (x_text, x_chars, slotted) = q_text(model.x);
+        let xr = XReadout {
+            text: &x_text,
+            chars: x_chars,
+            slotted,
+            y: model.y,
+        };
+        readout(app, mv_clay::id(Q_READOUT_ID, 0), &xr, false);
     });
 }
 
@@ -633,14 +652,23 @@ pub const HEAD_CONTENT_WIDTH: f32 = 350.0;
 /// badge wrapped away). Hidden runs declare no scope, so no phantom gap
 /// shifts a shown run and no unbreakable fixed run stretches the head past
 /// the card.
+/// The x run's resolved text: the display string with its `--chars`
+/// count, the slot flag and the y value, for the width, the paint and the
+/// field's slot (one value, three readers).
+pub(crate) struct XReadout<'a> {
+    pub text: &'a str,
+    pub chars: usize,
+    pub slotted: bool,
+    pub y: Option<f64>,
+}
+
 fn slot_shown(
     app: &mut App,
     role: &str,
     moved: Option<f64>,
     letter: &str,
     tri: Option<TriangleDir>,
-    x: Option<f64>,
-    y: Option<f64>,
+    readout: &XReadout<'_>,
 ) -> (f32, f32) {
     let letter_w = mv_text::measure(
         &mut app.fonts,
@@ -653,7 +681,7 @@ fn slot_shown(
         letter,
     );
     let tri_w = tri.map_or(0.0, |dir| triangle_size(dir)[0] + HEAD_GAP);
-    let readout_w = readout_width(app, x, y);
+    let readout_w = readout_width(app, readout);
     let slot_avail = HEAD_CONTENT_WIDTH
         - (MARK_SIZE + HEAD_GAP + letter_w + HEAD_GAP + tri_w)
         - HEAD_GAP
@@ -672,6 +700,19 @@ fn slot_shown(
     )
 }
 
+/// Q's x run text: the formatted value or the dash, with the slot flag
+/// (`PointReadout`'s `xChars`: the slot never applies while empty).
+fn q_text(x: Option<f64>) -> (String, usize, bool) {
+    match x {
+        Some(v) => {
+            let text = format_number(v);
+            let chars = text.chars().count();
+            (text, chars, true)
+        }
+        None => (NO_NUMBER.to_owned(), NO_NUMBER.chars().count(), false),
+    }
+}
+
 /// The role slot (`.role_slot`): flex 1, 30 px, overflow hidden.
 fn role_slot(app: &mut App, model: &PRowModel) {
     let mut slot = crate::ui::empty_decl();
@@ -685,15 +726,14 @@ fn role_slot(app: &mut App, model: &PRowModel) {
         y: clay::LayoutAlignmentY::Center,
     };
     let off = model.off.map(OffSide::dir);
-    let (badge_w, role_w) = slot_shown(
-        app,
-        model.role(),
-        model.moved,
-        "P",
-        off,
-        Some(model.x),
-        Some(model.y),
-    );
+    let (x_text, x_chars) = crate::x_field::display_chars(app);
+    let xr = XReadout {
+        text: &x_text,
+        chars: x_chars,
+        slotted: true,
+        y: Some(model.y),
+    };
+    let (badge_w, role_w) = slot_shown(app, model.role(), model.moved, "P", off, &xr);
     crate::ui::ui_scope(app, mv_clay::id(P_ROLE_SLOT_ID, 0), &slot, |app| {
         if badge_w > 0.0 {
             badge_spacer(app, badge_w);
@@ -759,45 +799,68 @@ fn role_text(app: &mut App, id: clay::ElementId, width: f32) {
 /// The readout's spacer: the fixed-width runs summed, 25 px tall like the
 /// math line, painted post-pass. The x run is h8-points-field's slot
 /// ([`X_SLOT_ID`]): until it merges the formatted number paints there.
-fn readout(app: &mut App, id: clay::ElementId, x: Option<f64>, y: Option<f64>) {
-    let width = readout_width(app, x, y);
+fn readout(app: &mut App, id: clay::ElementId, readout: &XReadout<'_>, field: bool) {
+    let width = readout_width(app, readout);
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_fixed(width),
         height: mv_clay::sizing_fixed(READOUT_HEIGHT),
     };
-    crate::ui::ui_scope(app, id, &decl, |_| {
-        // h8-points-field swaps its `x_field` call in for the formatted
-        // number's paint at its merge (the x slot's box stays).
+    crate::ui::ui_scope(app, id, &decl, |app| {
+        // P's x field (h8-points-field): the slot's box stays the hit
+        // target and the paint anchor; Q's dash span paints bare.
+        if field {
+            crate::x_field::slot(app, id);
+        }
     });
 }
 
-/// The readout's width: the open paren, the x slot, the close, the relation
-/// with its side padding, and y — each the max of its `min-width` slot and
-/// its content, as the browser sizes the spans.
+/// The x run's slot: the lead's `--chars` minimum against the content,
+/// as the browser sizes the spans. One formula for the readout, its paint
+/// and the field's slot. With no point the lead's `--chars` is the dash's
+/// own length: the x slot never applies while empty (`PointReadout`'s
+/// `xChars`).
 #[must_use]
-pub fn readout_width(app: &mut App, x: Option<f64>, y: Option<f64>) -> f32 {
+pub(crate) fn x_slot(app: &mut App, x_text: &str, x_chars: usize, slotted: bool) -> (f32, f32) {
     let slots = readout_slots(app.visible_range);
+    // The P field's own `--chars` carries no slot minimum (the input sizes
+    // from its text); the lead applies the visible range's (`xChars`).
+    let chars = if slotted {
+        x_chars.max(slots.map_or(0, |slots| slots.x))
+    } else {
+        x_chars
+    };
+    let ch = ch_advance(app);
+    let x_min = ceil_px(chars as f32 * ch);
     let number = mv_text::Style {
         face: mv_text::Face::RobotoMono500,
         size: NUMBER_SIZE,
         tracking: 0.0,
         features: tabular(),
     };
-    let ch = ch_advance(app);
+    (
+        x_min.max(mv_text::measure(&mut app.fonts, number, x_text)),
+        ch,
+    )
+}
+
+/// The readout's width: the open paren, the x slot, the close, the relation
+/// with its side padding, and y — each the max of its `min-width` slot and
+/// its content, as the browser sizes the spans.
+#[must_use]
+pub(crate) fn readout_width(app: &mut App, readout: &XReadout<'_>) -> f32 {
+    let slots = readout_slots(app.visible_range);
+    let (x_slot, ch) = x_slot(app, readout.text, readout.chars, readout.slotted);
+    let number = mv_text::Style {
+        face: mv_text::Face::RobotoMono500,
+        size: NUMBER_SIZE,
+        tracking: 0.0,
+        features: tabular(),
+    };
     let open = ceil_px(OPEN_EM * MATH_SIZE);
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
-    let x_text = x.map_or_else(|| NO_NUMBER.to_owned(), format_number);
-    // With no point the lead's `--chars` is the dash's own length: the x
-    // slot never applies while empty (`PointReadout`'s `xChars`).
-    let x_chars = match x {
-        Some(_) => x_text.chars().count().max(slots.map_or(0, |slots| slots.x)),
-        None => x_text.chars().count(),
-    };
-    let x_min = ceil_px(x_chars as f32 * ch);
-    let x_slot = x_min.max(mv_text::measure(&mut app.fonts, number, &x_text));
-    let y_slot = match y.map(number_parts) {
+    let y_slot = match readout.y.map(number_parts) {
         None => mv_text::measure(&mut app.fonts, number, NO_NUMBER),
         Some(NumberParts::Sci {
             ref mantissa,
@@ -928,20 +991,35 @@ pub fn paint_points(app: &mut App) {
     }
     paint_role_slot(app, &theme, &p);
     let q = live_q_row(app);
+    let (x_text, x_chars, slotted) = q_text(q.x);
+    let xr = XReadout {
+        text: &x_text,
+        chars: x_chars,
+        slotted,
+        y: q.y,
+    };
     if let Some(slot) = laid_out(app, mv_clay::id(Q_ROLE_SLOT_ID, 0)) {
-        let (_, role_w) = slot_shown(app, q.role(), None, "Q", None, q.x, q.y);
+        let (_, role_w) = slot_shown(app, q.role(), None, "Q", None, &xr);
         if role_w > 0.0 {
             paint_role(app, &theme, q.role(), false, slot.x, slot.y);
         }
     }
-    paint_readout(
-        app,
-        &theme,
-        mv_clay::id(P_READOUT_ID, 0),
-        Some(p.x),
-        Some(p.y),
-    );
-    paint_readout(app, &theme, mv_clay::id(Q_READOUT_ID, 0), q.x, q.y);
+    let (x_text, x_chars) = crate::x_field::display_chars(app);
+    let xr = XReadout {
+        text: &x_text,
+        chars: x_chars,
+        slotted: true,
+        y: Some(p.y),
+    };
+    paint_readout(app, &theme, mv_clay::id(P_READOUT_ID, 0), &xr, true);
+    let (x_text, x_chars, slotted) = q_text(q.x);
+    let xr = XReadout {
+        text: &x_text,
+        chars: x_chars,
+        slotted,
+        y: q.y,
+    };
+    paint_readout(app, &theme, mv_clay::id(Q_READOUT_ID, 0), &xr, false);
 }
 
 /// The mark: a ring stroked over the background fill with its core
@@ -1045,15 +1123,14 @@ fn paint_role_slot(app: &mut App, theme: &mv_theme::Theme, model: &PRowModel) {
     };
     // The layout's predicate, so paint and layout agree run for run.
     let off = model.off.map(OffSide::dir);
-    let (badge_w, role_w) = slot_shown(
-        app,
-        model.role(),
-        model.moved,
-        "P",
-        off,
-        Some(model.x),
-        Some(model.y),
-    );
+    let (x_text, x_chars) = crate::x_field::display_chars(app);
+    let xr = XReadout {
+        text: &x_text,
+        chars: x_chars,
+        slotted: true,
+        y: Some(model.y),
+    };
+    let (badge_w, role_w) = slot_shown(app, model.role(), model.moved, "P", off, &xr);
     if badge_w > 0.0 {
         paint_badge(app, theme, model.moved, slot.x, slot.y);
     }
@@ -1225,14 +1302,13 @@ fn paint_readout(
     app: &mut App,
     theme: &mv_theme::Theme,
     id: clay::ElementId,
-    x: Option<f64>,
-    y: Option<f64>,
+    readout: &XReadout<'_>,
+    field: bool,
 ) {
+    let (x_text, x_chars, slotted, y) = (readout.text, readout.chars, readout.slotted, readout.y);
     let Some(r#box) = laid_out(app, id) else {
         return;
     };
-    let slots = readout_slots(app.visible_range);
-    let x_text = x.map_or_else(|| NO_NUMBER.to_owned(), format_number);
     let parts = y.map(number_parts);
     let empty = parts.is_none();
     let token = if empty {
@@ -1268,22 +1344,18 @@ fn paint_readout(
             NUMBER_SIZE,
             NUMBER_LINE,
         );
-    let ch = ch_advance(app);
+    let (x_slot, _) = x_slot(app, x_text, x_chars, slotted);
     let open = ceil_px(OPEN_EM * MATH_SIZE);
     let close = ceil_px(CLOSE_EM * MATH_SIZE);
     let rel_w = ceil_px(REL_EM * MATH_SIZE) + 2.0 * REL_PAD;
-    let x_chars = match x {
-        Some(_) => x_text.chars().count().max(slots.map_or(0, |slots| slots.x)),
-        None => x_text.chars().count(),
-    };
-    let x_slot = ceil_px(x_chars as f32 * ch);
     // The lead right-aligns its [open paren + x] group (`justify-content:
     // flex-end`): the field's input is only the value's chars wide
     // (`--chars: max(1, text.length)`, unrounded), so the group shifts right
     // by the slot's leftover. Q's dash span has no field and keeps the
     // slot's right alignment.
-    let input_w = mv_text::measure(&mut app.fonts, number, &x_text);
-    let push = if x.is_some() { x_slot - input_w } else { 0.0 };
+    let input_w = mv_text::measure(&mut app.fonts, number, x_text);
+    // The dash span never shifts: only a field's group right-aligns.
+    let push = if slotted { x_slot - input_w } else { 0.0 };
     mv_text::draw(
         &mut app.fonts,
         &mut app.vg,
@@ -1293,15 +1365,19 @@ fn paint_readout(
         "f(",
         ink,
     );
-    mv_text::draw(
-        &mut app.fonts,
-        &mut app.vg,
-        number,
-        r#box.x + open + x_slot - input_w,
-        number_base,
-        &x_text,
-        ink,
-    );
+    if field {
+        crate::x_field::paint_field(app, theme, r#box.x, open, x_slot, number_base, ink);
+    } else {
+        mv_text::draw(
+            &mut app.fonts,
+            &mut app.vg,
+            number,
+            r#box.x + open + x_slot - input_w,
+            number_base,
+            x_text,
+            ink,
+        );
+    }
     let rel_x = r#box.x + open + x_slot;
     mv_text::draw(
         &mut app.fonts,

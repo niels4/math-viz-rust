@@ -172,6 +172,11 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub visible_range: Option<crate::visible_range::VisibleRange>,
+    /// P's x field: the edit over `p` (`x_field.rs` owns it), `None`-shaped
+    /// at rest (h8-points-field).
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub x_field: crate::x_field::XField,
 }
 
 impl App {
@@ -344,6 +349,7 @@ impl App {
             dragged: None,
             moved_by: crate::moved_by::MovedBy::new(),
             visible_range: None,
+            x_field: crate::x_field::XField::new(),
         }
     }
 }
