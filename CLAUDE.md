@@ -585,6 +585,27 @@ no new tokens (all eight tabled).
   `plane_up` match both arms with a `None => {}` no-op (nothing may set
   or flush without a press — the old `_` fallback flushed h/k).
 
+### h7-sidebar (the handles' sidebar side)
+
+- The reset/Reset-all animation is jump-list adopt, not a value write: set
+  `jumps` (one, or four in section order a/k/b/h with from=live), adopt at
+  elapsed 0 (`flip::adopt_jumps`), then flush — the press's own turn still
+  draws the old values while the boxes show the new ones, exactly like the
+  flip's `press_flip` + `store_param` order.
+- The shared scrub-mode map is the single source: box drags sync it in
+  `mirror_scrub` (was/held transition on the box's own mirrored drag only —
+  a handle drag's modes never pass through `store`), `drag_mode()` reads the
+  map, and the ruler opens one card per mode-held param at the live query
+  value (the box drag's card is never doubled). Rows, readout terms and the
+  box chrome all follow the same slot.
+- The diamond→square single-jump cursor-pan quirk is reference behaviour at
+  this hash (`onHover` before the old handle's `onHoverEnd` clears
+  `hovering`): keep the dispatch order, approach the square from empty plane
+  in states.
+- Ruler boxes only exist mid-drag: the dom fixture runs the held-drag state
+  (`rows-lit-hk-drag`) for them, and the layout test reads them at that shot
+  — the pattern for any drag-only geometry.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
