@@ -3,17 +3,14 @@ script takes, every element the page shows, from the page's root down, with its 
 its own text runs (a Range over each text node) and their baselines, and the computed styles the
 port draws from, beside the screenshot.
 
-Elements the page hides are left out with their subtrees and listed: `display: none` (the layouts'
-media queries drop the theme chip, the wordmark's text and the rows' names) and the visually hidden
-lines kept for screen readers (C3Sidebar's spoken hint, the equation's spoken form, the theme
-chip's "Theme: ", the zoom's status: 1 x 1 boxes clipped by `clip-path: inset(50%)`), which the
-port has no counterpart for (plan 1.12).
+Elements the page hides are left out with their subtrees and listed: `display: none`, and the
+visually hidden lines kept for screen readers (1 x 1 boxes clipped by `clip-path: inset(50%)`),
+which the port has no counterpart for.
 
-`tools/run dom --fixture` writes crates/function-viewer/testdata/page.json: named measures of
-the page (the top bar's parts, the panel, the plane, the cards, the rows, the points, the
-equation's runs and the readouts' parts) at every shot of the states the port's tests lay out
-(FIXTURE_STATES), by shot name, in WebKit and Chromium, which `cargo test -p function-viewer`
-holds the port's layout to (the layout and sidebar tests)."""
+`tools/run dom --fixture` writes crates/function-viewer/testdata/page.json: the named boxes of
+tools/states/boxes.toml at every shot of the states the port's tests lay out (FIXTURE_STATES),
+by shot name, in WebKit and Chromium, which `cargo test -p function-viewer` holds the port's
+layout to."""
 
 import json
 import subprocess
@@ -126,128 +123,30 @@ DOM_JS = "(props) => {" + RUN_JS + r"""
 }
 """
 
-# The page's parts by name, as the port's tests call them: boxes, texts (a text node's run), runs
-# (every visible text node under an element, in document order) and scroll positions. A part the
-# layout hides (display: none) is left out.
-FIXTURE_JS = "() => {" + RUN_JS + r"""
-  const shown = (el) => el != null && getComputedStyle(el).display !== 'none' &&
-    el.getClientRects().length > 0;
-  const box = (el) => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; };
-  const own = (el) => [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim() !== '');
-  const runs = (el) => {
-    const nodes = [];
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
-      if (n.textContent.trim() !== '' && shown(n.parentElement)) nodes.push(n);
+# The page's boxes by name, from tools/states/boxes.toml (name = CSS selector): each
+# selector's first shown element's box, in CSS px, or the name in `missing` when no shown
+# element matches. A layout the reference hides (a media query's display: none) is left out.
+FIXTURE_JS = """(pairs) => {
+  const boxes = {}, missing = [];
+  for (const [name, selector] of pairs) {
+    const el = document.querySelector(selector);
+    if (el === null || getComputedStyle(el).display === 'none' ||
+        el.getClientRects().length === 0) {
+      missing.push(name);
+      continue;
     }
-    return nodes.map(run);
-  };
-  const boxes = {}, texts = {}, lines = {}, scroll = {};
-  const part = (name, el) => { if (shown(el)) boxes[name] = box(el); return el; };
-  const text = (name, el) => { if (shown(el) && own(el).length) texts[name] = run(own(el)[0]); };
-  const tid = (id) => document.querySelector(`[data-testid="${id}"]`);
-
-  const header = part('topbar', document.querySelector('header'));
-  const [wordmark, separator, titleBlock, actions] = header.children;
-  part('wordmark', wordmark);
-  part('wordmark_icon', wordmark.children[0]);
-  text('wordmark_text', wordmark.children[1]);
-  part('separator', separator);
-  part('title_block', titleBlock);
-  text('title_text', part('title', titleBlock.querySelector('h1')).firstElementChild);
-  text('subtitle_text', part('subtitle', titleBlock.querySelector('p')).firstElementChild);
-  part('actions', actions);
-  const chip = part('chip', tid('theme-chip'));
-  if (shown(chip)) {
-    part('chip_dot', chip.children[0]);
-    text('chip_text', chip);
+    const r = el.getBoundingClientRect();
+    boxes[name] = [r.x, r.y, r.width, r.height];
   }
-  const gear = part('gear', tid('settings-button'));
-  part('gear_icon', gear.querySelector('svg'));
-
-  const panel = part('panel', document.querySelector('aside'));
-  scroll.panel = {top: panel.scrollTop, height: panel.scrollHeight, client: panel.clientHeight};
-  part('plane', document.querySelector('main'));
-  const doc = document.scrollingElement;
-  scroll.page = {top: doc.scrollTop, height: doc.scrollHeight, client: doc.clientHeight};
-
-  for (const s of ['function', 'transform', 'points']) {
-    const card = part(`card_${s}`, tid(`fv-section-${s}`));
-    text(`card_title_${s}`, card.querySelector('h2'));
-  }
-  part('picker', tid('fv-fn-x').parentElement);
-  ['x', 'x2', 'x3', 'sin'].forEach((f, i) => part(`option_${i}`, tid(`fv-fn-${f}`)));
-  part('equation', tid('fv-equation'));
-  const live = part('live_line', tid('func-readout').firstElementChild);
-  lines.live = runs(live);
-  const form = part('form_line', [...tid('fv-form').children].find((c) => shown(c) &&
-    !c.className.includes('_hidden_')));
-  lines.form = runs(form);
-  part('bar', form.querySelector('[class*="_bar_"]'));
-
-  for (const p of ['a', 'k', 'b', 'h']) {
-    const row = part(`row_${p}`, tid(`fv-param-${p}`));
-    const chipEl = part(`chip_${p}`, tid(`fv-param-${p}-chip`));
-    text(`chip_letter_${p}`, chipEl.querySelector('var'));
-    const slot = part(`name_slot_${p}`, row.children[1]);
-    text(`name_${p}`, slot.firstElementChild);
-    part(`flip_${p}`, tid(`fv-param-${p}-flip`));
-    part(`box_${p}`, tid(`fv-param-${p}-box`));
-  }
-
-  for (const p of ['p', 'q']) {
-    const point = part(`point_${p}`, tid(`fv-point-${p}`));
-    const head = part(`head_${p}`, point.firstElementChild);
-    part(`mark_${p}`, head.children[0]);
-    text(`letter_${p}`, part(`letter_${p}`, head.children[1]));
-    const slot = part(`role_slot_${p}`, head.children[2]);
-    text(`role_${p}`, slot.firstElementChild);
-    const readout = part(`readout_${p}`, tid(`fv-${p}-readout`));
-    lines[`readout_${p}`] = runs(readout);
-    const [lead, close, rel, y] = readout.children;
-    part(`readout_${p}_lead`, lead);
-    part(`readout_${p}_open`, lead.children[0]);
-    part(`readout_${p}_x`, lead.children[1]);
-    part(`readout_${p}_close`, close);
-    part(`readout_${p}_rel`, rel);
-    part(`readout_${p}_y`, y);
-  }
-  part('readout_p_field', tid('fv-p-field'));
-  part('track', tid('fv-p-scrubber'));
-  part('thumb', tid('fv-p-scrubber-thumb'));
-
-  // The settings panel, where a state has it open (settings-open): its two settings, the toggle's
-  // options with their marks and words, the help line, the theme's label and the rows' parts.
-  const menu = tid('settings-panel');
-  if (shown(menu)) {
-    part('settings_panel', menu);
-    const [appearance, themes] = menu.children;
-    text('settings_appearance_text', part('settings_appearance', appearance.children[0]));
-    part('settings_mode', appearance.children[1]);
-    for (const m of ['system', 'light', 'dark']) {
-      const option = part(`settings_mode_${m}`, tid(`settings-mode-${m}`));
-      part(`settings_mode_${m}_label`, option.firstElementChild);
-      part(`settings_mode_${m}_icon`, option.querySelector('svg'));
-      text(`settings_mode_${m}_text`, option.firstElementChild);
-    }
-    text('settings_help_text', part('settings_help', tid('settings-help')).firstElementChild);
-    text('settings_theme_label_text', part('settings_theme_label', themes.children[0]).firstElementChild);
-    [...part('settings_themes', tid('settings-themes')).children].forEach((row, i) => {
-      part(`settings_row_${i}`, row);
-      const [swatch, name, check] = row.firstElementChild.children;
-      part(`settings_swatch_${i}`, swatch);
-      text(`settings_name_${i}`, part(`settings_name_${i}`, name));
-      part(`settings_check_${i}`, check);
-    });
-  }
-  return {viewport: [innerWidth, innerHeight], boxes, texts, runs: lines, scroll};
+  return {viewport: [innerWidth, innerHeight], boxes, missing};
 }
 """
 
 Dom = dict[str, Any]
 
-# The layouts the port's tests lay out, each a state in tools/states and the shot that shows it.
-FIXTURE_STATES = ("default", "stacked", "short", "narrow", "topbar", "settings-open")
+# The layouts the port's tests lay out, each a state in tools/states and the shot that shows
+# it. H0's page has one state; each milestone appends the layouts it lays out.
+FIXTURE_STATES = ("default",)
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"
 
@@ -347,9 +246,20 @@ def _reference_commit() -> str:
 
 
 def run_fixture(out: Path, scratch: Path) -> int:
-    """crates/function-viewer/testdata/page.json: the named measures (FIXTURE_JS) at every shot of
-    the fixture's states, by shot name, in WebKit and Chromium, with the viewport each was taken
-    at."""
+    """crates/function-viewer/testdata/page.json: the named boxes (tools/states/boxes.toml) at
+    every shot of the fixture's states, by shot name, in WebKit and Chromium, with the viewport
+    each was taken at and the names no shown element matched."""
+    import tomllib
+
+    boxes_toml = REPO / "tools" / "states" / "boxes.toml"
+    pairs = [
+        (name, selector)
+        for name, selector in tomllib.loads(boxes_toml.read_text()).items()
+        if isinstance(selector, str)
+    ]
+    if not pairs:
+        print(f"{boxes_toml} lists no boxes")
+        return 1
     shots: dict[str, Dom] = {}
     failed = False
     for name in FIXTURE_STATES:
@@ -358,7 +268,7 @@ def run_fixture(out: Path, scratch: Path) -> int:
             measured: dict[str, Dom] = {}
 
             def measure(page: Page, shot: str, measured: dict[str, Dom] = measured) -> None:
-                measured[shot] = cast(Dom, page.evaluate(FIXTURE_JS))
+                measured[shot] = cast(Dom, page.evaluate(FIXTURE_JS, pairs))
 
             result = run(script, "ref", engine, scratch / name / engine, on_shot=measure)
             if not result.ok or not measured:
@@ -372,7 +282,7 @@ def run_fixture(out: Path, scratch: Path) -> int:
                 print(f"{shot} {engine}: {len(m['boxes'])} boxes at {entry['size']}")
     if failed:
         return 1
-    fixture = {"reference": f"math-viz {_reference_commit()}", "shots": shots}
+    fixture = {"reference": f"math-viz2 {_reference_commit()}", "shots": shots}
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(fixture, indent=1) + "\n")
     print(f"wrote {shown(out)}")

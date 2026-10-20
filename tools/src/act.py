@@ -1,6 +1,6 @@
-"""Runs a script (script.py) on one surface: the React reference or the web build in a browser
-through Playwright, or the native build through its --script flag. Each run writes its shots,
-any video and a report.json into a directory of its own.
+"""Runs a script (script.py) on one surface: the math-viz2 reference or the web build in a
+browser through Playwright, or the native build through its --script flag. Each run writes its
+shots, any video and a report.json into a directory of its own.
 
 In a browser the script runs on Playwright's clock, paused from before the page loads. Time 0
 is the page's first animation frame after it has loaded, and `wait` runs the clock forward, so
@@ -50,28 +50,17 @@ from script import (
 
 REPO = Path(__file__).resolve().parents[2]
 NATIVE = REPO / "build" / "native" / "function-viewer"
-TARGETS = ("ref", "web", "native", "odin", "odin-web")
-
-
-def odin_build() -> Path:
-    """The Odin oracle's build directory: $ODIN_BUILD, the kept worktree's build/ by default."""
-    return Path(
-        os.environ.get("ODIN_BUILD", "/opt/dev/agent/worktrees/math-viz-odin/claude-port/build")
-    )
-
-
-ODIN_NATIVE = odin_build() / "native" / "function-viewer"
-ODIN_WEB = odin_build() / "web"
+TARGETS = ("ref", "web", "native")
 
 # A build given by its directory (build/, or ./build.sh release's build/release/) reaches the
 # browser from its web/ directory through Playwright's request routing, at an origin no server
 # listens on (port 2, off the browsers' blocked ports), so nothing else answers and nothing is
-# started: a clone tests its own files. The web and odin-web targets are routed by default;
-# WEB_PORT honoured when set serves them from a server instead, for a person looking at a build.
+# started: a clone tests its own files. The web target is routed by default; WEB_PORT honoured
+# when set serves it from a server instead, for a person looking at a build.
 ROUTED_ORIGIN = "http://localhost:2"
 
-# The React page the port copies.
-REFERENCE_ROUTE = "#demos/function-viewer-v2"
+# The math-viz2 page the port copies.
+REFERENCE_ROUTE = "#function-viewer"
 
 # The paused clock's wall time: 2026-10-12T00:00:00Z.
 EPOCH_MS = 1_791_763_200_000
@@ -94,35 +83,38 @@ def port(name: str) -> int:
     return int(value)
 
 
-def url_for(target: str) -> str:
+def url_for(target: str, query: str = "") -> str:
+    """The page's URL: the reference served on REACT_REF_PORT at the Function Viewer route (with
+    ?query appended when the script opens with a `query` line), or the web build on WEB_PORT."""
+    tail = f"?{query}" if query else ""
     if target == "ref":
-        return f"http://localhost:{port('REACT_REF_PORT')}/{REFERENCE_ROUTE}"
-    return f"http://localhost:{port('WEB_PORT')}/"
+        return f"http://localhost:{port('REACT_REF_PORT')}/{REFERENCE_ROUTE}{tail}"
+    return f"http://localhost:{port('WEB_PORT')}/{tail}"
 
 
 def is_web(target: str) -> bool:
-    """A target drawn by the web build in a browser: web or the Odin oracle's odin-web."""
-    return target in ("web", "odin-web")
+    """A target drawn by the web build in a browser."""
+    return target == "web"
 
 
 def is_native(target: str) -> bool:
-    """A target drawn by a native binary through its --script flag: native or odin."""
-    return target in ("native", "odin")
+    """A target drawn by a native binary through its --script flag."""
+    return target == "native"
 
 
-def web_dir(target: str, build: Path | None) -> Path:
-    """The web/ directory a web target is routed from: the given build's, else the target's own
-    (the Rust build's for web, the oracle's for odin-web)."""
+def web_dir(build: Path | None) -> Path:
+    """The web/ directory a web run is routed from: the given build's, else the build's own
+    (WEB_PORT honoured when set serves it from a server instead)."""
     if build is not None:
         return build / "web"
-    return REPO / "build" / "web" if target == "web" else ODIN_WEB
+    return REPO / "build" / "web"
 
 
-def native_binary(target: str, build: Path | None) -> Path:
-    """The native binary a native target runs: the given build's, else the target's own."""
+def native_binary(build: Path | None) -> Path:
+    """The native binary a native run runs: the given build's, else the build's own."""
     if build is not None:
         return build / "native" / "function-viewer"
-    return NATIVE if target == "native" else ODIN_NATIVE
+    return NATIVE
 
 
 @dataclass
@@ -172,13 +164,13 @@ def run(
     on_shot: OnShot | None = None,
     build: Path | None = None,
 ) -> Run:
-    """Runs `script` on `target` (ref, web, native, odin or odin-web; `engine` for the browser
-    ones) into `out`. In a browser, `on_shot` is called with the page after each shot is written
-    (tools/run dom). The port runs from `build` when it is given (its native/function-viewer,
-    and its web/ through ROUTED_ORIGIN); else the web and odin-web targets are routed from
-    their own build directories (WEB_PORT honoured when set), and the native ones run their
-    own binary. A native run's views.json, motion.json, time.json and live.json are checked
-    against their shapes (check_shapes), a mismatch counting as a problem."""
+    """Runs `script` on `target` (ref, web or native; `engine` for the browser ones) into `out`.
+    In a browser, `on_shot` is called with the page after each shot is written (tools/run dom).
+    The port runs from `build` when it is given (its native/function-viewer, and its web/
+    through ROUTED_ORIGIN); else the web target is routed from its own build directory (WEB_PORT
+    honoured when set), and the native target runs its own binary. A native run's views.json,
+    motion.json, time.json and live.json are checked against their shapes (check_shapes), a
+    mismatch counting as a problem."""
     out.mkdir(parents=True, exist_ok=True)
     for old in [*out.glob("*.png"), *out.glob("*.webm")]:
         old.unlink()
@@ -189,7 +181,7 @@ def run(
             f"space {script.start.space}: the reference is captured in sRGB only"
         )
     elif is_native(target):
-        result = run_native(script, out, binary=native_binary(target, build), name=target)
+        result = run_native(script, out, binary=native_binary(build), name=target)
         result.problems += check_shapes(out, script.shot_names())
     else:
         result = run_browser(script, target, engine, out, on_shot, build)
@@ -246,23 +238,27 @@ SEEK_ANIMATIONS = """
 
 
 def init_script(start: Start, target: str, paused: bool) -> str:
-    """Before any page script: the tour marked done (the port has no tour; the reference starts it
-    on a first visit), the appearance prefs in React's key and shape (which the Odin web build
-    reads) and, for the Rust web build, the same prefs under its own key
-    (mathviz-function-viewer-rust: the port never shares runtime state with the Odin app);
-    on the reference 2D canvases in sRGB, since a headless screenshot shows a display-p3
-    canvas's values as sRGB (AGENTS.md: Headless screenshots skew a display-p3 canvas), and under
-    a paused clock its CSS animations on the script's clock (SEEK_ANIMATIONS); on the web build the
-    script's colour space, which wins over the engine's rule (web/library.js)."""
-    prefs = {"mode": start.mode, "dark": start.dark_theme, "light": start.light_theme}
+    """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
+    (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
+    math-viz2 has no tour key) and, for the web build, the same prefs under the port's own keys
+    (math-viz2-rust-*: the port never shares runtime state with math-viz2); on the reference 2D
+    canvases in sRGB, since a headless screenshot shows a display-p3 canvas's values as sRGB, and
+    under a paused clock its CSS animations on the script's clock (SEEK_ANIMATIONS); on the web
+    build the script's colour space, which wins over the engine's rule (web/library.js)."""
+    mode = json.dumps(json.dumps(start.mode))
+    dark = json.dumps(json.dumps(start.dark_theme))
+    light = json.dumps(json.dumps(start.light_theme))
     lines = [
-        "localStorage.setItem('mathviz-fv-tour', 'true');",
-        f"localStorage.setItem('mathviz-appearance', {json.dumps(json.dumps(prefs))});",
+        f"localStorage.setItem('mathviz-light-dark', {mode});",
+        f"localStorage.setItem('mathviz-dark-theme', {dark});",
+        f"localStorage.setItem('mathviz-light-theme', {light});",
     ]
     if target == "web":
-        lines.append(
-            f"localStorage.setItem('mathviz-function-viewer-rust', {json.dumps(json.dumps(prefs))});"
-        )
+        lines += [
+            f"localStorage.setItem('math-viz2-rust-light-dark', {mode});",
+            f"localStorage.setItem('math-viz2-rust-dark-theme', {dark});",
+            f"localStorage.setItem('math-viz2-rust-light-theme', {light});",
+        ]
     if is_web(target):
         space = "display-p3" if start.space == "p3" else "srgb"
         lines.append(f"window.Module = {{ colorSpace: {json.dumps(space)} }};")
@@ -311,21 +307,20 @@ def run_browser(
                 context.clock.pause_at(EPOCH_MS)
             page = context.new_page()
             log.watch(page)
-            # The reference is the React server, never a routed build: routing
-            # serves web_dir(target), which for ref is the oracle's web/ (t0b's
-            # routing refactor sent every ref shot at the Odin build instead
-            # of React whenever WEB_PORT was unset).
+            # The reference is the dev server, never a routed build; the web build is routed
+            # from disk unless WEB_PORT serves it. The script's `query` line opens on both.
+            query = script.start.query
             if target == "ref" or os.environ.get("WEB_PORT"):
-                url = url_for(target)
+                url = url_for(target, query)
             else:
-                url = serve(context, web_dir(target, build))
+                url = serve(context, web_dir(build))
+                if query:
+                    url += f"?{query}"
             if target == "web" and os.environ.get("MV_PANIC_AT_FRAME") == "1":
                 # The sweep's crash proof on the web build: the page reads
                 # `?panic-at-frame` through `mv_panic_at_frame` (web/library.js)
-                # and panics in frame 1. Target `web` only: the Odin page
-                # ignores the query, so `odin-web` keeps showing 0 crashes
-                # under the same environment.
-                url += "?panic-at-frame"
+                # and panics in frame 1.
+                url += ("&" if "?" in url else "?") + "panic-at-frame"
             page.goto(url, wait_until="load")
             first_frame(page, target, paused)
             actor = Actor(page, target, paused, out, result, on_shot)
@@ -368,8 +363,10 @@ def serve(context: BrowserContext, root: Path) -> str:
 def first_frame(page: Page, target: str, paused: bool) -> None:
     """Waits for the page to load, then for its first animation frame: script time 0."""
     if target == "ref":
+        # React has mounted once main.tsx's effect set the theme class on the body (h1's
+        # plane adds a canvas to wait for instead).
+        page.wait_for_function("() => document.body.className.length > 0")
         page.evaluate("document.fonts.ready.then(() => true)")
-        page.wait_for_selector("canvas")
     else:
         # web/index.html sets Module.started once the app's init has run; its first frame comes
         # with the next animation frame.

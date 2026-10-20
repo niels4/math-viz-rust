@@ -339,8 +339,8 @@ def ps_state(pid: int) -> str:
 
 # How `sample` heads the main thread's call graph: by its dispatch queue ("DispatchQueue_1:
 # com.apple.main-thread  (serial)"), or, when the thread served more than one queue while it was
-# sampled, "Main Thread   DispatchQueue_<multiple>" (the M7h review's run 04). The Rust binary's
-# main thread carries the pthread name "main" (std names it; the Odin binary sets none), which
+# sampled, "Main Thread   DispatchQueue_<multiple>". The Rust binary's
+# main thread carries the pthread name "main" (std names it), which
 # `sample` prints instead of any queue label, so that heads it too (a thread named exactly
 # "main" is the process main thread).
 MAIN_THREAD_LABELS = ("com.apple.main-thread", "Main Thread")

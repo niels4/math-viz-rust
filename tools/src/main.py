@@ -1,6 +1,6 @@
-"""Host tooling for math-viz-rust: the harness that runs one script (tools/states) on the React
-reference, the web build, the native build and the Odin oracle's builds, image differences, and
-font conversion. Run through ../run; `./run --help` lists the commands."""
+"""Host tooling for math-viz2-rust: the harness that runs one script (tools/states) on the
+math-viz2 reference, the web build and the native build, image differences, and font conversion.
+Run through ../run; `./run --help` lists the commands."""
 
 import argparse
 import json
@@ -62,7 +62,7 @@ def box_arg(text: str) -> Box:
 
 
 def act(args: argparse.Namespace) -> int:
-    """Run a script on one surface: in each engine for ref, web and odin-web."""
+    """Run a script on one surface: in each engine for ref and web."""
     try:
         script = load(args.script)
     except ScriptError as error:
@@ -107,7 +107,7 @@ def states(args: argparse.Namespace) -> int:
     named = is_milestone(first) or first == "all"
     out: Path = (args.out or SHOTS / (first.lower() if named else "states")).resolve()
     targets = [t for t in args.targets.split(",") if t]
-    engines = {"ref": args.ref_engines, "web": args.engines, "odin-web": args.engines}
+    engines = {"ref": args.ref_engines, "web": args.engines}
     if args.jobs < 1:
         sys.exit("--jobs is at least 1")
     return run_states(names, targets, engines, out, args.jobs)
@@ -313,13 +313,9 @@ def tabs(args: argparse.Namespace) -> int:
 
 
 def keys(args: argparse.Namespace) -> int:
-    """The web build's browser shortcuts: what the page prevents per case, on web and the Odin
-    web build in each engine, routing each build/web/ from disk (web-keys)."""
-    targets = [t for t in args.targets.split(",") if t]
-    if unknown := [t for t in targets if t not in ("web", "odin-web")]:
-        print(f"keys runs on web and odin-web only, not {', '.join(unknown)}")
-        return 1
-    return run_keys(args.engines, targets, (args.out or KEYS_OUT).resolve())
+    """The web build's browser shortcuts: what the page prevents per case, in each engine,
+    routing build/web/ from disk (web-keys)."""
+    return run_keys(args.engines, (args.out or KEYS_OUT).resolve())
 
 
 def raf(args: argparse.Namespace) -> int:
@@ -367,7 +363,7 @@ def main() -> int:
 
     a = commands.add_parser(
         "act",
-        help="run a script on the reference, the web build, the native build or the oracle (odin, odin-web)",
+        help="run a script on the reference, the web build or the native build",
     )
     a.add_argument("script", type=Path)
     a.add_argument("--target", choices=TARGETS, required=True)
@@ -375,7 +371,7 @@ def main() -> int:
         "--engines",
         type=engines_list,
         default=["webkit"],
-        help="comma-separated, for ref, web and odin-web",
+        help="comma-separated, for ref and web",
     )
     a.add_argument("--out", type=Path, help="default .local/shots/act/<script>")
     a.set_defaults(run=act)
@@ -389,10 +385,10 @@ def main() -> int:
     s.add_argument(
         "--targets",
         default=",".join(TARGETS),
-        help="comma-separated: ref, web, native, odin, odin-web",
+        help="comma-separated: ref, web, native",
     )
     s.add_argument(
-        "--engines", type=engines_list, default=list(ENGINES), help="for web and odin-web"
+        "--engines", type=engines_list, default=list(ENGINES), help="for web"
     )
     s.add_argument("--ref-engines", type=engines_list, default=["webkit"], help="for the reference")
     s.add_argument(
@@ -558,10 +554,9 @@ def main() -> int:
 
     ky = commands.add_parser(
         "keys",
-        help="the web build's browser shortcuts: what the page prevents per case, on web and "
-        "the Odin web build, routing each build/web/ from disk",
+        help="the web build's browser shortcuts: what the page prevents per case, "
+        "routing build/web/ from disk",
     )
-    ky.add_argument("--targets", default="web,odin-web", help="comma-separated: web, odin-web")
     ky.add_argument("--engines", type=engines_list, default=["webkit", "chromium", "firefox"])
     ky.add_argument("--out", type=Path, help="default .local/shots/keys")
     ky.set_defaults(run=keys)

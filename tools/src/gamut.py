@@ -187,41 +187,9 @@ class Allowance:
 ENGINES = ("webkit", "chromium", "firefox")
 
 # A differing pixel takes the first row that fits it; any left over fails the shot.
-ALLOWANCES = (
-    # The engine draws the pixel differently in sRGB as well, at any level: Chromium's half-delta
-    # wheel scrolls its page half as far (CLAUDE.md: Harness notes).
-    Allowance("where its sRGB shot differs from native's too", ENGINES, False, SRGB_DIFFERS, None),
-    # Beside those, an edge's pixel whose sRGB byte matched native's by chance and its P3 byte not:
-    # a level off at most (M11's half-scrolled page in Chromium: 2 pixels, 1/255).
-    Allowance("a level off beside those", ENGINES, False, BESIDE, 1),
-    # SwiftShader rasterises edges its own way.
-    Allowance("on anti-aliased edges (SwiftShader)", ("chromium",), False, EDGES, None),
-    # Mid-motion SwiftShader composites a translucent part (a layer faded in) a level apart (M10).
-    Allowance(
-        "a level off where a translucent part fades mid-motion", ("chromium",), True, ANYWHERE, 1
-    ),
-    # Mid-motion WebKit samples a scaled layer (an overlay's opening or closing) a level apart,
-    # as its sRGB shot shows on the layer's edges: there, a level on top of the conversion's.
-    Allowance(
-        "a level more where a scaled layer is sampled mid-motion",
-        ("webkit",),
-        True,
-        EDGES_IN_SRGB_BOX,
-        1,
-    ),
-    # The same sampling where the layer's own sRGB shot happened to match native's: on edges
-    # inside the box the native frame composited the scaled layer into, a P3 level, converted (M12:
-    # the settings panel's opening and closing, 1 to 11 pixels a shot, up to 9/255 on Tron Cyan's
-    # swatch curve, whose P3 red near 90 converts to an sRGB red near 0).
-    Allowance(
-        "a P3 level, converted, where a scaled layer is sampled mid-motion",
-        ("webkit",),
-        True,
-        EDGES_IN_SCALED_BOX,
-        None,
-        p3_levels=1,
-    ),
-)
+# The allowances start empty: each milestone records the rows its judgment needs, in the
+# order they apply, with the measurement behind each.
+ALLOWANCES: tuple[Allowance, ...] = ()
 
 
 def p3_script(script: Script, out: Path) -> Script:

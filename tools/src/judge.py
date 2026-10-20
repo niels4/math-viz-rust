@@ -6,7 +6,15 @@ where they fall (clusters of 8 px tiles, the largest first, as boxes in logical 
 port's surfaces agree (native against the web build in each engine, at threshold 0). The numbers say
 where to look: the judgment is a person reading the images beside them (README: The harness).
 Writes judge.txt, judge.json and, for each shot with flat pixels more than 2 levels apart, a map
-(orange: apart; red: flat and more than 2 levels apart) under DIR/judgment/."""
+(orange: apart; red: flat and more than 2 levels apart) under DIR/judgment/.
+
+A cluster of flat pixels apart is either a defect (a flat-area colour, a missing or extra element,
+a box off by more than 1 device px, a wrong label, number or curve) or one of the plan's recorded
+categories (section 1.9 item 3), named in the progress file's cluster table in these words:
+(a) glyph ink, stb_truetype against the engine's rasteriser; (b) one device row or column at an
+anti-aliased edge; (c) Canvas 2D against NanoVG stroke geometry at sub-pixel positions; (d) the
+web only: Chromium's SwiftShader or Firefox's late frame; (e) an engine quirk the entry records
+with its measurement."""
 
 import json
 from collections.abc import Iterator
@@ -201,7 +209,15 @@ def run_judge(root: Path, names: list[str], jobs: int = 8) -> int:
     lines = [line for s in shots for line in lines_of(s)]
     out = root / "judgment"
     out.mkdir(parents=True, exist_ok=True)
-    (out / "judge.txt").write_text("\n".join(lines) + "\n")
+    legend = (
+        "The port against itself is the exact bar (plan 1.9 item 1): native = every web engine at "
+        "threshold 0 over the whole frame. Against the reference, a cluster of flat pixels apart "
+        "is a defect or one of the recorded categories, named in these words: (a) glyph ink, "
+        "(b) one device row or column at an anti-aliased edge, (c) Canvas 2D against NanoVG "
+        "stroke geometry, (d) Chromium's SwiftShader or Firefox's late frame, web only, (e) a "
+        "recorded engine quirk."
+    )
+    (out / "judge.txt").write_text(legend + "\n\n" + "\n".join(lines) + "\n")
     (out / "judge.json").write_text(json.dumps([asdict(s) for s in shots], indent=1))
     # Where to look first: per state, the most flat pixels apart in a shot against each engine.
     summary = [f"{'state':28} {'shots':>5}  " + "  ".join(f"{e:>9}" for e in REFERENCES)]

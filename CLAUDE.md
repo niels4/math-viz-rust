@@ -51,6 +51,16 @@ the native binary in frame 1 (scripted runs: `data_panics` in `app_init`;
 interactive: `app_iterate`) and reaches the web build as `?panic-at-frame`
 (`mv_panic_at_frame`, target `web` only); gate `./build.sh check` on its own exit code,
 never on a pipe (`| tail` reports tail's status).
+t0-harness's entries: math-viz2's storage keys are three JSON strings (`mathviz-light-dark`,
+`mathviz-dark-theme`, `mathviz-light-theme`, one per key; no tour key), the port's three
+under `math-viz2-rust-*`; the theme class is on `document.body` (main.tsx sets it); the
+reference at af434dc renders the not-found page (no canvas), so `act`/`dom`/`raf` wait for
+the body's class, not a canvas, until h1's plane; the theme files define the same 35 tokens
+in the same order in all six themes, values identical to the copied file's for every shared
+token; `tools/run themes` reads every token's stream through the reference in each scheme
+and fails on the first mismatch, and its output drops math-viz's page tokens (ParamA and
+friends, the chart points, the curve glow: theme.rs's tests and testdata/tokens.json still
+name them, h1-frame's fix-forward).
 
 ## The references and the bar
 

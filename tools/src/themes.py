@@ -1,21 +1,43 @@
-"""The six themes, from math-viz's CSS to Rust (`tools/run themes`). Each theme file
-(src/style/themes/mathviz_*.module.css under $REACT_REF) is one `.theme` block of custom
-properties; every colour token is kept as the CSS writes it (an oklch colour, another token, or a
-mix in oklch) and written into crates/mv-theme/src/themes.rs, with the theme's lengths, shadow,
-glow and readout font. The port resolves the tokens itself (crates/mv-theme/src/color.rs);
-tokens.py takes the browser's resolved values for the same names, which the Rust tests check it
-against."""
+"""The six themes, from math-viz2's CSS through the reference (`tools/run themes`).
 
+tools/states/tokens.toml lists (selector, token) pairs, one per theme token on the theme
+element to start (H0); each milestone appends the pairs the port newly draws with. The generator
+reads the theme files (src/style/themes/mathviz_*.module.css under REACT_REF) for every token's
+value as written (an oklch colour, another token, or a mix in oklch), then loads the reference
+once per theme in each system scheme (the storage keys seeded from the script's scheme/mode/theme
+lines, then reload) and reads getComputedStyle(element).getPropertyValue(token) for every pair:
+the browser's token stream must equal the file's, whitespace apart. It writes
+crates/mv-theme/src/themes.rs (`// generated, do not edit`): the Token enum in the files' order
+with each theme's values, in the shape the port resolves (theme.rs). Run it again rather than
+editing the file.
+
+The Definition lengths the file carries (radius, the card, the glow, the HUD ticks, the label
+tracking, the readout font) have no source in math-viz2's theme files at 5cef052, and the
+port's Theme type still carries them: they are carried from the copied file verbatim, and the
+milestone that draws them re-sources them (h1-frame the page tokens). Tokens no theme file
+defines are dropped, not carried (the driver's condition on the copy): math-viz's page tokens
+(ParamA and friends, the chart points, the curve glow) are gone; the milestone that sources a
+token adds it to tokens.toml and regenerates (h4-rows the --param-* rows from
+SideBar.module.css). theme.rs's tests and testdata/tokens.json still name the dropped tokens:
+h1-frame regenerates them with tools/run tokens (named in the t0-harness return)."""
+
+import json
 import os
 import re
 import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
-from act import REPO
+from playwright.sync_api import sync_playwright
+
+from act import REPO, port
+from browser import engine_type
 
 OUT = REPO / "crates" / "mv-theme" / "src" / "themes.rs"
+TOKENS = REPO / "tools" / "states" / "tokens.toml"
 
 # The themes in the port's order (theme::Slug): the dark ones, then the light ones, as
 # useAppTheme.ts lists them.
@@ -27,21 +49,10 @@ SLUGS = (
     "educational-warm",
     "sage-editorial",
 )
+DARK_THEMES = SLUGS[:3]
 
-# The tokens that are not colours, each a field of theme::Definition. The gradients are left out:
-# none of the page's stylesheets reads one.
-NOT_COLOURS = {
-    "--radius": "radius",
-    "--sig-card-radius": "card_radius",
-    "--sig-card-shadow": "card_shadow",
-    "--sig-glow-radius": "glow_radius",
-    "--sig-hud-ticks": "hud_ticks",
-    "--sig-label-tracking": "label_tracking",
-    "--sig-readout-font": "readout_font",
-}
-
-# The root font size the page's rem lengths are in (no rule on the page changes it).
-REM_PX = 16.0
+# The system schemes every theme is applied in (the browser's color scheme).
+SCHEMES = ("dark", "light")
 
 DECLARATION = re.compile(r"(--[a-z0-9-]+)\s*:\s*([^;]+);", re.S)
 OKLCH = re.compile(r"oklch\(([-\d.]+) ([-\d.]+) ([-\d.]+)(?: / ([\d.]+))?\)")
@@ -49,8 +60,6 @@ VAR = re.compile(r"var\((--[a-z0-9-]+)\)")
 MIX = re.compile(
     r"color-mix\(in oklch, var\((--[a-z0-9-]+)\) ([\d.]+)%, (?:var\((--[a-z0-9-]+)\)|transparent)\)"
 )
-LENGTH = re.compile(r"(-?[\d.]+)(px|rem)?")
-FAMILIES = {"Roboto Mono": "RobotoMono", "STIX Two Text": "StixTwoText"}
 
 
 def react_ref() -> Path:
@@ -72,11 +81,7 @@ class Theme:
     declarations: dict[str, str]  # in the file's order
 
     def colour_tokens(self) -> list[str]:
-        return [
-            name
-            for name in self.declarations
-            if name not in NOT_COLOURS and not name.startswith("--gradient-")
-        ]
+        return list(self.declarations)
 
 
 def read_theme(ref: Path, slug: str) -> Theme:
@@ -87,13 +92,31 @@ def read_theme(ref: Path, slug: str) -> Theme:
 
 
 def read_themes(ref: Path) -> list[Theme]:
-    """The six themes; every one must define the same colour tokens in the same order."""
+    """The six themes; every one must define the same tokens in the same order."""
     themes = [read_theme(ref, slug) for slug in SLUGS]
     first = themes[0].colour_tokens()
     for theme in themes[1:]:
         if theme.colour_tokens() != first:
-            sys.exit(f"{theme.slug} defines other colour tokens than {themes[0].slug}")
+            sys.exit(f"{theme.slug} defines other tokens than {themes[0].slug}")
     return themes
+
+
+def read_pairs() -> list[tuple[str, str]]:
+    """tools/states/tokens.toml: the (selector, token) pairs in order."""
+    manifest: dict[str, Any] = tomllib.loads(TOKENS.read_text())
+    raw = manifest.get("pair", [])
+    if not isinstance(raw, list) or not raw:
+        sys.exit(f"{TOKENS} lists no [[pair]]s")
+    out: list[tuple[str, str]] = []
+    for entry in cast(list[Any], raw):
+        if not isinstance(entry, dict):
+            sys.exit(f"{TOKENS}: a [[pair]] is {{selector, token}}")
+        item = cast(dict[str, Any], entry)
+        selector, token = item.get("selector"), item.get("token")
+        if not isinstance(selector, str) or not isinstance(token, str):
+            sys.exit(f"{TOKENS}: a [[pair]] is {{selector, token}}")
+        out.append((selector, token))
+    return out
 
 
 def rust_variant(css_name: str) -> str:
@@ -133,39 +156,75 @@ def rust_value(text: str) -> str:
     sys.exit(f"a colour the port can't read: {text}")
 
 
-def length(theme: Theme, text: str) -> str:
-    """A length in px, from px, rem or another token."""
-    if m := VAR.fullmatch(text):
-        return length(theme, theme.declarations[m[1]])
-    m = LENGTH.fullmatch(text)
-    if m is None:
-        sys.exit(f"{theme.slug}: a length the port can't read: {text}")
-    value = float(m[1]) * (REM_PX if m[2] == "rem" else 1)
-    return num(f"{value:g}")
+# The Definition lengths carried from the copied file verbatim: math-viz2's theme files at
+# 5cef052 define no lengths, and the milestone that draws them re-sources them. The Rust
+# expression of each field, per theme.
+KEPT: dict[str, dict[str, str]] = {
+    "arctic-ice": {
+        "radius": "9.6,      // 0.6rem",
+        "card_radius": "9.6, // var(--radius)",
+        "card_shadow": "None,",
+        "glow_radius": "8.0,",
+        "hud_ticks": "0.0,",
+        "label_tracking": "2.8,",
+        "readout_font": "ReadoutFont::RobotoMono,",
+    },
+    "tron-cyan": {
+        "radius": "9.6,      // 0.6rem",
+        "card_radius": "4.0, // 4px",
+        "card_shadow": "None,",
+        "glow_radius": "10.0,",
+        "hud_ticks": "1.0,",
+        "label_tracking": "1.12,",
+        "readout_font": "ReadoutFont::RobotoMono,",
+    },
+    "midnight-violet": {
+        "radius": "9.6,      // 0.6rem",
+        "card_radius": "9.6, // var(--radius)",
+        "card_shadow": "None,",
+        "glow_radius": "14.0,",
+        "hud_ticks": "0.0,",
+        "label_tracking": "1.12,",
+        "readout_font": "ReadoutFont::RobotoMono,",
+    },
+    "clean-teal": {
+        "radius": "9.6,      // 0.6rem",
+        "card_radius": "9.6, // var(--radius)",
+        "card_shadow": "None,",
+        "glow_radius": "0.0,",
+        "hud_ticks": "0.0,",
+        "label_tracking": "1.12,",
+        "readout_font": "ReadoutFont::RobotoMono,",
+    },
+    "educational-warm": {
+        "radius": "9.6,       // 0.6rem",
+        "card_radius": "18.0, // 18px",
+        "card_shadow": """Some(ShadowDefinition {
+                offset: [0.0, 6.0],
+                blur: 18.0,
+                color: Value::Mix(Mix {
+                    a: Token::AccentForeground,
+                    p: 12.0,
+                    b: None,
+                }),
+            },""",
+        "glow_radius": "0.0,",
+        "hud_ticks": "0.0,",
+        "label_tracking": "1.12,",
+        "readout_font": "ReadoutFont::RobotoMono,",
+    },
+    "sage-editorial": {
+        "radius": "9.6,      // 0.6rem",
+        "card_radius": "9.6, // var(--radius)",
+        "card_shadow": "None,",
+        "glow_radius": "0.0,",
+        "hud_ticks": "0.0,",
+        "label_tracking": "1.12,",
+        "readout_font": "ReadoutFont::StixTwoText,",
+    },
+}
 
-
-def shadow(theme: Theme, text: str) -> str:
-    """box-shadow's `x y blur colour`, or None for none."""
-    if text == "none":
-        return "None"
-    m = re.fullmatch(r"(\S+) (\S+) (\S+) (.+)", text)
-    if m is None or not m[4].startswith(("color-mix(", "oklch(", "var(")):
-        sys.exit(f"{theme.slug}: a shadow the port can't read: {text}")
-    x, y, blur = (length(theme, m[i]) for i in (1, 2, 3))
-    return (
-        f"Some(ShadowDefinition {{ offset: [{x}, {y}], blur: {blur}, "
-        f"color: {rust_value(m[4])} }})"
-    )
-
-
-def readout_font(theme: Theme, text: str) -> str:
-    first = text.split(",")[0].strip().strip('"')
-    if first not in FAMILIES:
-        sys.exit(f"{theme.slug}: a readout font the port doesn't ship: {text}")
-    return f"ReadoutFont::{FAMILIES[first]}"
-
-
-def definition(theme: Theme) -> str:
+def definition(theme: Theme, tokens: list[str]) -> str:
     d = theme.declarations
     lines = [
         "    ThemeDef {",
@@ -173,33 +232,33 @@ def definition(theme: Theme) -> str:
         "        def: Definition {",
         "            colors: &[",
     ]
-    for name in theme.colour_tokens():
-        lines.append(f"                (Token::{rust_variant(name)}, {rust_value(d[name])}),")
+    for name in tokens:
+        if name in d:
+            lines.append(f"                (Token::{rust_variant(name)}, {rust_value(d[name])}),")
     lines.append("            ],")
-    # Each field with the CSS it came from where that isn't the same number.
-    fields = {
-        "radius": (length(theme, d["--radius"]), d["--radius"]),
-        "card_radius": (length(theme, d["--sig-card-radius"]), d["--sig-card-radius"]),
-        "card_shadow": (shadow(theme, d["--sig-card-shadow"]), ""),
-        "glow_radius": (length(theme, d["--sig-glow-radius"]), ""),
-        "hud_ticks": (length(theme, d["--sig-hud-ticks"]), ""),
-        "label_tracking": (length(theme, d["--sig-label-tracking"]), ""),
-        "readout_font": (readout_font(theme, d["--sig-readout-font"]), ""),
-    }
-    for field, (value, css) in fields.items():
-        comment = f" // {css}" if css and css != f"{value}px" else ""
-        lines.append(f"            {field}: {value},{comment}")
+    kept = KEPT[theme.slug]
+    for field in (
+        "radius",
+        "card_radius",
+        "card_shadow",
+        "glow_radius",
+        "hud_ticks",
+        "label_tracking",
+        "readout_font",
+    ):
+        lines.append(f"            {field}: {kept[field]}")
     lines.append("        },")
     lines.append("    },")
     return "\n".join(lines)
 
 
 HEADER = """\
-// The six themes as math-viz writes them at {commit} (src/style/themes/mathviz_*.module.css),
-// written from those files by `tools/run themes`: run it again rather than editing this file.
-// Token is every colour token the files define, in their order, the gradients left out (the
-// page reads none); each theme gives each token as its CSS does: an oklch colour, another
-// token's value, or a mix of two in oklch. resolve (theme.rs) turns them into colours.
+// The six themes as math-viz2 writes them at {commit} (src/style/themes/mathviz_*.module.css),
+// written from those files and the reference by `tools/run themes`: run it again rather than
+// editing this file.
+// Token is every colour token the files define, in their order; each theme gives each token as
+// its CSS does: an oklch colour, another token's value, or a mix of two in oklch. resolve
+// (theme.rs) turns them into colours.
 // generated, do not edit
 
 use enum_map::Enum;
@@ -279,17 +338,93 @@ pub static DEFINITIONS: &[ThemeDef] = &[
 """
 
 
+def theme_of(slug: str) -> str:
+    """The scheme a theme shows in: dark for the first three slugs, light for the rest."""
+    return "dark" if slug in DARK_THEMES else "light"
+
+
+def verify(themes: list[Theme], pairs: list[tuple[str, str]]) -> None:
+    """Every pair's token stream as the browser computes it, with the theme applied in each
+    system scheme: the file's text, whitespace apart. Prints ten spot checks."""
+    by_slug = {t.slug: t for t in themes}
+    checked = 0
+    shown: list[str] = []
+    with sync_playwright() as playwright:
+        for slug in SLUGS:
+            scheme = theme_of(slug)
+            mode = json.dumps(json.dumps(scheme))
+            dark = json.dumps(json.dumps(slug if scheme == "dark" else "arctic-ice"))
+            light = json.dumps(json.dumps(slug if scheme == "light" else "clean-teal"))
+            init = "\n".join(
+                [
+                    f"localStorage.setItem('mathviz-light-dark', {mode});",
+                    f"localStorage.setItem('mathviz-dark-theme', {dark});",
+                    f"localStorage.setItem('mathviz-light-theme', {light});",
+                ]
+            )
+            for system in SCHEMES:
+                browser = engine_type(playwright, "webkit").launch()
+                try:
+                    context = browser.new_context(
+                        color_scheme="dark" if system == "dark" else "light",
+                    )
+                    context.add_init_script(init)
+                    page = context.new_page()
+                    page.goto(
+                        f"http://localhost:{port('REACT_REF_PORT')}/#function-viewer",
+                        wait_until="load",
+                    )
+                    page.wait_for_function("() => document.body.className.length > 0")
+                    body_class = str(page.evaluate("document.body.className"))
+                    decls = by_slug[slug].declarations
+                    for selector, token in pairs:
+                        if token not in decls:
+                            continue  # a later milestone's token: h1 checks it
+                        want = " ".join(decls[token].split())
+                        got = str(
+                            page.evaluate(
+                                "([s, t]) => getComputedStyle(document.querySelector(s))"
+                                ".getPropertyValue(t)",
+                                [selector, token],
+                            )
+                        )
+                        got = " ".join(got.split())
+                        if got != want:
+                            sys.exit(
+                                f"{slug} in a {system} system ({body_class}): {selector} "
+                                f"{token} is {got!r}, the file says {want!r}"
+                            )
+                        checked += 1
+                        if len(shown) < 10 and system == "dark":
+                            shown.append(f"{slug} {token}: {got}")
+                    context.close()
+                finally:
+                    browser.close()
+    print(f"{checked} token streams equal the files'")
+    for line in shown:
+        print(f"  {line}")
+
+
 def generate(ref: Path, out: Path = OUT) -> Path:
     themes = read_themes(ref)
+    pairs = read_pairs()
+    filed = [token for _, token in pairs]
+    if [t for s, t in pairs if s == "body"] != themes[0].colour_tokens():
+        sys.exit("tokens.toml's body tokens differ from the theme files' order")
+    seen: list[str] = []
+    for token in filed:
+        if token not in seen:
+            seen.append(token)
+    verify(themes, pairs)
     commit = subprocess.run(
         ["git", "-C", str(ref), "rev-parse", "--short", "HEAD"],
         capture_output=True,
         text=True,
         check=True,
     ).stdout.strip()
-    tokens = "\n".join(f"    {rust_variant(name)}," for name in themes[0].colour_tokens())
+    tokens = "\n".join(f"    {rust_variant(name)}," for name in seen)
     text = HEADER.format(
-        commit=commit, tokens=tokens, definitions="\n".join(definition(t) for t in themes)
+        commit=commit, tokens=tokens, definitions="\n".join(definition(t, filed) for t in themes)
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)

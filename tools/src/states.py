@@ -24,7 +24,7 @@ DEFAULT_JOBS = 4
 # The scripts of states in another theme (state_script), where the native build can read them.
 VARIANTS = REPO / ".local" / "states-variants"
 # The lines that say how a page opens, before a script's first action.
-START_WORDS = ("size", "density", "scheme", "mode", "theme", "reduced-motion", "space")
+START_WORDS = ("size", "density", "scheme", "mode", "theme", "reduced-motion", "space", "query")
 
 
 def state_script(name: str) -> Script:
@@ -60,8 +60,8 @@ def state_exists(name: str) -> bool:
 
 
 def is_milestone(name: str) -> bool:
-    """A milestone's name, as milestones.toml keys them: M1, M4a."""
-    return re.fullmatch(r"[Mm]\d+[a-z]?", name) is not None
+    """A milestone's name, as milestones.toml keys them: H0, H1."""
+    return re.fullmatch(r"[MmHh]\d+[a-z]?", name) is not None
 
 
 def milestone_states(milestone: str) -> list[str]:
@@ -97,23 +97,12 @@ def surfaces(targets: list[str], engines: dict[str, list[str]]) -> list[tuple[st
 
 def compare(runs: list[Run], shots: list[str], out: Path) -> list[Comparison]:
     """Each shot at threshold 0: the port's two builds against each other (native against each
-    browser of the web build) and against the oracle's (native against odin, each web build and
-    the oracle's odin against the odin-web build in the same engine), and the web build against
-    the reference in the same engine. The report holds each pair's threshold, changed pixels,
-    max and bounds: the identity columns."""
+    browser of the web build), and the web build against the reference in the same engine. The
+    report holds each pair's threshold, changed pixels, max and bounds: the identity columns."""
     by_name = {r.name: r for r in runs}
     pairs: list[tuple[str, str]] = []
     if "native" in by_name:
         pairs += [("native", r.name) for r in runs if r.target == "web"]
-        if "odin" in by_name:
-            pairs.append(("native", "odin"))
-    if "odin" in by_name:
-        pairs += [("odin", r.name) for r in runs if r.target == "odin-web"]
-    for r in runs:
-        if r.target == "web":
-            other = f"odin-web-{r.engine}" if r.engine else "odin-web"
-            if other in by_name:
-                pairs.append((r.name, other))
     pairs += [
         (r.name, f"ref-{r.engine}")
         for r in runs
