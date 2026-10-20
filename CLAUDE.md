@@ -77,6 +77,32 @@ The one check: `./build.sh check`.
 
 One block per milestone, appended in merge order; empty until the first milestone lands.
 
+### h2-plane (the Cartesian plane's painters)
+
+- The reference's canvas draw is fully characterised without screenshots: wrap
+  `fillText`/`moveTo`/`lineTo`/`roundRect`/`stroke` in an init script and read
+  every segment with its width+colour and every text with its font+pen
+  (`.local/probe/` pattern). Canvas 2D centres strokes exactly like NanoVG,
+  so grid/axis strokes sit on integer layout px with butt caps, one path per
+  colour+width batch; there is no half-pixel offset at this hash.
+- math-viz2's canvas bitmap is its content box (border-box minus the 1 px
+  border); the CSS radius rounds afterwards. The port scissors the content
+  box, paints, then cuts the four rounded triangles with page-coloured
+  quarter-circle bezier cutouts and strokes the rim on the border box inset
+  half a px (radius 3.5).
+- `layout_labels` takes `&dyn Fn`: the `&mut Fonts` measure adapts through a
+  local `RefCell` (never by touching the merged grid module).
+- Canvas `textBaseline: "top"` puts the em-box top on the pen: baseline =
+  top + face ascent at size; `"middle"` centres the ascent-descent span.
+  Both rest on `mv_text::metrics` and are judged through the harness.
+- The return-to-centre button renders on every view at this hash (probed in
+  all fourteen states); `HtmlOverlay.tsx` holds no conditional.
+- Eyeballing contact PNGs misleads at display scale: the default origin
+  looked bottom-left but measured exactly centred. Measure, don't eyeball.
+- `tools/live/` must exist for `mv-script`'s twin test only as a missing dir
+  holding zero scripts (git keeps no empty directory); `tools/states/`
+  scripts need no such guard while they hold states.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
