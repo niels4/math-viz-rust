@@ -347,4 +347,20 @@ mod tests {
         assert_eq!(label_text(-5e-7, 7), "\u{2212}5e-7");
         assert_eq!(label_text(-0.0, 1), "0");
     }
+
+    // Boundary (no counterpart): box-drag-a-50's live value is the quantized
+    // `scrubbed(1, 50, scale, coarse)` = 1.11, and the tape is 328 wide. The
+    // 0.8 lattice point sits 0.08 px inside, so the TS `inside` filter keeps
+    // it and the svg clips it to the sliver the reference draws — a 4 px
+    // narrower tape would flip `ceil(lo / step)` from 4 to 5 and drop it.
+    #[test]
+    fn boundary_label_survives_at_the_quantized_drag_value() {
+        let marks = ruler_marks(1.11, 328.0, true);
+        assert_eq!(
+            marks.labels.first().map(|label| label.text.as_str()),
+            Some("0.8")
+        );
+        assert_eq!(round_to(marks.labels[0].x, 2), 0.08);
+        assert_eq!(marks.major[0], marks.labels[0].x);
+    }
 }

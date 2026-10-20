@@ -368,6 +368,23 @@ no new tokens (all eight tabled).
 - `tools/run dom --fixture` at a new hash reruns every fixture state on the
   new reference: h4's typing states clicked 18 px above their boxes (the
   card moved) and Backspace navigated back, failing webkit with 0 shots.
+
+### h5-fix-ruler (tape width + mirrored drag)
+
+- Size the tape element at the card's content width (332 at a 350 row), not
+  the tape's own client width: the tape fills the card, and `clientWidth`
+  (328, what `rulerMarks` takes) is the tape inside its own 2 px rims. A 4 px
+  narrower tape moves the centre 2 px and can flip `ceil(lo / step)` at a
+  lattice boundary — measured: at the quantized box-drag value 1.11 the 0.8
+  label sits 0.08 px inside the 328 tape but falls out of a 324 one, dropping
+  the edge sliver with no filter logic differing. The review's suggested fix
+  (widen label inclusion past the TS filter) would have diverged from the
+  source; the debug print of value + content width + label xs in the native
+  run found the real cause. Verify pixel findings against the TS arithmetic
+  before changing inclusion rules.
+- `open_drag` reads `App.scrub` (mirrored on every hold mutation via `store`,
+  so it tracks moves and rebases) instead of rebuilding the drag from the
+  hold plus a fresh row-box lookup: one derivation feeds the ruler.
   States must track the reference's layout per hash; the fix is a coord
   shift, verified behaviour-identical on the reference.
 
