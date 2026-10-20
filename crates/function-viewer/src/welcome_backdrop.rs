@@ -338,6 +338,90 @@ pub struct BackdropColors {
     pub param_h: [f32; 3],
 }
 
+/// Resolves the backdrop's colours from the theme's tokens as unclipped sRGB:
+/// the DOM gradient interpolates `--param-a`'s out-of-gamut end before any
+/// gamut map (arctic-ice red runs to 1.038), while `mv-theme`'s `to_space`
+/// clips for the canvas paint, so the theme's resolved triplets would cost a
+/// level in the top light's left tail. In-gamut tokens come out identical.
+#[must_use]
+pub fn theme_colors(theme: &mv_theme::Theme) -> BackdropColors {
+    use mv_theme::{Token, token_oklch};
+    let word = mv_theme::SLUG_WORDS[theme.slug];
+    let def = &mv_theme::DEFINITIONS
+        .iter()
+        .find(|t| t.slug == word)
+        .unwrap_or_else(|| panic!("no theme for {word}"))
+        .def;
+    let rgb = |token: Token| oklch_to_srgb_unclipped(&token_oklch(def, token));
+    let glow_oklch = token_oklch(def, Token::ChartGlow);
+    let glow_rgb = oklch_to_srgb_unclipped(&glow_oklch);
+    BackdropColors {
+        background: rgb(Token::Background),
+        grid: rgb(Token::ChartGrid),
+        glow: [
+            glow_rgb[0],
+            glow_rgb[1],
+            glow_rgb[2],
+            glow_oklch.alpha as f32,
+        ],
+        param_a: rgb(Token::ParamA),
+        param_b: rgb(Token::ParamB),
+        param_h: rgb(Token::ParamH),
+    }
+}
+
+/// An oklch colour as unclipped sRGB: the Oklab→linear matrices `mv-theme`
+/// publishes with the sRGB transfer function but no gamut clip, as a CSS
+/// gradient holds its stops (see [`theme_colors`]).
+fn oklch_to_srgb_unclipped(oklch: &mv_theme::Oklch) -> [f32; 3] {
+    use mv_theme::color::{LMS_TO_XYZ, OKLAB_TO_LMS, XYZ_TO_LINEAR_SRGB};
+    let mat = |m: &[[f64; 3]; 3], v: &[f64; 3]| {
+        [
+            m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+            m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+            m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
+        ]
+    };
+    let angle = oklch.h.to_radians();
+    let lms = mat(
+        &OKLAB_TO_LMS,
+        &[oklch.l, oklch.c * angle.cos(), oklch.c * angle.sin()],
+    );
+    let cubed = [lms[0].powi(3), lms[1].powi(3), lms[2].powi(3)];
+    let linear = mat(&LMS_TO_XYZ, &cubed);
+    let rgb = mat(&XYZ_TO_LINEAR_SRGB, &linear);
+    rgb.map(|v| {
+        (if v <= 0.0031308 {
+            12.92 * v
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        }) as f32
+    })
+}
+
+/// The uploaded composite the app keeps: recomposited only when the theme,
+/// the window pixels or the fit move (the masks depend on size and fit, the
+/// colours on the theme; a theme pick recomputes at once, which the
+/// cross-fade's snapshot covers).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BackdropCache {
+    /// What the image was composited for.
+    pub key: BackdropKey,
+    /// The NanoVG image handle (`0` for none).
+    pub image: i32,
+}
+
+/// See [`BackdropCache`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BackdropKey {
+    /// The theme's slug (its colours).
+    pub slug: mv_theme::Slug,
+    /// The window in device px.
+    pub pixels: [i32; 2],
+    /// The fit's bits (`f64` has no `Eq`).
+    pub fit_bits: u64,
+}
+
 /// Where the backdrop draws: the hero's box in design px with the window's
 /// screen size, the fit and the density.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -669,6 +753,51 @@ mod tests {
         assert!(
             !texts.iter().any(|text| text.ends_with(" u")),
             "no scale legend on the hero: {texts:?}"
+        );
+    }
+
+    /// The theme's colours resolve unclipped: in-gamut tokens match the
+    /// clipped canvas resolution, `--param-a` keeps its out-of-gamut red,
+    /// and `--chart-glow` carries its `/ 0.4`.
+    #[test]
+    fn theme_colors_resolve_unclipped() {
+        use mv_theme::{Space, Token, resolve, to_space, token_oklch};
+        let theme = resolve(mv_theme::Slug::ArcticIce, Space::Srgb);
+        let colors = theme_colors(&theme);
+        for token in [
+            Token::Background,
+            Token::ChartGrid,
+            Token::ParamB,
+            Token::ParamH,
+        ] {
+            let word = mv_theme::SLUG_WORDS[theme.slug];
+            let def = &mv_theme::DEFINITIONS
+                .iter()
+                .find(|t| t.slug == word)
+                .unwrap_or_else(|| panic!("no theme for {word}"))
+                .def;
+            let clipped = to_space(token_oklch(def, token), Space::Srgb);
+            let got = match token {
+                Token::Background => colors.background,
+                Token::ChartGrid => colors.grid,
+                Token::ParamB => colors.param_b,
+                _ => colors.param_h,
+            };
+            assert_eq!(
+                got,
+                [clipped[0], clipped[1], clipped[2]],
+                "{token:?} in gamut"
+            );
+        }
+        assert!(
+            colors.param_a[0] > 1.0,
+            "param-a red unclipped: {:?}",
+            colors.param_a
+        );
+        assert!(
+            (colors.glow[3] - 0.4).abs() < 1e-9,
+            "glow alpha: {:?}",
+            colors.glow
         );
     }
 

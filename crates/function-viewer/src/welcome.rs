@@ -588,10 +588,72 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
     app.vg.restore();
 }
 
-/// The backdrop's call: paper and lights behind the frame (h10-hero paints
-/// it here, after the page background and before the frame's content; the
-/// top row paints above it, the menu last). Nothing until it merges.
-pub fn paint_backdrop(_app: &mut App) {}
+/// The backdrop's call: paper and lights behind the frame, after the page
+/// background and before the frame's content (h10-hero; the top row paints
+/// above it, the menu last). The composite is cached on the app by theme,
+/// window pixels and fit; a miss recomposites on the CPU in sRGB (the
+/// browser's compositing, which the framebuffer's linear blend would miss)
+/// and uploads one opaque image, drawn with an image pattern exactly as the
+/// transition's snapshot is. Runs after the layout so the hero's box is the
+/// laid-out one.
+pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32) {
+    use crate::welcome_backdrop::{
+        BackdropGeometry, BackdropKey, composite_backdrop, theme_colors,
+    };
+    /// The page scale (`--fit`; 1 until h10-fit wires it).
+    const FIT: f64 = 1.0;
+    let Some(hero) = crate::page::element_box(app, mv_clay::id("WelcomeHero", 0)) else {
+        return;
+    };
+    let key = BackdropKey {
+        slug: theme.slug,
+        pixels: app.pixels,
+        fit_bits: FIT.to_bits(),
+    };
+    let cached = app.backdrop.is_some_and(|cache| cache.key == key);
+    if !cached {
+        if let Some(cache) = app.backdrop
+            && cache.image != 0
+        {
+            app.vg.delete_image(cache.image);
+        }
+        let geom = BackdropGeometry {
+            hero: [
+                hero.x.into(),
+                hero.y.into(),
+                hero.width.into(),
+                hero.height.into(),
+            ],
+            viewport: [app.size[0].into(), app.size[1].into()],
+            fit: FIT,
+            dpr: density.into(),
+        };
+        let image = composite_backdrop(&geom, &theme_colors(theme));
+        let uploaded = app.vg.create_image_rgba(
+            image.size[0] as i32,
+            image.size[1] as i32,
+            0,
+            Some(&image.rgba),
+        );
+        app.backdrop = Some(crate::welcome_backdrop::BackdropCache {
+            key,
+            image: uploaded,
+        });
+    }
+    let Some(cache) = app.backdrop else { return };
+    if cache.image == 0 {
+        return;
+    }
+    // The image is device pixels; the paint maps it onto the page's points,
+    // as the transition snapshot's does.
+    let paint = app
+        .vg
+        .image_pattern(0.0, 0.0, app.size[0], app.size[1], 0.0, cache.image, 1.0);
+    app.vg.begin_path();
+    app.vg.rect(0.0, 0.0, app.size[0], app.size[1]);
+    app.vg.fill_paint(&paint);
+    app.vg.fill();
+}
 
 /// Goes to the route with the query, as the anchors do: the button to
 /// `#function-viewer` with an empty query, the wordmark to `#`. On the web

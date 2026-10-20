@@ -82,6 +82,7 @@ pub mod ui;
 pub mod url;
 pub mod visible_range;
 pub mod welcome;
+pub mod welcome_backdrop;
 pub mod welcome_loop;
 pub mod x_field;
 
