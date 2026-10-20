@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- The Rust/Emscripten shell: the canvas stays alone in a div (SDL 3.4's
+     fill-document quit throws a page error when the canvas has an element
+     sibling: insertBefore), the page stays dark behind it, and Module names
+     the canvas SDL3's port draws into. Emscripten instantiates the wasm
+     itself; onRuntimeInitialized marks the start, as the harness watches it.
+     Ported from the Odin app's web/index.html: same shell contract (the
+     canvas alone in a div, the Module merge, colorSpace/frames/iterations),
+     minus odin.js and the odin_env import bridge. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Function Viewer</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #070d12;
+      }
+      canvas {
+        display: block;
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The canvas's pixel size is the window's: unlike Emscripten's SDL port
+         (which the Odin app links), SDL 3.4.18 compiled from source does not
+         size the canvas from the window at creation (measured: 0x0 without
+         these), so the attributes match t0a's window. Resize (canvas and
+         window together) belongs to the wiring, which owns the window's
+         size; this shell keeps t0a's size until then. -->
+    <div><canvas id="canvas" width="640" height="480" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
+    <script>
+      // Merged, not replaced: the harness pre-seeds Module before load
+      // (Module.arguments for the panic switch today, Module.colorSpace for
+      // the colour-space rule), as the Odin shell merges its colorSpace
+      // pre-seed.
+      var Module = Object.assign(globalThis.Module || {}, {
+        // The drawing buffer's colour space, when something said it before
+        // the page ran (the harness's init script sets window.Module =
+        // { colorSpace }); otherwise ?space= or the engine's rule decides
+        // (web/library.js, mv_color_space).
+        colorSpace: globalThis.Module?.colorSpace,
+        canvas: document.getElementById("canvas"),
+        frames: 0, // frames the app has drawn (web/library.js); the harness waits on it
+        iterations: 0, // turns of the app's loop, drawn or not: they stop while it is idle
+        started: false, // the app's init has run; its first frame comes with the next animation frame
+        onRuntimeInitialized() {
+          Module.started = true;
+        },
+      });
+    </script>
+    <!-- The emitted names, kept: emcc 6.0.12 bakes function_viewer.wasm into
+         the JS (build.sh says why), so no rename to index.js/index.wasm. -->
+    <script src="function-viewer.js"></script>
+  </body>
+</html>

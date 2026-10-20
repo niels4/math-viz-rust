@@ -1,0 +1,19 @@
+# welcome-loop-load (H10): route welcome from load, no navigation. The port's
+# loop starts at frame 0; the reference mounts the page some frames after
+# load (React's first render and effects), so the two loops start offset.
+# Model loop_at values: 1800 -> x2 k -1.14; 2420 -> x2 k -1.50 (the k drag
+# ends at 2416.67). The phase-1 probe measured the real-clock mount delay
+# (first rAF callback after load: chromium ~106 ms, webkit ~267 ms, firefox
+# ~389 ms); the run fits the offset from the curve's k, recorded as category
+# (e) with the number — the loop starts at mount on both sides, so no code
+# change can match it.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+route welcome
+wait 1800
+shot loop-load-1800
+wait 620
+shot loop-load-2420

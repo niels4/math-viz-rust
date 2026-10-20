@@ -161,12 +161,15 @@ pub enum HitKind {
     /// The x-of-P slider's track (h8-points-slider; the whole 20 px box is
     /// the hit, the thumb takes no pointer events; a focus stop, in tab order).
     PointSlider,
-    /// The top bar's wordmark link to the root page (h8-plane; `index` 0).
-    /// A hot region with the pointer cursor and a no-op click on both
-    /// targets: the root page is the template's placeholder card, never in
-    /// the port, which has one route (the planner's call, `decisions.md`).
+    /// The top bar's wordmark link to the welcome page (h10-page; `index` 0).
+    /// A hot region with the pointer cursor; the click navigates home, as
+    /// the anchor does (plan §3.7 Routes supersedes h8-plane's no-op call).
     /// Never a focus stop: the port's tab walk is the milestones' own.
     Wordmark,
+    /// The welcome page's button to `#function-viewer` (h10-page; `index` 0).
+    /// A hot region with the pointer cursor and a click on release, as the
+    /// gear's click is routed. A focus stop, in tab order after the gear.
+    WelcomeCta,
     /// P's x field (h8-points-field; `index` 0). Never a Tab stop
     /// (`tabIndex={-1}` in `XField.tsx`): focus arrives by mouse, by focus
     /// or by Enter from the slider, and typing replaces the selected text.
@@ -246,6 +249,12 @@ pub struct InputState {
     pub keyed: bool,
     /// The keyboard's focus is to come into view after the next layout.
     pub reveal: bool,
+    /// A fresh mount hovers nothing until the pointer acts (h10-page: the
+    /// browser applies no `:hover` without a mouse move after the route's
+    /// components mount, as the menu's own hold has it). Set by
+    /// `welcome::enter_route`, cleared by the next pointer fact; `retarget`
+    /// retargets to nothing while it stands.
+    pub hover_fresh: bool,
     /// The cursor shown.
     pub cursor: Cursor,
     /// The last frame's targets, in the order they were declared.
@@ -481,7 +490,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 if event.pos != app.input.pointer {
                     // A real move re-arms hover: a pick's hold lasts only
                     // until the pointer moves, as Chromium re-hovers then.
+                    // It also ends a fresh mount's hover hold (h10-page).
                     crate::settings::pointer_moved(app);
+                    app.input.hover_fresh = false;
                 }
                 app.input.pointer = event.pos;
             }
@@ -518,6 +529,9 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 app.input.time = outer;
                 return;
             }
+            // A press ends a fresh mount's hover hold (h10-page): the click
+            // acts where it lands, as the browser's would.
+            app.input.hover_fresh = false;
             if event.down {
                 press(app);
                 crate::settings::press_down(app);
@@ -551,17 +565,27 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                     crate::plane_input::plane_cursor(app);
                 }
                 crate::settings::click(app, down);
-                crate::selector::click(app, down);
-                // The transform buttons' click (h5-buttons: the press started
-                // and the release lands on the toggle, reset or Reset all).
-                crate::transform_row::click(app, down);
-                // The overlay button's click (the press started and the
-                // release lands on it, as the button's `onClick` needs both):
-                // the camera back to its defaults, flushed.
-                if down.kind == HitKind::ReturnToCenter
-                    && app.input.hover.kind == HitKind::ReturnToCenter
-                {
-                    app.reset_view();
+                // The viewer page's clicks (h10-page: the welcome page lays
+                // out and paints only its own elements, so its route routes
+                // its own button instead through `welcome::click`).
+                if matches!(
+                    crate::welcome::Route::of(&app.url),
+                    crate::welcome::Route::FunctionViewer
+                ) {
+                    crate::selector::click(app, down);
+                    // The transform buttons' click (h5-buttons: the press started
+                    // and the release lands on the toggle, reset or Reset all).
+                    crate::transform_row::click(app, down);
+                    // The overlay button's click (the press started and the
+                    // release lands on it, as the button's `onClick` needs both):
+                    // the camera back to its defaults, flushed.
+                    if down.kind == HitKind::ReturnToCenter
+                        && app.input.hover.kind == HitKind::ReturnToCenter
+                    {
+                        app.reset_view();
+                    }
+                } else {
+                    crate::welcome::click(app, down);
                 }
             }
         }
@@ -571,9 +595,11 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             }
             // A wheel carries the pointer's position: it is in the window,
             // as a motion would have it (without this a wheel before any
-            // motion finds no hover and the plane never zooms).
+            // motion finds no hover and the plane never zooms). A wheel is
+            // a pointer act, so it ends a fresh mount's hover hold too.
             app.input.pointer = event.pos;
             app.input.over = true;
+            app.input.hover_fresh = false;
             retarget(app);
             // A wheel over a value box steps it (ignored while typed into,
             // when the page may scroll instead).
@@ -597,13 +623,23 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                 println!("input {event:?}");
             }
             app.input.mods = event.mods;
-            // The page milestones route their keys from here. The P field
-            // runs before the transform rows: its Tab arm commits and walks
-            // on, where the rows' arm would walk off with the edit open.
+            // The page milestones route their keys from here. On the welcome
+            // route the page has no viewer stops: with the menu closed Tab
+            // walks the gear and the link through `welcome_key` (open, the
+            // menu walks its own stops above). The P field runs before the
+            // transform rows: its Tab arm commits and walks on, where the
+            // rows' arm would walk off with the edit open.
             // Whoever consumes stops the chain: a commit that moves the
             // focus to the slider must not fall through to the slider's own
             // Enter in the same turn (it would reopen the field).
-            if !crate::settings::key(app, &event)
+            if matches!(
+                crate::welcome::Route::of(&app.url),
+                crate::welcome::Route::Welcome
+            ) {
+                if !crate::settings::key(app, &event) {
+                    crate::welcome::welcome_key(app, &event);
+                }
+            } else if !crate::settings::key(app, &event)
                 && !crate::selector::key(app, &event)
                 && !crate::x_field::key(app, &event)
                 && !crate::transform_row::key(app, &event)
@@ -702,7 +738,7 @@ pub fn retarget(app: &mut App) {
     let over = app.input.over;
     let pointer = app.input.pointer;
     let pressed = app.input.pressed;
-    let mut hit = if over && !app.settings.hover_held {
+    let mut hit = if over && !app.settings.hover_held && !app.input.hover_fresh {
         hit_at(app.input.regions.as_slice(), pointer)
     } else {
         Hit::default()

@@ -282,12 +282,17 @@ fn cell(app: &mut App, slug: FunctionSlug, index: usize, checked: bool) {
             runs(app, slug, index, foreground);
         },
     );
+    // Pointer on the cells (fix-cursor): the user's deliberate departure
+    // from math-viz2 at this hash, asked for in so many words (2026-10-20
+    // 11:20). Measured at 68e1c7b the reference computes default
+    // (Chromium/Firefox UA on the covering radio input) or auto (WebKit) —
+    // the arrow; see decisions.md.
     crate::input::region(
         app,
         mv_clay::id("FunctionCell", index as u32),
         hit,
-        Cursor::Default,
-        Cursor::Default,
+        Cursor::Pointer,
+        Cursor::Pointer,
         checked,
         crate::ui::corner_radius_all(0.0),
     );
@@ -781,6 +786,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let fixture = crate::fixture::page_fixture().expect("page fixture parses");

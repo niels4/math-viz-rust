@@ -47,6 +47,14 @@ pub struct Shaped {
 
 /// Shapes text in a style, tracking after every character, the last included.
 ///
+/// Kerning never crosses a space: the text shapes as space-separated runs,
+/// each run whole, advances concatenated. The browsers' shapers kern
+/// adjacent glyphs but no pair involving a space (measured on the reference
+/// in all three engines: the font kerns (space,t) −12 and (space,V) −31
+/// units, which kb_text_shape applies and no engine does, narrowing e.g. the
+/// welcome button by 0.84 px), so a run never spans one. Within a run the
+/// shaping is exactly as before (kern, tnum, liga/clig, marks, tracking).
+///
 /// Ported from `shape.odin:shape`: the empty-text guard (kb_text_shape
 /// writes through a null pointer on empty text); the symbols file pushed
 /// below the face's file, so the shaper tries the face first; left-to-right
@@ -58,7 +66,7 @@ pub struct Shaped {
 /// run in reverse push order over the pushed tags, as the spec's overrides
 /// array does.
 pub fn shape(fonts: &mut Fonts, style: Style, text: &str) -> Shaped {
-    use mv_sys::kb::{direction, feature_tag, language, user_id_generation_mode};
+    use mv_sys::kb::feature_tag;
 
     if text.is_empty() {
         return Shaped {
@@ -67,48 +75,145 @@ pub fn shape(fonts: &mut Fonts, style: Style, text: &str) -> Shaped {
         };
     }
     let files = FACES[style.face];
+    // kb_text_shape tries the font on top of its stack first: the symbols
+    // file goes in below. Each push is balanced below, so no borrow of the
+    // shaping context crosses a segment's own shaping.
+    {
+        let ctx = fonts
+            .ctx
+            .as_mut()
+            .expect("shape needs init: no shaping context");
+        if let Some(symbols) = files.symbols {
+            ctx.push_font(&mut fonts.kb[symbols]);
+        }
+        ctx.push_font(&mut fonts.kb[files.font]);
+    }
+
+    // One segment per word with its following space (leading spaces shape
+    // alone): a shaper shapes each segment whole, so kerning never reaches
+    // past a space into the next word — as the browsers kern: a pair with a
+    // space second kerns ((l,space), (a,space)), a pair with a space first
+    // never does ((space,t), (space,V) stay unkearned in WebKit, Chromium
+    // and Firefox alike). Source ids are the text's byte indices, as the
+    // single-shape call gave.
+    let mut glyphs: Vec<Glyph> = Vec::with_capacity(text.len());
+    let mut pen = 0.0f32;
+    let mut overrides = [feature_tag::kern; 4];
+    let mut count = 0;
+    let bytes = text.as_bytes();
+    let mut start = 0;
+    while start < bytes.len() {
+        let mut end = start;
+        // The word itself (no blanks).
+        while end < bytes.len() && bytes[end] != b' ' {
+            // Byte indices: the port's strings split spaces at ASCII blanks;
+            // a multibyte character never spans a segment edge, since only
+            // the blank itself edges one.
+            end += 1;
+        }
+        // One following blank rides with the word, so its kern into the
+        // space shapes (further blanks shape alone, below).
+        if end < bytes.len() {
+            end += 1;
+        }
+        if end > start {
+            shape_segment(
+                fonts,
+                style,
+                &mut pen,
+                &mut glyphs,
+                &text[start..end],
+                start as i64,
+                &mut overrides,
+                &mut count,
+            );
+            start = end;
+        }
+        // Any further blanks shape alone (plain, unkearned either side).
+        while start < bytes.len() && bytes[start] == b' ' {
+            let blank = start;
+            start += 1;
+            shape_segment(
+                fonts,
+                style,
+                &mut pen,
+                &mut glyphs,
+                &text[blank..start],
+                blank as i64,
+                &mut overrides,
+                &mut count,
+            );
+        }
+    }
+    {
+        let ctx = fonts
+            .ctx
+            .as_mut()
+            .expect("shape needs init: no shaping context");
+        ctx.pop_font();
+        if files.symbols.is_some() {
+            ctx.pop_font();
+        }
+    }
+    Shaped {
+        glyphs,
+        advance: pen,
+    }
+}
+
+/// Shapes one word with its following space (or lone spaces, or the last
+/// word bare) and appends its glyphs, the pen carried across runs. `base` is
+/// the run's byte offset in the text, added to the shaper's per-run source
+/// ids.
+#[allow(clippy::too_many_arguments)]
+fn shape_segment(
+    fonts: &mut Fonts,
+    style: Style,
+    pen: &mut f32,
+    glyphs: &mut Vec<Glyph>,
+    segment: &str,
+    base: i64,
+    overrides: &mut [mv_sys::kb::feature_tag; 4],
+    count: &mut usize,
+) {
+    use mv_sys::kb::{direction, feature_tag, language, user_id_generation_mode};
+
     let ctx = fonts
         .ctx
         .as_mut()
         .expect("shape needs init: no shaping context");
-    // kb_text_shape tries the font on top of its stack first: the symbols
-    // file goes in below.
-    if let Some(symbols) = files.symbols {
-        ctx.push_font(&mut fonts.kb[symbols]);
-    }
-    ctx.push_font(&mut fonts.kb[files.font]);
-
     // The page is left to right (no dir attribute): with the paragraph's
     // direction given, a space that starts the text joins the run that
     // follows it rather than making one of its own.
     ctx.begin(direction::KBTS_DIRECTION_LTR, language::DONT_KNOW);
-    let mut overrides = [feature_tag::kern; 4];
-    let mut count = 0;
+    let mut pushed = 0;
     if style.features.contains(Feature::NoKerning) {
-        overrides[count] = feature_tag::kern;
-        count += 1;
+        overrides[*count] = feature_tag::kern;
+        *count += 1;
+        pushed += 1;
         ctx.push_feature(feature_tag::kern, 0);
     }
     if style.features.contains(Feature::Tabular) {
-        overrides[count] = feature_tag::tnum;
-        count += 1;
+        overrides[*count] = feature_tag::tnum;
+        *count += 1;
+        pushed += 1;
         ctx.push_feature(feature_tag::tnum, 1);
     }
     if style.tracking != 0.0 {
-        overrides[count] = feature_tag::liga;
-        overrides[count + 1] = feature_tag::clig;
-        count += 2;
+        overrides[*count] = feature_tag::liga;
+        overrides[*count + 1] = feature_tag::clig;
+        *count += 2;
+        pushed += 2;
         ctx.push_feature(feature_tag::liga, 0);
         ctx.push_feature(feature_tag::clig, 0);
     }
-    ctx.shape_utf8(text, user_id_generation_mode::SOURCE_INDEX);
-    for i in (0..count).rev() {
-        ctx.pop_feature(overrides[i]);
+    ctx.shape_utf8(segment, user_id_generation_mode::SOURCE_INDEX);
+    for _ in 0..pushed {
+        *count -= 1;
+        ctx.pop_feature(overrides[*count]);
     }
     ctx.end();
 
-    let mut glyphs: Vec<Glyph> = Vec::with_capacity(text.len());
-    let mut pen = 0.0f32;
     while let Some(mut run) = ctx.shape_run() {
         let file = file_of(&fonts.kb, run.font());
         let scale = style.size / fonts.units_per_em[file];
@@ -123,21 +228,13 @@ pub fn shape(fonts: &mut Fonts, style: Style, text: &str) -> Shaped {
             glyphs.push(Glyph {
                 id: g.id,
                 font: file,
-                x: pen + g.offset_x as f32 * scale,
+                x: *pen + g.offset_x as f32 * scale,
                 y: -(g.offset_y as f32) * scale, // font units are y up
                 advance,
-                source: source.UserId,
+                source: source.UserId + base as i32,
             });
-            pen += advance;
+            *pen += advance;
         }
-    }
-    ctx.pop_font();
-    if files.symbols.is_some() {
-        ctx.pop_font();
-    }
-    Shaped {
-        glyphs,
-        advance: pen,
     }
 }
 
@@ -357,14 +454,18 @@ mod tests {
     fn kerning_is_the_fonts() {
         let mut fonts = uninit();
         assert!(init(&mut fonts));
+        // Kerning with a space second applies ((a,space), (x,space)); with a
+        // space first never does (no (space,V), measured zero in WebKit,
+        // Chromium and Firefox alike): the shaper shapes each word with its
+        // trailing space, never with the next word's head.
         let pairs = [
             ("To", -99.0),
             ("Va", -60.0),
             ("AV", -68.0),
             ("Ty", -67.0),
             ("a ", -14.0),
-            ("x V", -51.0),
-            (" V", -31.0),
+            ("x V", -20.0),
+            (" V", 0.0),
             ("67", -18.0),
         ];
         for (text, kern) in pairs {
@@ -396,11 +497,13 @@ mod tests {
                 "To Va AV Ty",
                 Features::new()
             ),
-            5498.0
+            5579.0
         );
+        // A leading space never kerns into its word (no (space,V) in any
+        // engine); a trailing one kerns ((x,space), as the browsers do).
         assert_eq!(
             units(&mut fonts, Face::WorkSans600, " V", Features::new()),
-            306.0 + 670.0 - 31.0
+            306.0 + 670.0
         );
         destroy(&mut fonts);
     }

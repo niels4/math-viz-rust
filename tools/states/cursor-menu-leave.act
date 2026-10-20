@@ -1,0 +1,18 @@
+# cursor-menu-leave (fix-cursor): leaving a theme row for a light/dark cell
+# keeps the pointer: the whole menu shows it (claude0's consistency call;
+# the reference shows default on both — see decisions.md). Clean Teal row
+# centre probed at (1251,226), box [1112,208,278,36]; System cell centre at
+# (1159,129), box [1113,112,92,34].
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+move 1251 226
+wait 300
+move 1159 129
+wait 300
+shot cursor-menu-leave

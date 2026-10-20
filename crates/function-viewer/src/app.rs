@@ -183,6 +183,18 @@ pub struct App {
     /// The x field was asked open from the slider's Enter (h8-points-field
     /// consumes it in its wiring, opening the field and clearing the flag).
     pub slider_edit: bool,
+    /// The welcome backdrop's uploaded composite with its cache key
+    /// (h10-hero; `welcome_backdrop.rs` owns the composite, `welcome.rs`
+    /// paints it; `None` until the first welcome frame).
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub backdrop: Option<crate::welcome_backdrop::BackdropCache>,
+    /// The welcome loop's state: the tour clock and the hero's own switch
+    /// animation (h10-loop; `welcome_step.rs` owns the machine). Fresh at
+    /// startup, restarted whenever the welcome route is entered.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub welcome: crate::welcome_step::WelcomeState,
 }
 
 impl App {
@@ -263,6 +275,7 @@ impl App {
                 focus_visible: false,
                 keyed: false,
                 reveal: false,
+                hover_fresh: false,
                 cursor: crate::input::Cursor::Default,
                 regions: Vec::new(),
                 stops: Vec::new(),
@@ -358,6 +371,8 @@ impl App {
             x_field: crate::x_field::XField::new(),
             slider_hold: None,
             slider_edit: false,
+            backdrop: None,
+            welcome: crate::welcome_step::WelcomeState::fresh(),
         }
     }
 }

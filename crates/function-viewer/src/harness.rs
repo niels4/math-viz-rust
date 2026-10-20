@@ -62,9 +62,16 @@ pub static MODIFIER_MODS: EnumMap<mv_script::Modifier, sdl3::keyboard::Mod> =
         sdl3::keyboard::Mod::LGUIMOD,
     ]);
 
-/// The page's hash route (`#function-viewer?...`): math-viz2's route at `c409aad`,
-/// carried so a mid-run `hash` edit reads back with the route the web mirror writes.
-const HASH_ROUTE: &str = "function-viewer";
+/// The page's hash route a mid-run `hash` edit keeps: the script's route on
+/// every surface (the README's harness contract; act.py's `self.route`).
+/// h10-page carries it so the edit reads back with the route the mirrors
+/// write.
+pub(crate) fn script_hash_route(run: &mv_script::Script) -> String {
+    match run.start.route {
+        mv_script::Route::Welcome => String::new(),
+        mv_script::Route::FunctionViewer => "function-viewer".to_string(),
+    }
+}
 
 /// One fact with when it happened.
 #[derive(Clone, Debug)]
@@ -126,6 +133,21 @@ pub struct Harness<'a> {
     pub q: String,
     /// The shown transform as last written to `views.json`.
     pub shown: String,
+    /// The welcome loop as last written to `views.json` (h10-loop; the
+    /// port's own record: the reference's loop state is not in the DOM, so
+    /// the behaviour check reads this against `loop_at` of the port's own
+    /// elapsed). `None` until a welcome frame records it, so the line is
+    /// written at each shot and whenever the function switches — never
+    /// every frame.
+    pub welcome_loop: Option<crate::welcome_loop::LoopState>,
+    /// The page's hash route as last written to `views.json` (h10-page; the
+    /// behaviour checks read it against the reference's `location.hash`).
+    /// `None` until the first frame records it, so the line is written at
+    /// start and whenever the route changes.
+    pub route: Option<String>,
+    /// The script's hash route: a mid-run `hash` edit keeps it on every
+    /// surface (the README's harness contract; act.py's `self.route`).
+    pub script_route: String,
 }
 
 /// Launches motion, sizes the framebuffer or window, draws the first frame,
@@ -164,6 +186,9 @@ pub fn run_harness(
         cursor: String::new(),
         q: String::new(),
         shown: String::new(),
+        welcome_loop: None,
+        route: None,
+        script_route: script_hash_route(run),
     };
     if !crate::platform_native::platform_make_dir(out) {
         return false;
@@ -417,13 +442,19 @@ fn act(h: &mut Harness<'_>, verb: &mv_script::Verb) -> bool {
             // scripted frames bypass SDL's event queue and a pushed event
             // would sit unhandled). Param live values follow through each
             // param's `sync` on the coming frames, once their owners wire it.
-            // The frame now records the changed query in views.json at the
-            // verb's time (a hash queues no fact, and `inputs_now` only
-            // frames on pending facts, so without it a hash-then-shot script
-            // would record no `url` line).
-            h.app
-                .url
-                .sync_from_hash(&format!("#{HASH_ROUTE}?{}", q.query));
+            // The edit keeps the script's route on every surface (the
+            // README's harness contract; act.py's `self.route`). A hash that
+            // changes the route enters it (a fresh mount, as the web
+            // `hashchange` path does). The frame now records the changed
+            // query in views.json at the verb's time (a hash queues no fact,
+            // and `inputs_now` only frames on pending facts, so without it a
+            // hash-then-shot script would record no `url` line).
+            let prev = h.app.url.route().to_string();
+            let kept = h.script_route.clone();
+            h.app.url.sync_from_hash(&format!("#{kept}?{}", q.query));
+            if prev != h.app.url.route() {
+                crate::welcome::enter_route(h.app);
+            }
             harness_frame(h);
         }
     }
@@ -511,6 +542,15 @@ fn harness_frame(h: &mut Harness<'_>) {
         h.url = h.app.url.query().to_string();
         h.views.extend_from_slice(url_line(&h.url).as_bytes());
     }
+    // The hash route, at start and whenever it changed (h10-page; the
+    // behaviour checks read it against the reference's `location.hash`
+    // route, through h10-t-route's readers). Written beside the query, so a
+    // navigation records both lines at its frame.
+    if h.route.as_deref() != Some(h.app.url.route()) {
+        h.route = Some(h.app.url.route().to_string());
+        h.views
+            .extend_from_slice(route_line(h.app.url.route()).as_bytes());
+    }
     // The lit parameter, whenever the highlight moves (h4-readout; the
     // behaviour checks read it against the reference's data-lit).
     let lit = lit_line(&h.app.state.lit());
@@ -566,6 +606,24 @@ fn harness_frame(h: &mut Harness<'_>) {
     if shown != h.shown {
         h.shown = shown;
         h.views.extend_from_slice(h.shown.as_bytes());
+    }
+    // The welcome loop, whenever the function switches on the welcome
+    // route: the elapsed ms with what the tour shows (h10-loop; the port's
+    // own record beside the pixels, since the reference's loop state is not
+    // in the DOM). Shots record the values too, so drags between shots need
+    // no line every frame.
+    if crate::welcome::Route::of(&h.app.url) == crate::welcome::Route::Welcome {
+        let current = h.app.welcome.current;
+        match h.welcome_loop {
+            None => h.welcome_loop = Some(current),
+            Some(last) if last.func != current.func => {
+                h.welcome_loop = Some(current);
+                h.views.extend_from_slice(
+                    loop_line(h.app.welcome.clock.elapsed(), current).as_bytes(),
+                );
+            }
+            Some(_) => {}
+        }
     }
 }
 
@@ -863,6 +921,14 @@ fn shot(h: &mut Harness<'_>, name: &str) -> bool {
         "",
     );
     h.views.extend_from_slice(line.as_bytes());
+    // The welcome loop at the shot: the elapsed ms with what the tour
+    // shows (h10-loop; the port's own record beside the pixels).
+    if crate::welcome::Route::of(&h.app.url) == crate::welcome::Route::Welcome {
+        let current = h.app.welcome.current;
+        h.welcome_loop = Some(current);
+        h.views
+            .extend_from_slice(loop_line(h.app.welcome.clock.elapsed(), current).as_bytes());
+    }
     true
 }
 
@@ -899,6 +965,13 @@ fn views_line(
 /// `views_line` above, so the shape is testable without the app.
 fn url_line(url: &str) -> String {
     format!("{{\"url\": {}}}\n", json_string(url))
+}
+
+/// One `route` line: the page's hash route (`""` or `"function-viewer"`),
+/// as the frame left it (h10-page; the shape h10-t-route's reader expects).
+/// Pure, like `url_line` above, so the shape is testable without the app.
+fn route_line(route: &str) -> String {
+    format!("{{\"route\": {}}}\n", json_string(route))
 }
 
 /// One `camera` line: the plane's center and scale with whether a frame is
@@ -970,6 +1043,23 @@ fn shown_line(shown: crate::transform_curves::Transform, animating: bool) -> Str
         fmt_g17(shown.b),
         fmt_g17(shown.h),
         fmt_g17(shown.k),
+    )
+}
+
+/// One `loop` line: the welcome loop's elapsed ms with the function and
+/// transform the tour shows, through exact `toFixed(2)` (h10-loop; the
+/// port's own record beside the pixels, read against `loop_at` of the
+/// port's own elapsed). Pure, like `lit_line` above, so the shape is
+/// testable without the app.
+fn loop_line(ms: f64, loop_state: crate::welcome_loop::LoopState) -> String {
+    format!(
+        "{{\"loop\": {{\"ms\": {}, \"func\": \"{}\", \"a\": {}, \"k\": {}, \"b\": {}, \"h\": {}}}}}\n",
+        mv_numfmt::to_fixed(ms, 2),
+        loop_state.func.as_str(),
+        mv_numfmt::to_fixed(loop_state.a, 2),
+        mv_numfmt::to_fixed(loop_state.k, 2),
+        mv_numfmt::to_fixed(loop_state.b, 2),
+        mv_numfmt::to_fixed(loop_state.h, 2),
     )
 }
 
@@ -1358,6 +1448,15 @@ mod tests {
     }
 
     #[test]
+    fn route_line_has_its_shape() {
+        assert_eq!(route_line(""), "{\"route\": \"\"}\n");
+        assert_eq!(
+            route_line("function-viewer"),
+            "{\"route\": \"function-viewer\"}\n"
+        );
+    }
+
+    #[test]
     fn camera_line_has_its_shape() {
         assert_eq!(
             camera_line([1.5, -2.0], 2.0, false),
@@ -1414,6 +1513,23 @@ mod tests {
         assert_eq!(
             shown_line(crate::transform_curves::Transform::IDENTITY, true),
             "{\"shown\": {\"a\": 1, \"b\": 1, \"h\": 0, \"k\": 0, \"animating\": true}}\n"
+        );
+    }
+
+    #[test]
+    fn loop_line_has_its_shape() {
+        assert_eq!(
+            loop_line(
+                1833.33,
+                crate::welcome_loop::LoopState {
+                    func: crate::functions::FunctionSlug::X2,
+                    a: 1.0,
+                    b: 1.0,
+                    h: 0.0,
+                    k: -1.19,
+                },
+            ),
+            "{\"loop\": {\"ms\": 1833.33, \"func\": \"x2\", \"a\": 1.00, \"k\": -1.19, \"b\": 1.00, \"h\": 0.00}}\n"
         );
     }
 

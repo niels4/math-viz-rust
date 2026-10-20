@@ -1,0 +1,12 @@
+# cursor-cells-hover (fix-cursor): the pointer over the function selector's
+# x2 cell. Cell centres probed on the reference at 68e1c7b: x (85.5,179),
+# x2 (172.5,179), x3 (259.5,179), sin x (346.5,179); each cell 87x34.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 172.5 179
+wait 300
+shot cursor-cells-hover

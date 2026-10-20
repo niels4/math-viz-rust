@@ -56,9 +56,9 @@ pub fn top_bar(app: &mut App) {
         kind: HitKind::Gear,
         index: 0,
     };
-    // The wordmark link to the root page (`TopBar.tsx` at `96f1e84`): a hot
-    // region over the flake and word with the pointer cursor and a no-op
-    // click, as the planner's root-page call has it.
+    // The wordmark link to the welcome page (`TopBar.tsx` at `96f1e84`): a
+    // hot region over the flake and word with the pointer cursor, navigating
+    // home on click (h10-page; plan §3.7 Routes).
     let wordmark = Hit {
         kind: HitKind::Wordmark,
         index: 0,
@@ -245,6 +245,7 @@ mod tests {
         crate::ui::init_clay(&mut app);
         app.size = [1440.0, 900.0];
         app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer");
         let _commands = crate::page::layout_page(&mut app);
         let clay = app.clay.as_ref().expect("clay context initialised");
         let fixture = crate::fixture::page_fixture().expect("page fixture parses");

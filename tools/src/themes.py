@@ -18,7 +18,8 @@ milestone that draws them re-sources them (h1-frame the page tokens). Tokens no 
 defines are dropped, not carried (the driver's condition on the copy): math-viz's page tokens
 (ParamA and friends, the chart points, the curve glow) are gone; the milestone that sources a
 token adds it to tokens.toml and regenerates (h4-readout the --param-* rows from
-SideBar.module.css's per-theme blocks, read by read_sidebar_params below).
+the shared param_colours module's per-theme blocks, read by read_sidebar_params below;
+since 4cc4490 the sidebar and the welcome page both carry that class).
 theme.rs's tests and testdata/tokens.json still name the dropped tokens:
 h1-frame regenerates them with tools/run tokens (named in the t0-harness return)."""
 
@@ -59,7 +60,7 @@ DECLARATION = re.compile(r"(--[a-z0-9-]+)\s*:\s*([^;]+);", re.S)
 OKLCH = re.compile(r"oklch\(([-\d.]+) ([-\d.]+) ([-\d.]+)(?: / ([\d.]+))?\)")
 VAR = re.compile(r"var\((--[a-z0-9-]+)\)")
 MIX = re.compile(
-    r"color-mix\(in oklch, var\((--[a-z0-9-]+)\) ([\d.]+)%, (?:var\((--[a-z0-9-]+)\)|transparent)\)"
+    r"color-mix\(in (oklch|srgb), var\((--[a-z0-9-]+)\) ([\d.]+)%, (?:var\((--[a-z0-9-]+)\)|transparent)\)"
 )
 
 
@@ -116,16 +117,22 @@ def read_themes(ref: Path) -> list[Theme]:
             sys.exit(f"{theme.slug} defines other tokens than {themes[0].slug}")
     sidebar = read_sidebar_params(ref)
     points = read_sidebar_points(ref)
+    welcome = read_welcome_tokens(ref)
+    theme_points = read_sidebar_theme_points(ref)
     for theme in themes:
         params = sidebar[theme.slug]
-        # The per-theme point overrides ride with the base points below.
-        points_in_block = {k: params.pop(k) for k in ("--point-p", "--point-q") if k in params}
+        # The per-theme point overrides stayed in SideBar.module.css while the
+        # params moved (4cc4490); they ride with the base points below.
+        points_in_block = theme_points.get(theme.slug, {})
         if list(params) != ["--param-a", "--param-k", "--param-b", "--param-h"]:
             sys.exit(f"{theme.slug}: sidebar params out of order: {list(params)}")
         merged = dict(params)
         merged["--point-p"] = points_in_block.get("--point-p", points["--point-p"])
         merged["--point-q"] = points_in_block.get("--point-q", points["--point-q"])
         theme.declarations.update(merged)
+        # The welcome page's inks (h10-page): the `.page` block's values with
+        # the theme's overrides, after the sidebar's (tokens.toml order).
+        theme.declarations.update(welcome[theme.slug])
     return themes
 
 
@@ -133,18 +140,39 @@ SIDEBAR_THEME = re.compile(r'&\[data-theme="([a-z-]+)"\]\s*\{([^}]*)\}')
 
 
 def read_sidebar_params(ref: Path) -> dict[str, dict[str, str]]:
-    """The readout's per-parameter inks: `--param-a/k/b/h` from SideBar.module.css's
-    per-theme blocks (h4-readout sources them; the theme files never define them).
+    """The readout's per-parameter inks: `--param-a/k/b/h` from the shared
+    `src/style/param_colours.module.css`'s `.param_colours` per-theme blocks
+    (h4-readout sources them; the theme files never define them; since 4cc4490
+    the sidebar and the welcome page both carry that class, values unchanged).
     Values read as written (oklch colours), in the blocks' order."""
-    css = (
-        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
-    ).read_text()
+    css = (ref / "src" / "style" / "param_colours.module.css").read_text()
     out: dict[str, dict[str, str]] = {}
     for match in SIDEBAR_THEME.finditer(css):
         slug, block = match.group(1), match.group(2)
         out[slug] = {m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block)}
     if sorted(out) != sorted(SLUGS):
         sys.exit(f"sidebar params cover {sorted(out)}, want {sorted(SLUGS)}")
+    return out
+
+
+def read_sidebar_theme_points(ref: Path) -> dict[str, dict[str, str]]:
+    """P's and Q's per-theme overrides: `--point-p`/`--point-q` from
+    SideBar.module.css's per-theme blocks (4cc4490 moved only the `--param-*`
+    blocks to param_colours.module.css; these overrides stayed). Only themes
+    with an override appear; the rest inherit the base block's defaults."""
+    css = (
+        ref / "src" / "components" / "views" / "FunctionViewer" / "SideBar" / "SideBar.module.css"
+    ).read_text()
+    out: dict[str, dict[str, str]] = {}
+    for match in SIDEBAR_THEME.finditer(css):
+        slug, block = match.group(1), match.group(2)
+        points = {
+            m[1]: " ".join(m[2].split())
+            for m in DECLARATION.finditer(block)
+            if m[1] in ("--point-p", "--point-q")
+        }
+        if points:
+            out[slug] = points
     return out
 
 
@@ -161,6 +189,37 @@ def read_sidebar_points(ref: Path) -> dict[str, str]:
     if sorted(points) != ["--point-p", "--point-q"]:
         sys.exit(f"sidebar base points cover {sorted(points)}, want both point tokens")
     return points
+
+
+def read_welcome_tokens(ref: Path) -> dict[str, dict[str, str]]:
+    """The welcome page's inks: `--title`, `--cta`, `--cta-foreground` from
+    WelcomePage.module.css's `.page` block (h10-page sources them; the theme
+    files never define them). The base block's values with each theme's
+    `&[data-theme]` overrides (a theme without a block keeps the base), in the
+    base block's order."""
+    css = (
+        ref / "src" / "components" / "views" / "WelcomePage" / "WelcomePage.module.css"
+    ).read_text()
+    head = css.split("&[data-theme", 1)[0]
+    base = {
+        m[1]: " ".join(m[2].split())
+        for m in DECLARATION.finditer(head)
+        if m[1] in ("--title", "--cta", "--cta-foreground")
+    }
+    if list(base) != ["--title", "--cta", "--cta-foreground"]:
+        sys.exit(f"welcome page tokens out of order: {list(base)}")
+    out = {slug: dict(base) for slug in SLUGS}
+    for match in SIDEBAR_THEME.finditer(css):
+        slug, block = match.group(1), match.group(2)
+        if slug not in out:
+            sys.exit(f"welcome page token block for unknown theme {slug}")
+        out[slug].update(
+            {m[1]: " ".join(m[2].split()) for m in DECLARATION.finditer(block)}
+        )
+    for slug in SLUGS:
+        if list(out[slug]) != ["--title", "--cta", "--cta-foreground"]:
+            sys.exit(f"{slug}: welcome page tokens out of order: {list(out[slug])}")
+    return out
 
 
 def read_pairs() -> list[tuple[str, str]]:
@@ -183,6 +242,12 @@ def read_pairs() -> list[tuple[str, str]]:
 
 def rust_variant(css_name: str) -> str:
     """--chart-point-1 → ChartPoint1 (the plan's mapping: Ada_Case to CamelCase)."""
+    if css_name == "--title":
+        return "WelcomeTitle"
+    if css_name == "--cta":
+        return "WelcomeCta"
+    if css_name == "--cta-foreground":
+        return "WelcomeCtaForeground"
     return "".join(part.capitalize() for part in css_name.removeprefix("--").split("-"))
 
 
@@ -211,9 +276,13 @@ def rust_value(text: str) -> str:
     if m := VAR.fullmatch(text):
         return f"Value::Ref(Token::{rust_variant(m[1])})"
     if m := MIX.fullmatch(text):
-        other = f"Some(Token::{rust_variant(m[3])})" if m[3] else "None"
+        if m[1] == "srgb" and m[4] is not None:
+            sys.exit(f"an srgb mix of two colours the port can't read: {text}")
+        # An srgb mix with transparent keeps the rgb and scales the alpha, exactly what the
+        # oklch mix with transparent resolves to (theme.rs's mix), so both emit one Mix.
+        other = f"Some(Token::{rust_variant(m[4])})" if m[4] else "None"
         return (
-            f"Value::Mix(Mix {{ a: Token::{rust_variant(m[1])}, " f"p: {num(m[2])}, b: {other} }})"
+            f"Value::Mix(Mix {{ a: Token::{rust_variant(m[2])}, " f"p: {num(m[3])}, b: {other} }})"
         )
     sys.exit(f"a colour the port can't read: {text}")
 
@@ -448,6 +517,16 @@ def verify(themes: list[Theme], pairs: list[tuple[str, str]]) -> None:
                     for selector, token in pairs:
                         if token not in decls:
                             continue  # a later milestone's token: h1 checks it
+                        present = page.evaluate(
+                            "(s) => document.querySelector(s) !== null",
+                            selector,
+                        )
+                        if not present:
+                            # A token on another route (h10-page's welcome
+                            # root-view pairs, read on the viewer route): the
+                            # milestone probes them on their own route instead.
+                            print(f"  skipped (no match on #function-viewer): {selector}")
+                            continue
                         want = resolve_vars(
                             decls, " ".join(decls[token].split())
                         )

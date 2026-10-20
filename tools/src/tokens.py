@@ -54,8 +54,10 @@ PROBE_JS = r"""
 ({ colours, size, columns }) => {
   // Under the readout's form line, so the sidebar's per-theme --param-*
   // inks (which inherit from .sidebar[data-theme], not the body) resolve;
-  // every theme-file token inherits identically there.
-  const host = document.querySelector('[data-testid="function-form"]') ?? document.body;
+  // every theme-file token inherits identically there. On the welcome route
+  // (no sidebar) the page root carries its own page tokens instead.
+  const host = document.querySelector('[data-testid="root-view"]')
+    ?? document.querySelector('[data-testid="function-form"]') ?? document.body;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
   host.appendChild(probe);
@@ -172,6 +174,18 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
     themes = read_themes(react_ref())
     url = f"http://localhost:{port('REACT_REF_PORT')}/{REFERENCE_ROUTE}"
     expressions = {name: f"var({name})" for name in themes[0].colour_tokens()} | MIXES
+    # The welcome page's inks live on its root, not the sidebar: they resolve
+    # on the welcome route (h10-page), taken beside the viewer ones below.
+    # The port draws through them (Token::WelcomeTitle and friends).
+    welcome_url = f"http://localhost:{port('REACT_REF_PORT')}/"
+    welcome_names = ("--title", "--cta", "--cta-foreground")
+    # Read through relative `oklch(from ...)`, so the fixture carries oklch
+    # like every other token: the browser's srgb mix with transparent keeps
+    # the rgb and scales the alpha, which converts back to the token's own
+    # lch (theme.rs's Mix with transparent says the same).
+    welcome_expressions = {
+        name: f"oklch(from var({name}) l c h)" for name in welcome_names
+    }
     order = [FIXTURE_ENGINE, *(e for e in engines if e != FIXTURE_ENGINE)]
     taken: dict[str, dict[str, Taken]] = {}
     problems: list[str] = []
@@ -205,6 +219,12 @@ def run_tokens(engines: list[str], out: Path = OUT) -> int:
                     # React has mounted once the theme class is on the body (no canvas yet).
                     page.wait_for_function("() => document.body.className.length > 0")
                     taken.setdefault(engine, {})[theme.slug] = take(page, theme, expressions)
+                    # The welcome page's inks on its own route (the probe
+                    # hosts under the welcome root there).
+                    page.goto(welcome_url, wait_until="load")
+                    page.wait_for_function("() => document.body.className.length > 0")
+                    welcome = take(page, theme, welcome_expressions)
+                    taken[engine][theme.slug].colours.update(welcome.colours)
                     problems += [f"{engine} {theme.slug}: {p}" for p in log.problems()]
                     context.close()
             finally:

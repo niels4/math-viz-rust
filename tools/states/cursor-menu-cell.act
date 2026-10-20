@@ -1,0 +1,15 @@
+# cursor-menu-cell (fix-cursor): the pointer over the settings menu's
+# System cell (claude0's consistency call: the menu labels keep the pointer
+# like the selector cells; the reference computes default — see
+# decisions.md). Cell centre probed at (1159,129), box [1113,112,92,34].
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 1383 48
+wait 500
+move 1159 129
+wait 300
+shot cursor-menu-cell

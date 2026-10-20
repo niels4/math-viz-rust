@@ -7,7 +7,9 @@ import json
 import sys
 from pathlib import Path
 
-from act import REPO, TARGETS, is_native, run, shown
+from playwright.sync_api import Page
+
+from act import REPO, TARGETS, OnShot, is_native, run, shown
 from browser import ENGINES
 from dom import FIXTURE, run_dom, run_fixture
 from fonts import OUT as FONTS
@@ -18,6 +20,7 @@ from judge import run_judge
 from keys import OUT as KEYS_OUT
 from keys import run_keys
 from loop import run_loop
+from pages import run_pages
 from raf import OUT as RAF_OUT
 from raf import run_raf
 from release import run_release
@@ -152,30 +155,46 @@ def gamut(args: argparse.Namespace) -> int:
     return run_gamut(names, args.engines, (args.out or SHOTS / default).resolve())
 
 
-# The hover check's row: row a of the Transform card, (49, 402.5, 394, 44) at 1440 x 900, held in
-# whole px (tools/states/hover-row-1.act moves onto its name). Lit, it lights a's partners too
-# (FV 04): its term in the equation's form line (a's at (101, 288.8, 16, 24) in the reference) and,
-# since M6, a's meaning on the plane: the unit box from the origin (956, 488) to the unit point
-# (1006, 438) at 50 px a unit, dashed, with its measured side's ticks and arrow out to x 1012.5.
-HOVER_STATE = "hover-row-1"
-HOVER_ROW: Box = (49, 402, 394, 45)
-HOVER_TERM: Box = (101, 288, 16, 25)
-HOVER_UNIT_BOX: Box = (954, 435, 61, 55)
+# The smoke's hover state (tools/states/pages-smoke.act): the pointer onto row a's name
+# at 1440 x 900, one frame later lit in its row, its term in the form line and a's unit box
+# on the plane, and nothing else. t-pages probed the boxes on the reference at 68e1c7b
+# (the row's band, the term's runs, the dashed unit box with its ticks); they replace the
+# Odin tar's hover-row-1, which t0-harness deleted while web() still loaded it, so the
+# smoke never ran in this repo until t-pages. The term box covers the port's tint too,
+# which starts 3 px left of the reference's (a port-vs-reference shape the readout
+# milestones own; the smoke only holds that nothing outside the three regions changes).
+HOVER_STATE = "pages-smoke"
+HOVER_ROW: Box = (41, 428, 350, 45)
+HOVER_TERM: Box = (94, 306, 20, 28)
+HOVER_UNIT_BOX: Box = (927, 439, 58, 52)
+
+
+def pathnames() -> tuple[list[str], OnShot]:
+    """An on_shot callback keeping every pathname read after a shot (t-pages: the smoke
+    proves the served path never moves under the app's hash writes)."""
+    seen: list[str] = []
+
+    def on_shot(page: Page, _shot: str) -> None:
+        seen.append(str(page.evaluate("location.pathname")))
+
+    return seen, on_shot
 
 
 def web(args: argparse.Namespace) -> int:
     """The web build's smoke check: the hover state's script in each engine, with no console
-    error, page error or failed request, and the hover changing the row, its term in the equation
-    and a's unit box on the plane, and nothing else."""
+    error, page error or failed request, and the hover changing the row, its term in the form
+    line and a's unit box on the plane, and nothing else."""
     script = load(STATES / f"{HOVER_STATE}.act")
     out: Path = args.out_dir.resolve()
     failed = False
     report: dict[str, object] = {}
     for engine in args.engines:
-        result = run(script, "web", engine, out / f"web-{engine}")
+        seen, on_shot = pathnames()
+        result = run(script, "web", engine, out / f"web-{engine}", on_shot)
+        pathname = seen[-1] if seen else None
         hover: dict[str, object] = {}
         answered = False
-        if result.ok:
+        if result.ok and pathname is not None:
             row = scaled_box(HOVER_ROW, script.start.density)
             term = scaled_box(HOVER_TERM, script.start.density)
             unit_box = scaled_box(HOVER_UNIT_BOX, script.start.density)
@@ -213,12 +232,13 @@ def web(args: argparse.Namespace) -> int:
             print(result.summary())
         for problem in result.problems:
             print(f"  {problem}")
-        failed |= not (result.ok and answered)
+        failed |= not (result.ok and answered and pathname is not None)
         report[engine] = {
-            "ok": result.ok and answered,
+            "ok": result.ok and answered and pathname is not None,
             "out": str(result.out),
             "gl": result.detail.get("gl"),
             "hover": hover,
+            "pathname": pathname,
             "problems": result.problems,
             "console": result.console,
         }
@@ -231,6 +251,12 @@ def _corners(box: Box) -> tuple[int, int, int, int]:
     """A box as PIL takes it: left, top, right, bottom."""
     x, y, w, h = box
     return x, y, x + w, y + h
+
+
+def pages(args: argparse.Namespace) -> int:
+    """The GitHub Pages proof: docs/ served from a subpath, the smoke and the route states
+    in each engine, every report zero problems and the path unmoved (t-pages)."""
+    return run_pages(args.port, args.base, args.engines, args.out_dir.resolve())
 
 
 def diff(args: argparse.Namespace) -> int:
@@ -464,6 +490,23 @@ def main() -> int:
     w.add_argument("--engines", type=engines_list, default=list(ENGINES))
     w.add_argument("--out-dir", type=Path, default=SHOTS / "web")
     w.set_defaults(run=web)
+
+    pg = commands.add_parser(
+        "pages",
+        help="serve docs/ from a subpath on a local port and prove it loads there: the "
+        "web smoke plus the route states in each engine (t-pages)",
+    )
+    pg.add_argument(
+        "--port", type=int, default=None, help="the local port (default: a free one from 5200)"
+    )
+    pg.add_argument(
+        "--base",
+        default="/math-viz2-rust/",
+        help="the subpath, starting and ending with / (default: /math-viz2-rust/)",
+    )
+    pg.add_argument("--engines", type=engines_list, default=list(ENGINES))
+    pg.add_argument("--out-dir", type=Path, default=SHOTS / "pages")
+    pg.set_defaults(run=pages)
 
     d = commands.add_parser("diff", help="compare two images, or the PNGs two directories share")
     d.add_argument("a", type=Path)

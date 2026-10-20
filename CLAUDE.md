@@ -79,6 +79,16 @@ at `#function-viewer?<query>` (a `?query` search was silently dropped: nothing r
 `LiveWhat::Hash` (the loop milestone's); dev tools pinned `==` in `tools/pyproject.toml`
 (black 26.10.1, isort 9.0.2, ruff 0.17.1, pyright 1.1.414: newest with a minimal canonical
 reflow — black 25.12 drifts 7 files, 25.1.0 23; bisect in scratch, never in the worktree).
+h10-t-route's entries: `route welcome|function-viewer` opens the page on its route (script
+default `function-viewer`, so every existing script is unchanged; the native binary's own
+default `welcome`, as the browser's `/`); `hash_route` in each reader gives the hash route
+(`welcome` → `""`, `function-viewer` → `"function-viewer"`); `act.py`'s `url_for` always
+carries the hash (`/#`, `/#function-viewer`), the `Hash` verb keeps the script's route, and
+`run_native` passes `--route` on every invocation (recorded in `report.json`'s `detail.command`);
+`loop.py`'s `--live` runs pass it from the live script (the idle/signals launches take the
+binary's default). The `route` views reader (`port_route`/`reference_route`) reads the last
+`route` line against `location.hash`'s route; until h10-page writes the line, "no route line"
+is a check that can't run, not a failure.
 
 ## The references and the bar
 
@@ -786,11 +796,342 @@ no new tokens (all eight tabled).
   closure keeps its address, so a `laid_out_page` returning the app by
   value dangles it and the next measure aborts ("shape needs init").
   Take `&mut` and build the app in the test.
-- Engine notes: WebKit dark selection (85,125,167) vs Chromium
-  (83,123,165) the port paints (2 levels, accepted); saturated canvas
-  inks shift vs CSS (primary ring (112,192,160) vs (122,190,216)) — the
-  shared P3/gamut story (`ui::ink` everywhere; neutrals byte-identical),
-  for the union `gamut all`, not a defect.
+- Engine notes: both ref engines paint the dark selection
+  (85,125,167) in the text band (measured webkit + chromium; firefox
+  paints opaque #3399FF over the whole plate); the port reuses scrub
+  SELECTION_DARK (83,123,165), 2 levels, still engine-quirk (e). The
+  (122,190,216) rows are webkit/chromium default-selection compositing
+  over the ring's top/bottom edge in field-open only (count 0 in every
+  selection-free shot) — not a canvas-ink shift; `ui::ink` resolves
+  --primary exactly to (112,192,160). No gamut story, no code change.
+
+### h9 (Arctic Ice Secondary recolor)
+
+- One CSS line (`--secondary` `oklch(0.2885 0.0208 248.55)` →
+  `oklch(0.34 0.05 242)`, Arctic Ice only): no Rust change; `tools/run
+  themes` + `tools/run tokens` + `tools/run dom --fixture` against ref-h9
+  touch exactly three files (themes.rs header hash + Secondary l/c/h;
+  tokens.json arctic-ice `--secondary` computed/oklch/rgb/engines;
+  page.json `"reference"` header). Consumers all resolve
+  `Token::Secondary` at run time (gear plate, hovered settings
+  row/swatch, hovered selector row, hovered value box, flip/reset
+  hovers, Reset-all hover, overlay button hover, tip key caps).
+- Measured draws, all engines agree: old plate rgb (35,44,53), new
+  (31,59,80) (tokens.json engines rows chromium+firefox identical;
+  sampled off the PNGs). Fail-pass on `default` vs ref-h9 WebKit: before
+  2847 flat px apart in the gear box (4636 changed), after 0 flat
+  (1107 changed, stroke/AA edges only). Base-vs-new native diff on
+  `default`: 4452 px changed, all inside the gear box, max 27.
+- Census vs union-h8 (the level's evidence): all 87 H1/H3/H4/H5/H6
+  states identical in chromium+firefox; webkit identical except
+  flip-focus +3546 and settings-focus-radio +3487 inside their
+  pre-existing focus-divergence clusters (same box/max) and
+  theme-switch-frames mids +0.5% (fade-timing family). Triangulation
+  (new port vs ref-h8 on 5198 + direct ref-h8-vs-ref-h9 diff) proves the
+  growth is ref-side: the reference paints its focused-box tip caps
+  Secondary (8140 px at CSS (54,485.5,310.5,503)), recolored h8→h9.
+- Finding (open, sibling-owned, not fixed here): in those two states the
+  port's focused-box key-help bar paints 0 px Secondary (section/muted
+  family in both builds; the typing-variant tip follows the token —
+  rows-typed paints 9164 px Secondary in the same box), so its cap
+  plates don't resolve `Token::Secondary` although `tip.rs key_cap`
+  sets it. Pre-existing at union-h8 (same shape), exposed by the
+  recolor. Owner: h8-points-field's tip/input code (wrap/field settles
+  the mechanism — suspect a second bar path beside `layout_tip`, since
+  `scrub_value::tip` early-returns unless typing/resting). Settled by
+  h8-fix-readout below: no second path exists (3 `layout_tip` callers, all
+  Key/Arrow cells through `key_cap` → Secondary); the bar's absence is the
+  tab-walk engine split, walk kept, webkit clusters under (e).
+
+### h8-fix-readout (readout review fixes checked; key-cap finding settled)
+
+- 5612e1d verified by measurement, no further code: the "f(" zone
+  (device x440-504 y1420-1500) is 0 apart flat>2 in all 7 field states +
+  points-default; every text run's left/right ink edge within 1 device px
+  (result right edge 779 both sides); italic STIX f matches at 6x.
+  Spillover shrinks union clusters on rest states (points-default 197->48).
+- Finding 4 settles as walk, not paint: Tip CSS `.key` is
+  `background: var(--secondary)` and `key_cap` sets `Token::Secondary` —
+  proven resolving (P-tip zone nat 7017 vs ref 6499; typing bar arctic 2396
+  vs 1886, tron-cyan 2396 vs 1894). flip-focus/focus-radio paint 0 px
+  Secondary (bar never lays out: focus never enters a field on the port's
+  Tab walk). Same scripts per engine: WebKit skips buttons/radios in
+  sequential navigation (measured both directions + fresh-page order) and
+  lands on the next field with select-all + tip; Chromium/Firefox stop on
+  the toggle (port matches them: 1055/235 and 1017 apart). Walk kept
+  (h5's tested order; one walk can't match an engine-split reference) —
+  overturnable, question for the user. WebKit bar clusters are (e).
+- H5+H8 matrix (82 states x 7 surfaces, 574 runs, 0 problems): native ==
+  web-webkit == web-firefox at 0 whole-frame everywhere; chromium 0 flat
+  except box-wheel (5353, recorded quirk); shift +-1 row multiplies counts
+  (no row offset). `./build.sh check` green.
+### h10-seam (the legend out of the plane painter; param colours' new source)
+
+- `plane.rs`'s `paint_plane` is the bare plane (grid, axes, labels, curves,
+  lines, handles, markers in the source's order); `page.rs`'s `draw_plane`
+  paints the legend after it through `scale_legend::paint_legend` under one
+  shared `font_ready` gate (natively `true`), in the canvas's translated
+  and scissored space exactly as the painter did — the hero calls the bare
+  painter alone. `PlaneColors.legend` stays the colours' bundle (drawn by
+  the viewer now, never by `paint_plane`). Cutouts paint before the legend
+  now; they touch only 4 px corners, the plate sits 28/22 px off the edges,
+  no overlap. Proof: `states H2–H8 --targets native` (167 states, all ok)
+  plus `H2 H6 --targets web --engines webkit` (46, all ok) before vs after:
+  `same-run` 0 differences on both, exit 0.
+- `themes.py`'s `read_sidebar_params` reads the six per-theme `--param-a/k/b/h`
+  blocks from `src/style/param_colours.module.css`'s `.param_colours` block
+  (4cc4490; values unchanged; the sidebar and the welcome page both carry
+  the class, so `verify`'s sidebar selector still resolves). The per-theme
+  `--point-p`/`--point-q` overrides stayed in `SideBar.module.css`: the naive
+  move fails `verify` (arctic-ice `--point-q` computed `oklch(0.8276 0.1013
+  230.32)`, the file then saying the base default), so a new
+  `read_sidebar_theme_points` sources them from there and `read_themes`
+  merges them under the base defaults as before. Regen at 68e1c7b on the
+  h9-merged base: all three files headers only (themes.rs + tokens.json +
+  page.json reference lines), every value row equal — committed with the
+  generator change as (2).
+- Probe (`.local/probe_params.py`, report in `.local/shots/h10-seam/`):
+  welcome `/` vs viewer `/#function-viewer` `--param-a/k/b/h` in all six
+  themes equal, 24/24 in WebKit (seeding math-viz2's keys as `act.py` does).
+
+### h10-p-loop (the welcome loop and the fit-to-window scale)
+
+- `welcome_loop.rs` holds the 22-step tour (`Step::{Hold, Drag, Switch}`,
+  `STEPS` in source order, 451 frames) with `LOOP_MS` computed as the
+  source computes it (`total_frames * 1000 / FPS` via `const fn`, so a
+  step edit moves the constant). `LoopState` is flat (`func, a, b, h, k`),
+  not `{ func } & Transform`; `Easing` is a four-value struct evaluated
+  by `ease_drag` because a closure is neither const-buildable nor `Copy`
+  (clippy's `double_must_use` also bars `#[must_use]` on
+  `cubic_bezier`, whose `impl Fn` return is already must-use).
+  `dragged` delegates to `scrub::scrubbed` (no re-rounding; the −1.19 /
+  2.44 / 1.74 / 1.15 literals fall out of its `quantize`).
+- JS `%` on a non-negative float is Rust's `%` (both keep the dividend's
+  sign); `loop_at` keeps `%` as the source has it and documents the
+  negative-`ms` case rather than switching to `rem_euclid`.
+- `WelcomeClock` is the rAF accumulator as a step function in the same
+  file (first frame adds `plot::FIRST_FRAME_MS` regardless of the gap,
+  later frames `min(now - last, 50)`); `state(false)` is the still and
+  `is_animating(false)` is false, so the coder's frame loop schedules no
+  frames under reduced motion.
+- `fit_scale.rs`: `fit_scale` returns `1.0` on a non-positive side — the
+  hook instead keeps its previous value, so the caller retains its stored
+  fit and only calls this once laid out (said in the doc). `paper_fit`
+  is the `WelcomePage.tsx` line verbatim, `1e-9` included. Verified
+  against the formula: the brief's 768 × 1024 → 0.53 is the dpr-2 value
+  (53/100); at dpr 1 it is 0.52.
+
+### h10-page (the welcome page's static layout and the second route)
+
+- The route lives in `welcome.rs::Route::of(&Url)` (`""` welcome,
+  `function-viewer` viewer, else welcome; slashes trimmed as the Router
+  does). `layout_page`/`draw_page` branch on it; the viewer branch is the
+  old body (drawn first in the file as `draw_viewer`). The welcome branch
+  lays out only its own elements (top row, frame, intro, hero, menu) and
+  paints bg, the backdrop stub, the still, the commands, menu chrome and
+  the CTA ring. The ~13 viewer-layout tests seed
+  `app.url = Url::new("#function-viewer…")` (points_section, selector,
+  plane, readout, settings x2, top_bar, x_field's helper).
+- Fresh mount (`enter_route`): viewer resets component state (drafts,
+  scrub/holds/rest, menu, hover/focus, flip, overlay tip, moved_by,
+  slider, field, camera_frame_at) and re-inits camera+params+func from
+  the URL; atoms (`state`, incl. jumps) kept. Welcome closes the menu.
+  Runs at startup implicitly (fresh by construction), on web `hashchange`
+  (main.rs Hash arm, prev-vs-new route), in the harness hash verb, and in
+  `navigate` natively. Web navigation assigns `location.hash` (history
+  entry; the existing hashchange path enters); `mv_navigate_hash` lives in
+  library.js, declared extern, never exported. `--route` (h10-t-route's)
+  seeds `App.url`'s route at startup; the harness hash verb keeps the
+  script's route (`script_route`), matching act.py's `self.route`.
+- Fresh mounts hover nothing until the pointer acts (`input.hover_fresh`,
+  cleared on pointer move/button/wheel): the browser applies no `:hover`
+  without a mouse move after the route's components mount, and the
+  reference's post-navigation hover is racy engine to engine (measured:
+  the lit row flapped between states runs; the move-to-neutral ends both
+  sides unlit deterministically). `retarget` holds hover off while set.
+- The blend finding: NanoVG's GL backend premultiplies paint rgb by alpha
+  when uploading uniforms (`glnvg__premulColor`), blended
+  (ONE, ONE_MINUS_SRC_ALPHA) — exactly the browser's compositing for fills
+  AND text, so straight theme inks are exact including alpha (an early
+  SRC_ALPHA-blend experiment double-applied alpha, read 0.75x dark on the
+  dashed curve, and was reverted). Title proof: 27,940 flat stem pixels at
+  0 levels on Tron Cyan, 30,926 on Clean Teal, vs ref-WebKit; the rest of
+  its diffs sit on paper lines and in the lights' falloff (h10-hero's).
+  `draw::css_background` on a translucent Clay rect would double-apply —
+  the welcome pass paints no translucent rects, so it stays exact.
+- The shaping fix (a layer change, in `mv-text/shape.rs`): the port's
+  shaper applied GPOS kern pairs with a space on EITHER side, while all
+  three browsers kern (X,space) and never (space,X) (measured per pair:
+  (space,t) −12u and (space,V) −31u apply in kb, in no browser;
+  (x,space) −20u, (a,space) −14u, (r,space) −18u, (l,space) −22u apply in
+  WebKit and kb alike; Chromium/Firefox skip (X,space) except as noted).
+  `shape()` now shapes each word with its trailing space (never with the
+  next word's head); `measure_word`'s leading-space adjustment keeps
+  Clay's sum exact. Whole-workspace suite green; the CTA box went
+  305.878 → 306.719-exact. Remaining engine spread: Chromium/Firefox skip
+  (X,space) (subpixel edge pixels, category d); WebKit-only (X,space)
+  kerns recorded per text as quirk (e). nbsp pairs untouched (engines
+  disagree up to 1.2px among themselves).
+- Tokens: `--title`/`--cta`/`--cta-foreground` on `[data-testid=root-view]`
+  (Token::WelcomeTitle/Cta/CtaForeground); `themes.py` reads them from
+  `WelcomePage.module.css`'s `.page` block, its MIX regex takes
+  `in srgb …, transparent` (same Mix: premultiplied srgb with transparent
+  keeps rgb, scales alpha), `verify` skips selectors missing on the viewer
+  route, `tokens.py` takes the three on `/` through `oklch(from …)`.
+- Boxes `mark/description/cta/hint/hero_plane` plus `welcome_chip_*`
+  (`chip_a` is taken); dom.py fixture runs `welcome-route` (probe) and
+  `welcome-default`; milestones H10 lists all 13 states.
+- The h10-seam merge adapted the hero to the bare `paint_plane` (empty
+  handles/lines/markers; bg fill + border + cutouts stay the hero's own
+  pass so the menu's opaque background covers the still where they
+  overlap) and regenerated the three generated files at 68e1c7b (my rows
+  included; arctic-ice `--secondary` is h9's value, part of this hash).
+- The description hard-breaks at the reference's three line breaks (Clay
+  never wraps; greedy-fit test pins them); the CTA focus ring reproduces
+  Chromium's 1px `rgb(0,95,204)` at 1px offset (WebKit skips the link on
+  Tab — the known quirk, category e; Firefox draws its own variant).
+
+### t-pages (the GitHub Pages proof)
+
+- `WEB_BASE` (default `/`, must start and end with `/`) beside `WEB_PORT`: one helper,
+  `act.web_origin()`, returns `http://localhost:<WEB_PORT><WEB_BASE>`; `url_for`'s web
+  branch and the served URLs in `tabs.py`, `raf.py` and `loop.py` use it (`main.py`'s
+  `web()` builds no URL of its own). The routed origin (no server) is unchanged, and every
+  command behaves as before when `WEB_BASE` is unset.
+- `tools/run pages [--port P] [--base B]` stages the committed `docs/` under
+  `.local/pages-root/<B>/`, serves it with `http.server` on 127.0.0.1, and runs the web
+  smoke plus `welcome-route`, `default` and `url-roundtrip` in all three engines: each
+  `report.json` zero problems, `location.pathname` still the base after every run (read
+  after the last action through `on_shot`; every proof script ends in a shot), the
+  roundtrip href holding `#function-viewer` past the base, the wasm's streaming
+  instantiation noted from the consoles. Report in `.local/shots/pages/report.json`.
+- The web smoke never ran in this repo until t-pages: `web()` still loaded the Odin
+  tar's `hover-row-1`, which t0-harness deleted, so `tools/run web` tracebacked. The new
+  `pages-smoke.act` hovers row a with boxes probed on the reference at 68e1c7b (45,800 /
+  1,543 / 1,102 changed px in row / term / unit box, 0 elsewhere). `docs/` is written only
+  by `./build.sh pages` (wrap's last step); item (5) dropped: the release flags landed in
+  6a79410 (claude0).
+
+
+### h10-hero (the welcome backdrop: graph paper and two masked lights)
+
+- `welcome_backdrop.rs` owns the four z-index −1 layers behind the hero plane
+  (paper_x, paper_y, light_top, light_body): the mask stop tables, the srgb
+  `over` operator, the 3-stop `in srgb` top gradient (ends clamped), the SVG
+  blurred-ellipse masks (binary raster at 2 screen-px cells, true separable
+  Gaussian, bilinear upsample) and the whole-window CPU composite in sRGB
+  (`composite_backdrop`), plus the hero's label list (bare plane, no legend).
+- The blend answer to h10-page's question (its GL premultiplied finding makes
+  fills exact, but NanoVG has no blur, no 3-stop srgb gradient and no masked
+  layer): the CPU composite stays — one opaque RGBA image at device
+  resolution, uploaded once per theme/size/fit and drawn with an image pattern
+  exactly as the transition snapshot is. `theme_colors` resolves the six
+  tokens as UNCLIPPED sRGB (mv-theme's `to_space` clips for canvas paint;
+  the DOM gradient interpolates `--param-a`'s out-of-gamut red to 1.038
+  before any gamut map — clipped would cost a level in the top light's left
+  tail); in-gamut tokens come out identical (pinned by test).
+- `paint_backdrop` (welcome.rs) runs after the layout (reads the laid-out
+  `WelcomeHero` box), caches by (theme slug, window pixels, fit) in
+  `App.backdrop`, recomposites and re-uploads on a miss (deleting the stale
+  image), draws the pattern over the window rect. draw_welcome's call moved
+  below `layout_welcome`; page.rs's `element_box` went `pub(crate)` for it.
+- Measured on ref-h10 (1440×900 dpr2, reduced motion): vertical paper lines
+  fill exactly device cols 279+100k/280+100k, horizontals rows −201+100k
+  (paper_y's band top is page −100); line pixels are grid-ink × mask-alpha
+  over bg in encoded space (crossings multiply); the plateau is byte-exact;
+  the true Gaussian sits on WebKit (Chromium ±1, Firefox −2/−3 at the steep
+  edge — no three-box needed). `--chart-glow` carries `/ 0.4` (found by
+  probe); `mask: url()` at a whole document is an alpha mask.
+- H10 judgment: native = web-webkit = web-firefox whole-frame at 0 on every
+  state; web-chromium 0 flat, 3 isolated curve-AA pixels >15 (42/36/35, the
+  recorded SwiftShader (d) family). Surround vs ref-WebKit max 3–4 in
+  falloff-tail clusters (≤603 px), plateau/lines exact; vs ref-Chromium max
+  3–4 same shape; vs ref-Firefox max 6–8 in ~1M wash px — inside the engines'
+  own spread (ref-webkit vs ref-firefox max 6–7 over the same wash,
+  category (e); the tron-cyan 8 is port-vs-webkit 3 + webkit-vs-firefox 5–6
+  on one 1305 px patch, decomposed in the progress file). `shift` finds no
+  row offset. In-plane clusters (plane-label baseline: chromium/firefox set
+  the "5" ~5 px higher than webkit/the port; curve slivers) and intro glyph
+  pixels (description ends, chip letters) are the sibling regions, named in
+  the progress file, not defects of the backdrop.
+- h10-page's code-lens hero-border fix rides here (driver-assigned): the 1 px
+  `--border` stroked at CSS (−1,−1) with a stray `restore()`; now inset from
+  the frame box like draw_commands, restore deleted. Proved byte-exact on
+  all four straight edges vs ref-WebKit, corners showing backdrop through
+  the radius (category b), nothing at the window's top-left.
+
+### fix-cursor (the pointer on every control the reference gives it)
+
+- The reference's cursor census is `getComputedStyle(document.elementFromPoint(x, y)).cursor`
+  with a real mouse at the control's centre, in all three engines (probes in
+  `/tmp/cursor-probe/`, evidence `evidence.json`): labels compute `default` in
+  Chromium/Firefox (UA `label { cursor: default }`) and `auto` in WebKit; the radio input
+  covering each selector cell computes `default` (Chromium/Firefox UA) / `auto` (WebKit);
+  links compute `pointer` in Chromium/Firefox but `auto` in this WebKit (even a bare
+  injected anchor on `about:blank`; explicit `cursor: pointer` computes fine, so the
+  bundled WebKit 26.6 UA sheet lacks the link rule — recorded, not matched: real Safari
+  shows the hand and the port keeps pointer). No CSS `cursor:` rule anywhere but the
+  eight known ones (grep at the hash + current main: neither styles the selector cells).
+- Two rulings (decisions.md, driver's 2026-10-20 message): the selector cells keep the
+  pointer as the user's deliberate departure (the reference is the arrow everywhere);
+  the menu's light/dark cells and theme rows keep the port's pointer too (claude0's
+  consistency call, overturnable — the reference is default in all three engines, so
+  matching it is a two-line revert in `settings.rs`). h1-settings' "cursor pointer
+  while hovered" described the port, which now stays that way deliberately. Everything
+  else already matched. Cursors never screenshot, so pixels can't change either way.
+- No paint code reads cursors: changing region cursors cannot move a pixel (proved by
+  `same-run` 0 differences on H1+H3 before/after, 20 states x 7 surfaces). The cursor
+  leaves through `update_cursor` after every retarget (hover None, or the Text fallback
+  when no region covers text runs), `CURSOR_CSS` + `mv_set_cursor` on the web (the
+  `!important` rule beats SDL's inline cursor), SystemCursor on native. `tools/run states`
+  only takes `[MmHh]<digits>` group names: a non-history group (here FIXCURSOR) is
+  appended to milestones.toml for `all` but run by passing its state names explicitly.
+
+### h10-loop (the welcome loop playing on the hero plane)
+
+- `welcome_step.rs` owns `WelcomeState { clock, shown, current, entered }`
+  (the porter's clock, the hero's own `plot::Shown`, the last `LoopState`;
+  `step_at`/`hold` stay private) plus `welcome_step(app, now)` and
+  `animating(app)`. The step mirrors `selector.rs`'s begin_switch +
+  plot_step exactly: func change runs render-phase `switch_to`, from rest
+  the (always-`None`-at-rest) stamp path holds the frame, mid-switch one
+  held frame keeps the running clock, and the tour's values flow every
+  frame — an early cut assigned `current` only inside the func-change arm
+  and froze drags between switches (caught by the views.json loop lines
+  holding k 0.00 through the k drag; regression test pins it).
+- Route-enter constructs fresh (`fresh_entered`, the still under reduced
+  motion) and the entering turn draws the mount unstepped (`entered`), so
+  the first step carries `FIRST_FRAME_MS` exactly like the hook's first
+  rAF callback; without the skip the port sits one frame ahead of the
+  reference forever. The still path adopts whole on change and sleeps.
+- `schedule` wakes on `animating()` (route Welcome, motion on) with no
+  elapsed guard: a started-but-unstepped loop must stay awake for its
+  first step, or the entering turn's dirty is consumed by its own draw
+  and the tour never starts (measured: native stuck at rest on every
+  frame). Two headless tests (glide, pending write) sit on the default
+  welcome route without playing, so they declare `#function-viewer`
+  explicitly instead.
+- Web `navigate()` syncs the URL and enters the route at once, as native
+  does (the later `hashchange` finds the route unchanged and skips its
+  second enter): without it a shot on the click's turn photographs the
+  old route on the web while every other surface already draws the new
+  one (h10-loop's mount shot: viewer on web, welcome everywhere else).
+- The `loop` views line (`harness.rs`, native only) carries `ms` (exact
+  `to_fixed(2)` elapsed) with `func/a/k/b/h` at each shot and whenever
+  the function switches — never every frame; `act.py`'s checker takes the
+  shape. Behaviour reads it against `loop_at` of the port's own elapsed.
+- Judging a playing loop: values read off the curve (vertex column for k,
+  x=2 for a/b against the model) prove the tour tracks — here identical
+  to 0.005 in k across native/web/ref in all engines. Moved-curve pixel
+  clusters are then raster, named: 1-device-px stroke geometry (c), the
+  recorded WebKit long-dash drift on the dashed original (e: port ==
+  Chromium == Firefox, verified crop by crop), Chromium/Firefox in-plane
+  label rows (e: the driver's 9-device-px ruling) and SwiftShader AA (d).
+  The load state's offset is 0 under the paused clock in every engine
+  (real-clock mount delays of 106/267/389 ms do not transfer); reduced
+  motion draws once (`Module.frames == 1`) and sleeps (`waitevent`, no
+  trace lines between shots).
+
 
 ## Long runs
 

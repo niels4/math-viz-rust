@@ -19,8 +19,9 @@ from typing import cast
 
 from playwright.sync_api import Page, sync_playwright
 
-from act import NATIVE, REPO, port, shown
+from act import NATIVE, REPO, shown, web_origin
 from browser import PageLog, engine_type
+from script import load as load_script
 
 LIVE = REPO / "tools" / "live"
 
@@ -242,11 +243,14 @@ def live(
     while_running: WhileRunning | None = None,
 ) -> LiveRun:
     """Runs tools/live/<script>.act with --live at a fixed 60 Hz (the driver's measurement: swap
-    interval 0, SDL's callback rate at 60), logging each fact, into `out`."""
+    interval 0, SDL's callback rate at 60), logging each fact, into `out`. The script's `route`
+    line rides as --route (every live script opens the viewer until one says welcome)."""
     out.mkdir(parents=True, exist_ok=True)
+    route = load_script(LIVE / f"{script}.act").start.route
     command = [
         str(NATIVE),
         *("--live", str(LIVE / f"{script}.act"), "--out", str(out)),
+        *("--route", route),
         *("--prefs", str(prefs), "--pace", "60", "--trace"),
     ]
     process = subprocess.Popen(
@@ -854,7 +858,7 @@ def native_signals(out: Path, prefs: Path) -> Check:
 
 
 def web_url() -> str:
-    return f"http://localhost:{port('WEB_PORT')}/?trace"
+    return f"{web_origin()}?trace"
 
 
 def open_page(page: Page) -> None:

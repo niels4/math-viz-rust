@@ -1,0 +1,15 @@
+# welcome-reduced-loop (H10): route welcome under reduced motion. The page
+# shows the still (sinx, a 3, k 0, b 1.48, h 1) with no frames: the two
+# shots are identical, no loop-line change, and natively the app sleeps
+# between them (the trace shows no frames).
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+route welcome
+wait 2000
+shot loop-reduced-2000
+wait 3000
+shot loop-reduced-5000

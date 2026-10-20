@@ -2162,6 +2162,9 @@ mod tests {
     fn app_pending_write_keeps_the_loop_awake() {
         use sdl3::keyboard::Keycode;
         let mut app = box_app(TransformParam::K, 278.0, 478.5);
+        // On the viewer route: the headless default is the welcome route,
+        // whose playing loop would keep the loop awake past the write.
+        app.url.sync_from_hash("#function-viewer");
         open(&mut app, TransformParam::K, 331.5, 494.5);
         type_text(&mut app, "2.5");
         let up = crate::input::KeyEvent {
