@@ -482,6 +482,12 @@ pub fn edit_tip(app: &mut App) {
         return;
     };
     let (tone, cells) = tip_cells(&edit);
+    eprintln!(
+        "TIPDBG invalid={} tone={:?} text={:?}",
+        edit.invalid,
+        tone == crate::tip::TipTone::Error,
+        cells.len()
+    );
     crate::tip::layout_tip(
         app,
         &tip_ids(),
@@ -792,10 +798,13 @@ pub fn key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
         {
             let shown = display(app);
             select_all(&mut app.x_field.field, &shown);
-            app.dirty = true;
         }
         _ => return false,
     }
+    // A consumed key always repaints: the machine's refused Enter returns
+    // no effects, but the error tone still has to show (without this the
+    // loop sleeps and the shot photographs the pre-Enter frame).
+    app.dirty = true;
     true
 }
 
@@ -854,6 +863,41 @@ fn laid_out_page(app: &mut crate::app::App, query: &str) {
 
 /// The field and tip boxes against the reference's (`page.json` at 96f1e84,
 /// webkit): closed in the rest state, open with the tip while editing.
+#[cfg(test)]
+mod app_tests {
+    use super::*;
+
+    fn invalid_flow() -> App {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        app.input.pressed = field_hit();
+        press_down(&mut app);
+        assert!(app.x_field.editing());
+        text(&mut app, "abc");
+        assert_eq!(display(&app), "abc");
+        let event = crate::input::KeyEvent {
+            key: sdl3::keyboard::Keycode::Return,
+            mods: sdl3::keyboard::Mod::empty(),
+            down: true,
+            repeat: false,
+        };
+        assert!(key(&mut app, &event));
+        app
+    }
+
+    #[test]
+    fn app_invalid_flow_marks_the_edit() {
+        let app = invalid_flow();
+        assert!(app.x_field.editing());
+        assert!(app.x_field.invalid());
+        assert_eq!(display(&app), "abc");
+    }
+}
+
 #[cfg(test)]
 mod layout_tests {
     use super::*;
