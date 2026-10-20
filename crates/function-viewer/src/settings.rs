@@ -220,7 +220,8 @@ pub fn close_menu(app: &mut App) {
     app.dirty = true;
 }
 
-/// A pick drops hover like the reference's re-render does; the hold lasts
+/// A pick that changes the theme drops hover, like the reference's re-render
+/// does; a same-value pick changes nothing, so hover stays. The hold lasts
 /// until the pointer moves.
 pub fn drop_hover(app: &mut App) {
     app.settings.hover_held = true;
@@ -856,18 +857,24 @@ pub fn click(app: &mut App, down: Hit) {
         }
         HitKind::SettingsLightDark if (down.index as usize) < LIGHT_DARK_ORDER.len() => {
             let option = LIGHT_DARK_ORDER[down.index as usize];
+            let changed = option != app.theme.light_dark;
             app.set_light_dark(option);
             app.input.focus = down;
             app.input.focus_visible = false;
-            drop_hover(app);
+            if changed {
+                drop_hover(app);
+            }
         }
         HitKind::SettingsTheme => {
             let scheme = app.theme.resolved_scheme();
             if let Some(slug) = shown_slugs(scheme).get(down.index as usize) {
+                let before = app.theme.resolved();
                 app.set_theme_slug(*slug);
                 app.input.focus = down;
                 app.input.focus_visible = false;
-                drop_hover(app);
+                if app.theme.resolved() != before {
+                    drop_hover(app);
+                }
             }
         }
         _ => {}
