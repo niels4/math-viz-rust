@@ -1113,6 +1113,51 @@ no new tokens (all eight tabled).
   only takes `[MmHh]<digits>` group names: a non-history group (here FIXCURSOR) is
   appended to milestones.toml for `all` but run by passing its state names explicitly.
 
+### h10-loop (the welcome loop playing on the hero plane)
+
+- `welcome_step.rs` owns `WelcomeState { clock, shown, current, entered }`
+  (the porter's clock, the hero's own `plot::Shown`, the last `LoopState`;
+  `step_at`/`hold` stay private) plus `welcome_step(app, now)` and
+  `animating(app)`. The step mirrors `selector.rs`'s begin_switch +
+  plot_step exactly: func change runs render-phase `switch_to`, from rest
+  the (always-`None`-at-rest) stamp path holds the frame, mid-switch one
+  held frame keeps the running clock, and the tour's values flow every
+  frame — an early cut assigned `current` only inside the func-change arm
+  and froze drags between switches (caught by the views.json loop lines
+  holding k 0.00 through the k drag; regression test pins it).
+- Route-enter constructs fresh (`fresh_entered`, the still under reduced
+  motion) and the entering turn draws the mount unstepped (`entered`), so
+  the first step carries `FIRST_FRAME_MS` exactly like the hook's first
+  rAF callback; without the skip the port sits one frame ahead of the
+  reference forever. The still path adopts whole on change and sleeps.
+- `schedule` wakes on `animating()` (route Welcome, motion on) with no
+  elapsed guard: a started-but-unstepped loop must stay awake for its
+  first step, or the entering turn's dirty is consumed by its own draw
+  and the tour never starts (measured: native stuck at rest on every
+  frame). Two headless tests (glide, pending write) sit on the default
+  welcome route without playing, so they declare `#function-viewer`
+  explicitly instead.
+- Web `navigate()` syncs the URL and enters the route at once, as native
+  does (the later `hashchange` finds the route unchanged and skips its
+  second enter): without it a shot on the click's turn photographs the
+  old route on the web while every other surface already draws the new
+  one (h10-loop's mount shot: viewer on web, welcome everywhere else).
+- The `loop` views line (`harness.rs`, native only) carries `ms` (exact
+  `to_fixed(2)` elapsed) with `func/a/k/b/h` at each shot and whenever
+  the function switches — never every frame; `act.py`'s checker takes the
+  shape. Behaviour reads it against `loop_at` of the port's own elapsed.
+- Judging a playing loop: values read off the curve (vertex column for k,
+  x=2 for a/b against the model) prove the tour tracks — here identical
+  to 0.005 in k across native/web/ref in all engines. Moved-curve pixel
+  clusters are then raster, named: 1-device-px stroke geometry (c), the
+  recorded WebKit long-dash drift on the dashed original (e: port ==
+  Chromium == Firefox, verified crop by crop), Chromium/Firefox in-plane
+  label rows (e: the driver's 9-device-px ruling) and SwiftShader AA (d).
+  The load state's offset is 0 under the paused clock in every engine
+  (real-clock mount delays of 106/267/389 ms do not transfer); reduced
+  motion draws once (`Module.frames == 1`) and sleeps (`waitevent`, no
+  trace lines between shots).
+
 ### wrap (the documents, the release check and the fix-forward tail)
 
 - README.md rewritten in math-viz-rust's shape (toolchain trimmed, setup,

@@ -8,10 +8,10 @@
 //!   the intro column (title, description, the button to `#function-viewer`,
 //!   the hint with four parameter chips) beside the 840 × 520 hero.
 //! - `src/components/views/WelcomePage/HeroPlane.tsx`: the hero's bare plane
-//!   at the default camera with the still's curves, no legend, no handles,
+//!   at the default camera with the loop's curves, no legend, no handles,
 //!   lines or markers: one call to the plane's bare `paint_plane` (h10-seam's
 //!   split) with empty extras, over the frame's own fill and under its
-//!   border, so the menu's background covers the still where they overlap.
+//!   border, so the menu's background covers the plane where they overlap.
 //! - `src/components/router/Router.tsx`, `router-hooks.ts`, `router-util.ts`
 //!   and `src/pages/_root.page.tsx`: the route (`""` the welcome page,
 //!   `function-viewer` the viewer, any other word the welcome page; the
@@ -61,17 +61,6 @@ impl Route {
         }
     }
 }
-
-/// The still the hero graphs (h10-loop's `welcomeStill`, through h10-p-loop's
-/// `welcome_loop`: sin x at a 3, k 0, b 1.48, h 1). h10-loop replaces this
-/// constant with the loop's state, one line.
-pub(crate) const WELCOME_STILL: crate::transform_curves::Transform =
-    crate::transform_curves::Transform {
-        a: 3.0,
-        b: 1.48,
-        h: 1.0,
-        k: 0.0,
-    };
 
 /// The welcome page's mark: 28 px, stroked in `--primary`, at (32, 30).
 pub(crate) const MARK_SIZE: f32 = 28.0;
@@ -468,10 +457,10 @@ fn hint(app: &mut App, t: &mv_theme::Theme) {
 }
 
 /// The hero slot: 840 × 520; the plane frame (`--background` fill, 1 px
-/// `--border`, radius 4) whose 838 × 518 content box the still paints in.
+/// `--border`, radius 4) whose 838 × 518 content box the loop paints in.
 /// The frame carries no Clay paint: `paint_hero` fills its background, inks
 /// and border in one pass, so the menu's opaque background (painted with the
-/// commands after) covers the still where they overlap, as the popover
+/// commands after) covers the plane where they overlap, as the popover
 /// stacks above the page.
 fn hero(app: &mut App) {
     let mut slot = crate::ui::empty_decl();
@@ -518,8 +507,8 @@ pub(crate) fn hero_content(border: &clay::BoundingBox) -> clay::BoundingBox {
     }
 }
 
-/// Paints the still into the hero frame: the `--background` fill, the bare
-/// plane (the grid, axes and labels, then the still's curves — the dashed
+/// Paints the loop into the hero frame: the `--background` fill, the bare
+/// plane (the grid, axes and labels, then the loop's curves — the dashed
 /// original behind the solid one — with no handles, no lines and no
 /// markers), the 1 px `--border` at radius 4, and the rounded cutouts — as
 /// `HeroPlane.tsx` draws them through `drawCartesianPlane` with empty extras
@@ -536,13 +525,21 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
     app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
     app.vg.fill();
     let content = hero_content(frame);
-    // The bare plane (h10-seam's split): the still's curves through the
-    // transform, with empty extras.
+    // The bare plane (h10-seam's split): the loop state's curves through
+    // its transform, with empty extras. The state copies out first: the
+    // paint below borrows the fonts and the context mutably.
     let colors = crate::plane::plane_colors(theme);
-    let shown =
-        crate::plot::Shown::new(crate::functions::base(crate::functions::FunctionSlug::SinX));
-    let still =
-        crate::transform_curves::transform_curves(&crate::plot::curves(&shown), WELCOME_STILL);
+    let shown = app.welcome.shown;
+    let current = app.welcome.current;
+    let looping = crate::transform_curves::transform_curves(
+        &crate::plot::curves(&shown),
+        crate::transform_curves::Transform {
+            a: current.a,
+            b: current.b,
+            h: current.h,
+            k: current.k,
+        },
+    );
     let mcolors = crate::plane_markers::marker_colors(theme);
     crate::plane::paint_plane(
         &mut app.fonts,
@@ -552,7 +549,7 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
         crate::camera::DEFAULT_SCALE,
         &colors,
         true,
-        &still,
+        &looping,
         theme.colors[mv_theme::Token::ChartLine],
         theme.colors[mv_theme::Token::ForegroundMuted],
         &[],
@@ -651,9 +648,11 @@ pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32) {
 
 /// Goes to the route with the query, as the anchors do: the button to
 /// `#function-viewer` with an empty query, the wordmark to `#`. On the web
-/// the hash is assigned (a history entry; the existing `hashchange` path
-/// re-reads the route and query), natively the URL is set and the same
-/// route-entered step runs.
+/// the hash is assigned (a history entry) and the URL is read in at once,
+/// as natively: the later `hashchange` finds the route unchanged and skips
+/// its second enter. Without the synchronous enter a shot on the click's
+/// turn photographs the old route on the web (h10-loop's mount shot), while
+/// natively the same turn already draws the new one.
 pub fn navigate(app: &mut App, route: &str, query: &str) {
     let hash = if query.is_empty() {
         route.to_string()
@@ -662,8 +661,13 @@ pub fn navigate(app: &mut App, route: &str, query: &str) {
     };
     #[cfg(target_os = "emscripten")]
     {
-        let _ = app;
         crate::platform_web::platform_navigate_hash(&hash);
+        let prev = app.url.route().to_string();
+        app.url.sync_from_hash(&format!("#{hash}"));
+        if prev != app.url.route() {
+            enter_route(app);
+        }
+        app.dirty = true;
     }
     #[cfg(not(target_os = "emscripten"))]
     {
@@ -721,6 +725,11 @@ pub fn enter_route(app: &mut App) {
             app.input.focus = Hit::default();
             app.input.focus_visible = false;
             app.input.hover_fresh = true;
+            // A fresh mount restarts the loop: the clock at 0, x² shown
+            // whole (the still under reduced motion). The entering turn
+            // draws the mount unstepped; `welcome_step` starts the loop on
+            // the next frame.
+            app.welcome = crate::welcome_step::WelcomeState::fresh_entered(app.reduced_motion);
             app.dirty = true;
         }
     }
@@ -798,16 +807,12 @@ mod tests {
 
     #[test]
     fn still_is_the_reference_still() {
-        // `welcomeStill` at 68e1c7b: sin x at a 3, k 0, b 1.48, h 1.
-        assert_eq!(
-            (
-                WELCOME_STILL.a,
-                WELCOME_STILL.b,
-                WELCOME_STILL.h,
-                WELCOME_STILL.k
-            ),
-            (3.0, 1.48, 1.0, 0.0)
-        );
+        // `welcomeStill` at 68e1c7b: sin x at a 3, k 0, b 1.48, h 1
+        // (h10-p-loop's `welcome_loop::WELCOME_STILL`; the hero graphs it
+        // through h10-loop's loop state under reduced motion).
+        let still = crate::welcome_loop::WELCOME_STILL;
+        assert_eq!(still.func, crate::functions::FunctionSlug::SinX);
+        assert_eq!((still.a, still.b, still.h, still.k), (3.0, 1.48, 1.0, 0.0));
     }
 
     #[test]
@@ -933,9 +938,9 @@ mod tests {
 
     #[test]
     fn navigation_sets_the_route_and_enters_it() {
-        // Native only (the web build assigns `location.hash` instead): the
-        // button to `#function-viewer` with an empty query, the wordmark to
-        // `#`.
+        // Tests run natively; on the web the same sync-and-enter runs
+        // beside the `location.hash` assignment. The button to
+        // `#function-viewer` with an empty query, the wordmark to `#`.
         let mut app = crate::fixture::headless_app();
         assert_eq!(Route::of(&app.url), Route::Welcome);
         navigate(&mut app, VIEWER_ROUTE, "");

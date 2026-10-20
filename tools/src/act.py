@@ -894,7 +894,10 @@ def check_views(out: Path) -> list[str]:
     animating}) is the transform the plane draws, written whenever it changes (h6-curve).
     A line holding only `p` (P's live value) is the x-of-P slider's, written whenever
     it changes (h8-points-slider). A line holding only `q` (a number or null) is Q's
-    quantized x, written whenever the pointer names or clears a point (h8-plane)."""
+    quantized x, written whenever the pointer names or clears a point (h8-plane). A line
+    holding only `loop` ({ms, func, a, k, b, h}) is the welcome loop's elapsed ms with
+    what the tour shows, written at each shot and whenever the function switches on the
+    welcome route (h10-loop; the port's own record beside the pixels)."""
     problems: list[str] = []
     try:
         lines = (out / "views.json").read_text().splitlines()
@@ -975,6 +978,20 @@ def check_views(out: Path) -> list[str]:
                     problems.append(f"views.json line {number}: 'shown.{param}' is not a number")
             if not isinstance(shown.get("animating"), bool):
                 problems.append(f"views.json line {number}: 'shown.animating' is not a bool")
+            continue
+        if set(view) == {"loop"}:
+            loop_raw: object = view.get("loop")
+            if not isinstance(loop_raw, dict):
+                problems.append(f"views.json line {number}: 'loop' is not an object")
+                continue
+            loop = cast(dict[str, object], loop_raw)
+            if not _is_num(loop.get("ms")):
+                problems.append(f"views.json line {number}: 'loop.ms' is not a number")
+            if loop.get("func") not in ("x1", "x2", "x3", "sinx"):
+                problems.append(f"views.json line {number}: 'loop.func' is not a function slug")
+            for param in ("a", "b", "h", "k"):
+                if not _is_num(loop.get(param)):
+                    problems.append(f"views.json line {number}: 'loop.{param}' is not a number")
             continue
         for key in VIEW_KEYS:
             if key not in view:

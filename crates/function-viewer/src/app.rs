@@ -189,6 +189,12 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub backdrop: Option<crate::welcome_backdrop::BackdropCache>,
+    /// The welcome loop's state: the tour clock and the hero's own switch
+    /// animation (h10-loop; `welcome_step.rs` owns the machine). Fresh at
+    /// startup, restarted whenever the welcome route is entered.
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub welcome: crate::welcome_step::WelcomeState,
 }
 
 impl App {
@@ -366,6 +372,7 @@ impl App {
             slider_hold: None,
             slider_edit: false,
             backdrop: None,
+            welcome: crate::welcome_step::WelcomeState::fresh(),
         }
     }
 }

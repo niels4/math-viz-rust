@@ -1,0 +1,57 @@
+# welcome-loop-frames (H10): the welcome loop's key frames on the paused clock.
+#
+# Navigation-pinned mount: the viewer opens (default route), settles, then
+# the wordmark click mounts the welcome page on the click frame on both
+# sides (port and reference run the same script). The mount draws rest.
+# Model loop_at values at each shot offset (port elapsed ~= script ms within
+# a frame; first frame +16.67, then +16):
+# +1000 x2 rest (a 1.00, k 0.00, b 1.00, h 0.00)
+# +1800 x2 k -1.14 mid-drag
+# +3300 x2 k -1.50, h 0.73 mid-drag
+# +4500 sinx, 83 ms loop-time into the switch (x2 fading ~0.5, sinx drawing on)
+# +4900 sinx, switch ~500 ms in (old gone, draw_to ~0.65)
+# +6800 sinx a 2.36 mid-drag
+# +8500 sinx a 3.00, k -0.37 dragging back
+# +10200 sinx k 0.00, b 1.77 mid-drag
+# +11450 x3, ~117 ms into the switch (sinx fading ~0.27, x3 drawing on)
+# +13500 x3 h 0.22 mid-drag
+# +14700 x2, ~117 ms into the switch (x3 fading, x2 drawing on)
+# +16700 x2 a 1.26 mid-drag
+# +18200 x2 a 1.00, b 1.16 mid-drag
+# +18900 x2 rest (loop restarted at 18791.67)
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+click 104 48
+shot loop-mount
+wait 1000
+shot loop-1000
+wait 800
+shot loop-1800
+wait 1500
+shot loop-3300
+wait 1200
+shot loop-4500
+wait 400
+shot loop-4900
+wait 1900
+shot loop-6800
+wait 1700
+shot loop-8500
+wait 1700
+shot loop-10200
+wait 1250
+shot loop-11450
+wait 2050
+shot loop-13500
+wait 1200
+shot loop-14700
+wait 2000
+shot loop-16700
+wait 1500
+shot loop-18200
+wait 700
+shot loop-18900
