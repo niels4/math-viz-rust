@@ -337,7 +337,7 @@ impl App {
             // query (`selector::init_func_from_url`).
             func_param: crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, ""),
             shown: crate::plot::Shown::new(crate::functions::base(
-                crate::functions::FunctionSlug::X1,
+                crate::functions::FUNC_PARAM.default,
             )),
             plot_frame_at: None,
             plot_hold: false,
