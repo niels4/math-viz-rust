@@ -167,6 +167,11 @@ pub fn iterate(app: &mut App) -> bool {
         }
     }
     let mut drawn = false;
+    // The theme fade redraws until done: no timer arms its frames, so the
+    // turn does while one is in flight (its last frame clears the active).
+    if app.transition.active.is_some() {
+        app.dirty = true;
+    }
     if app.dirty {
         app.dirty = false;
         crate::draw::draw_frame(app, now);

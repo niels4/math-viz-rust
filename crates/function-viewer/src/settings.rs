@@ -628,9 +628,10 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
         x: clay::LayoutAlignmentX::Left,
         y: clay::LayoutAlignmentY::Center,
     };
-    // The checked row has no background (only weight and check); hover paints
-    // the row's own secondary, as the theme class on the row resolves it.
-    decl.backgroundColor = if !selected && hovered {
+    // The checked row has no background of its own (only weight and check);
+    // hover paints the row's own secondary whether selected or not, as the
+    // theme class on the row resolves it (`:hover` has no `:not(.selected)`).
+    decl.backgroundColor = if hovered {
         crate::ui::ink(&row_theme, mv_theme::Token::Secondary)
     } else {
         crate::ui::ink(&page, mv_theme::Token::Card)
@@ -710,19 +711,24 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
 }
 
 /// Declares a square icon element painting `kind` in `ink`.
+/// Declares a square icon element painting `kind` in `ink`. The port's icons
+/// take 0-to-1 colours, so the 0-to-255 Clay ink converts at the boundary.
 fn icon(
     app: &mut App,
     id: clay::ElementId,
     kind: crate::icons::IconKind,
     size: f32,
-    ink: mv_nvg::Color,
+    ink: clay::Color,
 ) {
     let mut decl = crate::ui::empty_decl();
     decl.layout.sizing = clay::Sizing {
         width: mv_clay::sizing_fixed(size),
         height: mv_clay::sizing_fixed(size),
     };
-    decl.custom = crate::icons::custom_data(crate::icons::Icon { kind, ink });
+    decl.custom = crate::icons::custom_data(crate::icons::Icon {
+        kind,
+        ink: crate::draw::nvg_color(ink),
+    });
     crate::ui::ui_scope(app, id, &decl, |_| {});
 }
 
