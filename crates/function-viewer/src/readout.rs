@@ -640,17 +640,17 @@ mod tests {
         assert!(!state.is_lit(TransformParam::A));
 
         // Pointing at 2.00 lights a in both lines, and nothing else.
-        state.set_hover(Some(TransformParam::A));
+        state.set_hover(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
         assert!(!state.is_lit(TransformParam::H));
 
         // Moving off it puts both out.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
         assert!(!state.is_lit(TransformParam::H));
 
         // The form's h lights though the value line has no h.
-        state.set_hover(Some(TransformParam::H));
+        state.set_hover(&[TransformParam::H], true);
         assert!(state.is_lit(TransformParam::H));
         // Both lines carry a's term; only the form carries h's.
         assert!(has_term(&line_values, TransformParam::A));
@@ -842,7 +842,13 @@ pub fn hit_param(hit: Hit) -> Option<TransformParam> {
 /// hovered parameter takes the lead, anywhere else the pointer's side drops.
 /// h4-rows extends the kept side with its row kinds at its merge.
 pub fn sync_hover(app: &mut App) {
-    app.state.set_hover(hit_param(app.input.hover));
+    match hit_param(app.input.hover) {
+        Some(param) => app.state.set_hover(&[param], true),
+        // On nothing: the pointer's side goes empty (taking the lead with an
+        // empty list lights exactly what the source's off leaves: the focus
+        // side, if any).
+        None => app.state.set_hover(&[], true),
+    }
 }
 
 /// The font px of a run's size class on the line: the line's own size, the

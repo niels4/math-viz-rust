@@ -744,26 +744,26 @@ pub fn press_down(app: &mut App) {
         _ => None,
     };
     let Some(param) = param else {
-        let focused = app.state.focus.map(|touch| touch.param);
+        let focused = app.state.focus.first().copied();
         if let Some(old) = focused {
             crate::transform_row::commit_param(app, old);
             app.drafts[old].typing_from = None;
         }
-        app.state.set_focus(None);
+        app.state.set_focus(&[], true);
         crate::transform_row::stop_text_input(app);
         return;
     };
-    if app.state.focus.map(|touch| touch.param) == Some(param) {
+    if app.state.focus.first().copied() == Some(param) {
         crate::input::set_focus(app, crate::transform_row::field_hit(param), true);
         app.scrub_hold = Some(ScrubHold::Tap { param, pos });
         app.dirty = true;
         return;
     }
-    if let Some(old) = app.state.focus.map(|touch| touch.param) {
+    if let Some(old) = app.state.focus.first().copied() {
         crate::transform_row::commit_param(app, old);
         app.drafts[old].typing_from = None;
     }
-    app.state.set_focus(None);
+    app.state.set_focus(&[], true);
     crate::transform_row::stop_text_input(app);
     let value = crate::transform_section::param_value(app, param);
     let x = f64::from(pos[0]);
@@ -951,7 +951,7 @@ pub fn wheel_over(app: &mut App, delta_y: f32) {
         return;
     };
     let mut box_ = machine(app, param);
-    let typing = app.state.focus.is_some_and(|touch| touch.param == param);
+    let typing = app.state.focus.contains(&param);
     let (shift, ctrl, meta) = mods_now(app);
     match box_.wheel(f64::from(delta_y), 0, shift, ctrl, meta, typing) {
         WheelAction::Handled { value: Some(next) } => {
@@ -1158,7 +1158,7 @@ fn open_field(app: &mut App, param: TransformParam) {
 /// Leaves the field's focus nowhere (Esc, double-click reset).
 fn blur_field(app: &mut App, param: TransformParam) {
     crate::input::set_focus(app, Hit::default(), false);
-    app.state.set_focus(None);
+    app.state.set_focus(&[], true);
     app.drafts[param].typing_from = None;
     crate::transform_row::stop_text_input(app);
     app.dirty = true;

@@ -782,11 +782,11 @@ pub fn sync_hover(app: &mut App, before: Hit, now: Hit) {
     if was == is {
         return;
     }
-    if was.is_some() {
-        app.state.set_hover(None);
+    if let Some(param) = was {
+        app.state.set_hover(&[param], false);
     }
     if let Some(param) = is {
-        app.state.set_hover(Some(param));
+        app.state.set_hover(&[param], true);
     }
 }
 
@@ -835,7 +835,7 @@ pub fn click(app: &mut App, down: Hit) {
 fn blur_button(app: &mut App) {
     app.input.focus = Hit::default();
     app.input.focus_visible = false;
-    app.state.set_focus(None);
+    app.state.set_focus(&[], true);
     app.dirty = true;
 }
 
@@ -1015,14 +1015,16 @@ pub fn commit_param(app: &mut App, param: TransformParam) {
 /// restore point are the opener's (click selects, Tab parks at the end).
 pub(crate) fn focus_field(app: &mut App, param: TransformParam) {
     crate::input::set_focus(app, field_hit(param), true);
-    app.state.set_focus(Some(param));
+    app.state.set_focus(&[param], true);
     start_text_input(app);
 }
 
 /// The highlight follows the keyboard's focus (Tab moves, presses clear).
 fn sync_focus_state(app: &mut App) {
-    let param = hit_param(app.input.focus);
-    app.state.set_focus(param);
+    match hit_param(app.input.focus) {
+        Some(param) => app.state.set_focus(&[param], true),
+        None => app.state.set_focus(&[], true),
+    }
 }
 
 /// Starts the platform's text input for the focused field; headless tests
@@ -1108,14 +1110,14 @@ mod tests {
         // click moves no touch itself; the blur drops the row's focus and the
         // pointer-off drops its hover.
         let mut state = HighlightState::touched_out();
-        state.set_hover(Some(TransformParam::A));
-        state.set_focus(Some(TransformParam::A));
+        state.set_hover(&[TransformParam::A], true);
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // The click's blur.
-        state.set_focus(None);
+        state.set_focus(&[TransformParam::A], false);
         // The pointer moving off after.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1126,11 +1128,11 @@ mod tests {
         assert!(!state.is_lit(TransformParam::A));
 
         // Pointing at the row lights it (the form's term reads the same state).
-        state.set_hover(Some(TransformParam::A));
+        state.set_hover(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // Moving off it puts it out.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1138,16 +1140,16 @@ mod tests {
     fn focus_keeps_a_lit_after_the_pointer_leaves() {
         // The highlight test: focusing a's box lights a.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
 
         // Pointing at the row and moving off leaves a lit (focus leads now).
-        state.set_hover(Some(TransformParam::A));
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::A], true);
+        state.set_hover(&[TransformParam::A], false);
         assert!(state.is_lit(TransformParam::A));
 
         // Leaving the box puts it out.
-        state.set_focus(None);
+        state.set_focus(&[TransformParam::A], false);
         assert!(!state.is_lit(TransformParam::A));
     }
 
@@ -1155,17 +1157,17 @@ mod tests {
     fn only_the_last_moved_parameter_lights() {
         // The highlight test: focusing a's box lights a, not k.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
+        state.set_focus(&[TransformParam::A], true);
         assert!(state.is_lit(TransformParam::A));
         assert!(!state.is_lit(TransformParam::K));
 
         // Pointing at k lights k and puts a out.
-        state.set_hover(Some(TransformParam::K));
+        state.set_hover(&[TransformParam::K], true);
         assert!(state.is_lit(TransformParam::K));
         assert!(!state.is_lit(TransformParam::A));
 
         // Moving off k gives the light back to a, which still has the focus.
-        state.set_hover(None);
+        state.set_hover(&[TransformParam::K], false);
         assert!(!state.is_lit(TransformParam::K));
         assert!(state.is_lit(TransformParam::A));
     }
@@ -1174,9 +1176,9 @@ mod tests {
     fn clearing_a_side_hands_the_light_to_the_other() {
         // Hover moved last, then leaves: the focused parameter lights.
         let mut state = HighlightState::touched_out();
-        state.set_focus(Some(TransformParam::A));
-        state.set_hover(Some(TransformParam::K));
-        state.set_hover(None);
+        state.set_focus(&[TransformParam::A], true);
+        state.set_hover(&[TransformParam::K], true);
+        state.set_hover(&[TransformParam::K], false);
         assert!(state.is_lit(TransformParam::A));
     }
 
@@ -1219,7 +1221,7 @@ mod tests {
 
         app.input.focus = field_hit(TransformParam::K);
         app.input.focus_visible = true;
-        app.state.set_focus(Some(TransformParam::K));
+        app.state.set_focus(&[TransformParam::K], true);
         let tab = crate::input::KeyEvent {
             key: Keycode::Tab,
             mods: Mod::empty(),
@@ -1228,12 +1230,12 @@ mod tests {
         };
         assert!(key(&mut app, &tab));
         assert_eq!(app.input.focus, flip_hit(TransformParam::B));
-        assert_eq!(app.state.lit(), Some(TransformParam::B));
+        assert_eq!(app.state.lit(), vec![TransformParam::B]);
         // Tabbing on into the field parks the caret at the end with the
         // restore point armed, as focusing the DOM input would.
         assert!(key(&mut app, &tab));
         assert_eq!(app.input.focus, field_hit(TransformParam::B));
-        assert_eq!(app.state.lit(), Some(TransformParam::B));
+        assert_eq!(app.state.lit(), vec![TransformParam::B]);
         assert_eq!(app.drafts[TransformParam::B].typing_from, Some(1.0));
         let len = crate::scrub_value::box_text(&app, TransformParam::B)
             .chars()

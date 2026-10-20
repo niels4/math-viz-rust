@@ -501,7 +501,7 @@ fn harness_frame(h: &mut Harness<'_>) {
     }
     // The lit parameter, whenever the highlight moves (h4-readout; the
     // behaviour checks read it against the reference's data-lit).
-    let lit = lit_line(h.app.state.lit());
+    let lit = lit_line(&h.app.state.lit());
     if lit != h.lit {
         h.lit = lit;
         h.views.extend_from_slice(h.lit.as_bytes());
@@ -864,13 +864,19 @@ fn camera_line(center: [f64; 2], scale: f64, animating: bool) -> String {
     )
 }
 
-/// One `lit` line: the highlighted parameter, or null at rest. Pure, so
-/// the shape is testable without the app.
-fn lit_line(lit: Option<crate::state::TransformParam>) -> String {
-    match lit {
-        Some(param) => format!("{{\"lit\": \"{}\"}}\n", param.as_str()),
-        None => "{\"lit\": null}\n".to_string(),
+/// One `lit` line: the highlighted parameters in order, or null at rest.
+/// Pure, so the shape is testable without the app. (h7-p-state: narrowed to
+/// the lit list with the highlight model; h7-plane owns the line and its
+/// `act.py` reader.)
+fn lit_line(lit: &[crate::state::TransformParam]) -> String {
+    if lit.is_empty() {
+        return "{\"lit\": null}\n".to_string();
     }
+    let params: Vec<String> = lit
+        .iter()
+        .map(|param| format!("\"{}\"", param.as_str()))
+        .collect();
+    format!("{{\"lit\": [{}]}}\n", params.join(", "))
 }
 
 /// The shots taken mid-motion, as <out>/motion.json when there are any. The
