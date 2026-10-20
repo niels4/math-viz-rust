@@ -171,6 +171,9 @@ FIXTURE_STATES = (
     # ruler-a-30 (a's box held 30 px in).
     "ruler-a-30",
     "reset-visible",
+    # h6-handles: the button and its tip only exist off the default camera,
+    # so the fixture runs overlay-tip (off default, pointer on the button).
+    "overlay-tip",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

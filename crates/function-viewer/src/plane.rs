@@ -642,7 +642,8 @@ mod tests {
     /// The port's boxes against `testdata/page.json` (the reference at this
     /// hash, `tools/run dom --fixture`): the canvas and the overlay button
     /// within the plan's 0.5 CSS px, and the content and button boxes derived
-    /// from the canvas exactly.
+    /// from the canvas exactly. The button only exists off the default
+    /// camera (h6-handles), so its box reads from the `overlay-tip` shot.
     #[test]
     fn boxes_match_fixture() {
         const SLACK: f64 = 0.5;
@@ -664,7 +665,9 @@ mod tests {
             assert!((got - want).abs() <= SLACK, "content {got} against {want}");
         }
         let button = crate::overlay::overlay_button_box(&canvas);
-        let want = boxes["overlay_button"].as_array().expect("button box");
+        let want = fixture["shots"]["overlay-tip"]["webkit"]["boxes"]["overlay_button"]
+            .as_array()
+            .expect("button box");
         for (i, (got, want)) in [
             f64::from(button.x),
             f64::from(button.y),

@@ -1,0 +1,9 @@
+# handles-sinx-novalues (H6): sin x untouched, the diamond at the origin and the square on the peak.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query func=sinx
+wait 2000
+shot handles-sinx-novalues

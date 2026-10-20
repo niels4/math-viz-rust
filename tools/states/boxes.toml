@@ -31,7 +31,10 @@ title = "h1"
 gear = "button"
 # H2 at c409aad: the return-to-centre button over the canvas (CSS-module hashes
 # make class selectors unusable, so the accessible name selects it).
-overlay_button = "button[aria-label=\"Return to center\"]"
+# H6 at 5cef052: the button's label is "Reset view to origin"
+# (`HtmlOverlay.tsx`); the tooltip is the button's span.
+overlay_button = "button[aria-label=\"Reset view to origin\"]"
+overlay_tip = "button[aria-label=\"Reset view to origin\"] span"
 # H3 at 3560eb2: the sidebar column, the Function card (the sidebar's first
 # div child), and the four option labels (the buttons div's children).
 # CSS-module hashes make class selectors unusable; structural selectors

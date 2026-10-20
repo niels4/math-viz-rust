@@ -1,5 +1,5 @@
 {
- "reference": "math-viz2 b8a0e1d",
+ "reference": "math-viz2 5cef052",
  "shots": {
   "default": {
    "size": [
@@ -37,12 +37,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -177,6 +171,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -215,12 +211,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -355,6 +345,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -448,12 +440,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -579,6 +565,8 @@
      "option_3",
      "option_4",
      "option_5",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -666,12 +654,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -797,6 +779,8 @@
      "option_3",
      "option_4",
      "option_5",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -883,12 +867,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1016,6 +994,8 @@
      "option_1",
      "option_2",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -1096,12 +1076,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1229,6 +1203,8 @@
      "option_1",
      "option_2",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -1273,12 +1249,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1425,6 +1395,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "ruler_a",
      "tape_a"
@@ -1461,12 +1433,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1613,6 +1579,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "ruler_a",
      "tape_a"
@@ -1655,12 +1623,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1795,6 +1757,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -1833,12 +1797,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -1973,6 +1931,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -2018,12 +1978,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -2157,6 +2111,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -2195,12 +2151,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -2335,6 +2285,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -2380,12 +2332,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -2519,6 +2465,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -2557,12 +2505,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -2697,6 +2639,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a",
      "reset_all",
@@ -2742,12 +2686,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -2887,6 +2825,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -2924,12 +2864,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -3070,6 +3004,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -3114,12 +3050,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -3271,6 +3201,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "ruler_a",
      "tape_a"
     ]
@@ -3306,12 +3238,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -3464,6 +3390,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "ruler_a",
      "tape_a"
     ]
@@ -3506,12 +3434,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -3657,6 +3579,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "ruler_a",
      "tape_a"
@@ -3693,12 +3617,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -3845,6 +3763,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "ruler_a",
      "tape_a"
@@ -3887,12 +3807,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -4033,6 +3947,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -4070,12 +3986,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -4216,6 +4126,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -4260,12 +4172,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -4405,6 +4311,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -4442,12 +4350,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -4588,6 +4490,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -4632,12 +4536,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -4777,6 +4675,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -4814,12 +4714,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -4960,6 +4854,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "reset_a",
      "reset_all",
      "ruler_a",
@@ -5004,12 +4900,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -5161,6 +5051,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a"
     ]
@@ -5196,12 +5088,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -5354,6 +5240,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "reset_a"
     ]
@@ -5396,12 +5284,6 @@
       40,
       40
      ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
-     ],
      "sidebar": [
       16,
       96,
@@ -5547,6 +5429,8 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
      "ruler_a",
      "tape_a"
@@ -5583,12 +5467,6 @@
       28,
       40,
       40
-     ],
-     "overlay_button": [
-      1359.5,
-      780.5,
-      36,
-      36
      ],
      "sidebar": [
       16,
@@ -5735,7 +5613,383 @@
      "option_4",
      "option_5",
      "swatch_0",
+     "overlay_button",
+     "overlay_tip",
      "tip_a",
+     "ruler_a",
+     "tape_a"
+    ]
+   }
+  },
+  "overlay-tip": {
+   "size": [
+    1440,
+    900
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      432,
+      96,
+      992,
+      788
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      16,
+      16,
+      1408,
+      64
+     ],
+     "title": [
+      211.921875,
+      27,
+      225.328125,
+      24
+     ],
+     "gear": [
+      1363,
+      28,
+      40,
+      40
+     ],
+     "overlay_button": [
+      1359.5,
+      780.5,
+      36,
+      36
+     ],
+     "overlay_tip": [
+      1205.296875,
+      783,
+      147.203125,
+      31
+     ],
+     "sidebar": [
+      16,
+      96,
+      400,
+      788
+     ],
+     "card_function": [
+      29,
+      109,
+      374,
+      255.5
+     ],
+     "radio_0": [
+      42,
+      162,
+      87,
+      34
+     ],
+     "radio_1": [
+      129,
+      162,
+      87,
+      34
+     ],
+     "radio_2": [
+      216,
+      162,
+      87,
+      34
+     ],
+     "radio_3": [
+      303,
+      162,
+      87,
+      34
+     ],
+     "readout": [
+      41,
+      209,
+      350,
+      78
+     ],
+     "value_line": [
+      41,
+      230.5,
+      94.046875,
+      35
+     ],
+     "form_line": [
+      41,
+      291,
+      350,
+      57.5
+     ],
+     "card_transform": [
+      29,
+      376.5,
+      374,
+      261
+     ],
+     "row_a": [
+      41,
+      428.5,
+      350,
+      44
+     ],
+     "row_k": [
+      41,
+      472.5,
+      350,
+      44
+     ],
+     "row_b": [
+      41,
+      533.5,
+      350,
+      44
+     ],
+     "row_h": [
+      41,
+      577.5,
+      350,
+      44
+     ],
+     "chip_a": [
+      49,
+      437.5,
+      26,
+      26
+     ],
+     "field_a": [
+      300.5,
+      439.5,
+      62,
+      22
+     ],
+     "arrows_a": [
+      288.5,
+      444.5,
+      6,
+      12
+     ],
+     "box_a": [
+      278,
+      434.5,
+      107,
+      32
+     ],
+     "flip_a": [
+      206,
+      438.5,
+      24,
+      24
+     ],
+     "flip_b": [
+      206,
+      543.5,
+      24,
+      24
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "ruler_a",
+     "tape_a"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      432,
+      96,
+      992,
+      788
+     ],
+     "root": [
+      0,
+      0,
+      1440,
+      900
+     ],
+     "header": [
+      16,
+      16,
+      1408,
+      64
+     ],
+     "title": [
+      211.921875,
+      27,
+      225.078125,
+      24
+     ],
+     "gear": [
+      1363,
+      28,
+      40,
+      40
+     ],
+     "overlay_button": [
+      1359.5,
+      780.5,
+      36,
+      36
+     ],
+     "overlay_tip": [
+      1205.875,
+      783,
+      146.625,
+      31
+     ],
+     "sidebar": [
+      16,
+      96,
+      400,
+      788
+     ],
+     "card_function": [
+      29,
+      109,
+      374,
+      255.5
+     ],
+     "radio_0": [
+      42,
+      162,
+      87,
+      34
+     ],
+     "radio_1": [
+      129,
+      162,
+      87,
+      34
+     ],
+     "radio_2": [
+      216,
+      162,
+      87,
+      34
+     ],
+     "radio_3": [
+      303,
+      162,
+      87,
+      34
+     ],
+     "readout": [
+      41,
+      209,
+      350,
+      78
+     ],
+     "value_line": [
+      41,
+      230.5,
+      94.078125,
+      35
+     ],
+     "form_line": [
+      41,
+      291,
+      350,
+      57.5
+     ],
+     "card_transform": [
+      29,
+      376.5,
+      374,
+      261
+     ],
+     "row_a": [
+      41,
+      428.5,
+      350,
+      44
+     ],
+     "row_k": [
+      41,
+      472.5,
+      350,
+      44
+     ],
+     "row_b": [
+      41,
+      533.5,
+      350,
+      44
+     ],
+     "row_h": [
+      41,
+      577.5,
+      350,
+      44
+     ],
+     "chip_a": [
+      49,
+      437.5,
+      26,
+      26
+     ],
+     "field_a": [
+      300.5,
+      439.5,
+      62,
+      22
+     ],
+     "arrows_a": [
+      288.5,
+      444.5,
+      6,
+      12
+     ],
+     "box_a": [
+      278,
+      434.5,
+      107,
+      32
+     ],
+     "flip_a": [
+      206,
+      438.5,
+      24,
+      24
+     ],
+     "flip_b": [
+      206,
+      543.5,
+      24,
+      24
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "tip_a",
+     "reset_a",
+     "reset_all",
      "ruler_a",
      "tape_a"
     ]
