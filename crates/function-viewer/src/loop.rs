@@ -67,7 +67,10 @@ pub enum Pace {
 /// The deadlines the app arms. The shell arms none; the page milestones append
 /// their variants here (append-only, like `App`'s fields).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-pub enum Timer {}
+pub enum Timer {
+    /// The scrub box's rest tip: the pointer's 400 ms rest is over.
+    ScrubRest,
+}
 
 /// One deadline per timer.
 pub type Timers = EnumMap<Timer, Time>;
@@ -177,8 +180,11 @@ pub fn iterate(app: &mut App) -> bool {
     crate::selector::external_func_synced(app);
     // The transform params' debounce and external sync (h4-rows): a pending
     // write fires, an outside edit flows into the live values. Before the
-    // draw, so the frame draws what the values moved to.
+    // draw, so the frame draws what the values moved to. A fired write
+    // repaints: the readout reads the URL, so without this it would keep
+    // showing the pre-debounce values on a quiet page.
     if crate::transform_section::params_step(app, (now / MS) as u64) {
+        app.dirty = true;
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
     }
@@ -200,8 +206,10 @@ pub fn iterate(app: &mut App) -> bool {
 }
 
 /// Runs one fired timer's action. The shell arms no timers, so no arm fires.
-pub fn timer_fired(_app: &mut App, timer: Timer, _now: Time) {
-    match timer {}
+pub fn timer_fired(app: &mut App, timer: Timer, _now: Time) {
+    match timer {
+        Timer::ScrubRest => crate::scrub_value::rest_fired(app),
+    }
 }
 
 /// Sets awake/pace and rearms the wake timer for the next deadline.
@@ -210,11 +218,16 @@ pub fn schedule(app: &mut App, _now: Time) {
     // one clears the active and lets the app sleep again. A camera in flight
     // does the same (h2-input): each turn steps it, and the settle stops the
     // loop — without this a glide stalls after its first step, since the draw
-    // consumes the dirty its step set. A plot switch does the same (h3).
+    // consumes the dirty its step set. A plot switch does the same (h3). A
+    // debounced page-param write does the same (h5-box): each turn steps it,
+    // and the write stops the loop — without this a typed or nudged value
+    // never reaches the URL on a quiet page, since nothing else steps the
+    // params once the frame settles.
     app.r#loop.awake = app.dirty
         || app.transition.active.is_some()
         || app.camera.animating()
-        || app.shown.is_switching();
+        || app.shown.is_switching()
+        || crate::transform_section::params_pending(app);
     let awake = app.r#loop.awake;
     platform_pace(app, awake);
     let mut next: Time = 0;

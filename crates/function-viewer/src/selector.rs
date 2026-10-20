@@ -559,11 +559,11 @@ mod tests {
             assert!(data.found, "element laid out");
             data.boundingBox
         };
-        // x, y, w, h card-relative: card [29,109,374,237.5] on the reference
-        // at the h4 hash (the readout's two lines below the buttons; the
-        // wider card holds 87 px cells).
+        // x, y, w, h card-relative: card [29,109,374,255.5] on the reference
+        // at the h5 hash (the readout reserves 78 px since `2e6069e`; the
+        // buttons and cells above it stand where they did).
         for (id, want) in [
-            (mv_clay::id(CARD_ID, 0), [0.0, 0.0, 374.0, 237.5]),
+            (mv_clay::id(CARD_ID, 0), [0.0, 0.0, 374.0, 255.5]),
             (mv_clay::id("FunctionTitle", 0), [12.0, 12.0, 350.0, 28.0]),
             (mv_clay::id("FunctionButtons", 0), [12.0, 52.0, 350.0, 36.0]),
             (mv_clay::id("FunctionCell", 0), [13.0, 53.0, 87.0, 34.0]),

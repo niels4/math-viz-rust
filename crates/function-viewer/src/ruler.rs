@@ -21,33 +21,8 @@ use mv_text::{Face, Features, Style};
 use crate::app::App;
 use crate::ruler_marks::{RulerMarks, ruler_marks};
 use crate::scrub::ScrubMode;
+use crate::scrub_value::{ScrubDrag, ScrubKind, is_scale, scrub_kind};
 use crate::state::TransformParam;
-
-// stub until h5-box: `App.scrub` owns this section (the port of the press and
-// drag state in `ScrubValue.tsx`). Names follow the spawn (`ScrubDrag {
-// param, kind, start_value, dx, mode, row_box }`); h5-box has written no code
-// yet, so `kind` is a guess. Delete this section at the merge and read
-// h5-box's `ScrubDrag` instead; the layout and paint below take explicit
-// arguments, so only their caller adapts.
-
-/// Whether a drag moves a size by ratio or a shift by addition (`isScale`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ScrubKind {
-    Scale,
-    Shift,
-}
-
-/// A box's drag in flight: which parameter, of what kind, from what value,
-/// how far, in what mode, under which row.
-#[derive(Clone, Copy, Debug)]
-pub struct ScrubDrag {
-    pub param: TransformParam,
-    pub kind: ScrubKind,
-    pub start_value: f64,
-    pub dx: f64,
-    pub mode: ScrubMode,
-    pub row_box: clay::BoundingBox,
-}
 
 /// The card's gap under the row (`.ruler`: `top: calc(100% + 4px)`).
 pub const RULER_GAP: f32 = 4.0;
@@ -93,13 +68,6 @@ pub const CHEVRON_WIDTH: f32 = 5.0;
 pub const CHEVRON_HEIGHT: f32 = 10.0;
 /// The chevrons' stroke (`.chevrons`: `stroke-width: 2px`, round caps).
 pub const CHEVRON_STROKE: f32 = 2.0;
-
-/// Whether the parameter lays its tape out by ratio (`Ruler`'s `isScale`:
-/// the `a` and `b` rows; `h` and `k` add).
-#[must_use]
-pub fn is_scale(param: TransformParam) -> bool {
-    matches!(param, TransformParam::A | TransformParam::B)
-}
 
 /// Whose colour rims the tape (`.tape`'s border, and the box's while
 /// dragging): the row's ink, or the accent while fine and the warning while
@@ -392,6 +360,65 @@ pub fn layout_ruler(
     });
 }
 
+/// The open drag as the ruler draws it: the held scrub's rebased anchor
+/// rebuilt into h5-box's [`ScrubDrag`], with the laid-out row's box (the
+/// ruler spans the row, as wide as it, 4 px under it). Nothing while no drag
+/// holds a value.
+#[must_use]
+pub fn open_drag(app: &App) -> Option<ScrubDrag> {
+    let (param, press) = match app.scrub_hold {
+        Some(crate::scrub_value::ScrubHold::Scrub { param, press }) if press.dragging => {
+            (param, press)
+        }
+        _ => return None,
+    };
+    let clay = app.clay.as_ref().expect("clay context initialised");
+    let data = clay.get_element_data(row_parent(param));
+    if !data.found {
+        return None;
+    }
+    Some(ScrubDrag {
+        param,
+        kind: scrub_kind(param),
+        start_value: press.from,
+        dx: press.last_x - press.x,
+        mode: press.mode,
+        row_box: data.boundingBox,
+    })
+}
+
+/// Lays the open drag's ruler out: the floating card under its row. Called
+/// from the layout pass after the rows; paints nothing by itself.
+pub fn layout_open_drag(app: &mut App) {
+    let Some(drag) = open_drag(app) else {
+        return;
+    };
+    let theme = crate::ui::current_theme(app).clone();
+    let colors = ruler_colors(&theme, drag.param, drag.mode);
+    layout_ruler(
+        app,
+        row_parent(drag.param),
+        drag.param,
+        drag.row_box.width,
+        &colors,
+    );
+}
+
+/// Paints the open drag's ruler: the tape's contents at the live value.
+/// Called from the post-pass after the rows.
+pub fn paint_open_drag(app: &mut App) {
+    let Some(drag) = open_drag(app) else {
+        return;
+    };
+    let value = crate::scrub::scrubbed(
+        drag.start_value,
+        drag.dx,
+        drag.kind == ScrubKind::Scale,
+        drag.mode,
+    );
+    paint_ruler(app, drag.param, value, drag.mode);
+}
+
 /// Paints an open ruler: the tape's contents at its laid-out content box for
 /// the live `value` in `mode`. Reads nothing but the content box, the theme
 /// and the arguments, so a missing box (the drag just ended) paints nothing.
@@ -658,11 +685,28 @@ mod tests {
     }
 
     #[test]
-    fn scales_lay_out_by_ratio() {
-        assert!(is_scale(TransformParam::A));
-        assert!(is_scale(TransformParam::B));
-        assert!(!is_scale(TransformParam::H));
-        assert!(!is_scale(TransformParam::K));
+    fn marks_route_by_kind() {
+        // `marks_for` lays scales out by ratio and shifts by addition
+        // (`scrub_value::is_scale`, tested there): the same value reads
+        // through each lattice.
+        let scale = marks_for(1.06, 350.0, TransformParam::A);
+        assert_eq!(
+            scale
+                .labels
+                .iter()
+                .map(|label| label.text.as_str())
+                .collect::<Vec<_>>(),
+            ["0.8", "1", "1.2", "1.4"]
+        );
+        let shift = marks_for(1.06, 350.0, TransformParam::K);
+        assert_eq!(
+            shift
+                .labels
+                .iter()
+                .map(|label| label.text.as_str())
+                .collect::<Vec<_>>(),
+            ["\u{2212}2", "\u{2212}1", "0", "1", "2", "3", "4"]
+        );
     }
 
     #[test]
