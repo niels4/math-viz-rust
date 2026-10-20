@@ -1,4 +1,4 @@
-// The six themes as math-viz2 writes them at 96f1e84 (src/style/themes/mathviz_*.module.css),
+// The six themes as math-viz2 writes them at bd1663e (src/style/themes/mathviz_*.module.css),
 // written from those files and the reference by `tools/run themes`: run it again rather than
 // editing this file.
 // Token is every colour token the files define, in their order; each theme gives each token as
@@ -196,9 +196,9 @@ pub static DEFINITIONS: &[ThemeDef] = &[
                 (
                     Token::Secondary,
                     Value::Oklch(Oklch {
-                        l: 0.2885,
-                        c: 0.0208,
-                        h: 248.55,
+                        l: 0.34,
+                        c: 0.05,
+                        h: 242.0,
                         alpha: 1.0,
                     }),
                 ),
