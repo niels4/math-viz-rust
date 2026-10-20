@@ -347,6 +347,29 @@ no new tokens (all eight tabled).
   frac is always 57.5 px; `div:has(> [data-testid=...])` selects the card
   through CSS-module hashes.
 
+### h5-ruler (the scrub ruler)
+
+- The ruler's card must paint in the post-pass, not through Clay: the rows
+  beneath paint their chrome after `draw_commands`, and the next row's box
+  border and chevrons show through the tape's translucent wash (measured:
+  the next param's ink at the tape's right end). The layout declarations
+  carry no paint; the post-pass fills the opaque card, both rims and the
+  wash over everything beneath, then the contents.
+- The wash goes through `draw::css_background`, as the rows' own tint does:
+  an unpremultiplied fill composites a level off on some inks (measured: a
+  31k-pixel 1-level blanket on the k/b/h tapes, gone after).
+- The tint needs no token: the probe resolves `--row-tint` as the ink's own
+  oklch triple at `/ 0.18`, so `theme::band` (alpha × 0.18) is exactly it.
+- Judging downscaled full frames by eye misleads twice in one milestone
+  (a "swapped modes" scare and a "missing element" scare, both refuted by
+  crops and counts): verify programmatically, and mosaic small crops into
+  one image instead of reading sequential full frames.
+- `tools/run dom --fixture` at a new hash reruns every fixture state on the
+  new reference: h4's typing states clicked 18 px above their boxes (the
+  card moved) and Backspace navigated back, failing webkit with 0 shots.
+  States must track the reference's layout per hash; the fix is a coord
+  shift, verified behaviour-identical on the reference.
+
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).

@@ -187,8 +187,6 @@ pub fn iterate(app: &mut App) -> bool {
         app.dirty = true;
         #[cfg(target_os = "emscripten")]
         crate::platform_web::platform_write_hash(&app.url.full_hash());
-        #[cfg(target_os = "emscripten")]
-        crate::platform_web::platform_write_hash(&app.url.full_hash());
     }
     let mut drawn = false;
     // The theme fade redraws until done: no timer arms its frames, so the

@@ -109,6 +109,8 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
         });
         // The settings menu floats under the gear, above the page.
         crate::settings::menu(app);
+        // The scrub ruler floats under its row while a box scrubs (h5-ruler).
+        crate::ruler::layout_open_drag(app);
     });
     app.clay
         .as_mut()
@@ -241,6 +243,9 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
     // and Reset all's focus ring (h5-buttons).
     crate::transform_row::paint_rows(app);
     crate::transform_section::paint_head(app);
+    // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
+    // beneath, as the positioned tape stacks in the DOM.
+    crate::ruler::paint_open_drag(app);
     if let Some((active, progress)) = fading {
         paint_transition(app, active, progress, now);
     }
