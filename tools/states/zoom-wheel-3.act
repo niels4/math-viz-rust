@@ -1,0 +1,17 @@
+# zoom-wheel-3 (h2-input): three notches at (1078, 380), off-centre.
+# From scale 0.5 the target is 0.5*e^0.3; the plane point under the cursor
+# stays through the zoom (behaviour: reference label frames vs the port's
+# shots/views). Settles to url scale=0.675 with the center moved toward the
+# cursor.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1078 380
+wheel 0 100
+wheel 0 100
+wheel 0 100
+wait 1500
+shot zoom-wheel-3

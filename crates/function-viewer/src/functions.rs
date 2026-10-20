@@ -25,6 +25,14 @@ pub enum FunctionSlug {
     SinX,
 }
 
+// `Object.is` on slugs is `==` (no -0/NaN in an enum); the impl satisfies
+// `default_equals`' bound for `FUNC_PARAM`.
+impl crate::url::ObjectIs for FunctionSlug {
+    fn object_is(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 impl FunctionSlug {
     /// The wire string: the `FUNCTION_SLUGS` entry.
     #[must_use]

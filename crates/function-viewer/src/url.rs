@@ -277,11 +277,46 @@ impl Url {
     }
 }
 
-/// `defaultEquals`: `Object.is` for scalars (element-wise for arrays). As
-/// `PartialEq`, except that `Object.is(NaN, NaN)` is true: params are finite
-/// by parse, so no param value can tell them apart.
-pub fn default_equals<T: PartialEq>(a: &T, b: &T) -> bool {
-    a == b
+/// `defaultEquals`: `Object.is` for scalars (element-wise for arrays).
+/// `Object.is` treats `NaN` as equal to itself and `-0` as different from
+/// `0`, where `PartialEq` says the opposite on both counts; params are finite
+/// by parse, so only the `-0` half can bite (a `set(-0.0)` over a live `0.0`
+/// re-arms the debounce, as the TypeScript does — the serialised URL is the
+/// same either way).
+pub fn default_equals<T: ObjectIs>(a: &T, b: &T) -> bool {
+    a.object_is(b)
+}
+
+/// `Object.is` semantics for a param value: what [`default_equals`] compares
+/// through. Implemented for the value shapes the page params take; a later
+/// milestone adds its own shape here (never a second equality fn).
+pub trait ObjectIs {
+    /// Whether two values are the same value (`Object.is`).
+    fn object_is(&self, other: &Self) -> bool;
+}
+
+impl ObjectIs for f64 {
+    fn object_is(&self, other: &Self) -> bool {
+        self.to_bits() == other.to_bits()
+    }
+}
+
+impl ObjectIs for [f64; 2] {
+    fn object_is(&self, other: &Self) -> bool {
+        self[0].object_is(&other[0]) && self[1].object_is(&other[1])
+    }
+}
+
+impl ObjectIs for String {
+    fn object_is(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl ObjectIs for bool {
+    fn object_is(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 /// `Number(text)` for query values that must be finite: `None` is
@@ -375,8 +410,9 @@ fn raw_value(query: &str, key: &str) -> Option<String> {
 }
 
 /// Merges one key into the serialised query: set keeps the first
-/// occurrence's position (appends when absent), delete drops every
-/// occurrence, everything re-serialises and literal commas come back (the
+/// occurrence's position (appends when absent) and drops any later
+/// duplicates, as `URLSearchParams.set` collapses them; delete drops every
+/// occurrence. Everything re-serialises and literal commas come back (the
 /// `replaceAll(/%2C/gi, ",")` with its Safe comment: a literal `%2C` in
 /// input decodes to a comma and encodes back through `%2C`, so it can never
 /// arrive bare).
@@ -386,6 +422,19 @@ fn write_pair(query: &str, key: &str, value: Option<String>) -> String {
         Some(text) => {
             if let Some(slot) = pairs.iter_mut().find(|(name, _)| name.as_str() == key) {
                 slot.1 = text;
+                // `URLSearchParams.set` leaves one entry: the first keeps its
+                // position (set above, order kept), the rest go.
+                let mut kept = false;
+                pairs.retain(|(name, _)| {
+                    if name.as_str() != key {
+                        return true;
+                    }
+                    if kept {
+                        return false;
+                    }
+                    kept = true;
+                    true
+                });
             } else {
                 pairs.push((key.to_string(), text));
             }
@@ -510,14 +559,11 @@ fn restore_commas(search: &str) -> String {
 #[cfg(test)]
 mod url_tests {
     use super::*;
-    use mv_numfmt::round_to;
+    use mv_numfmt::to_fixed;
 
     /// The vitest `numberDef`: `toFixed(2)`, default 0. Serialises through
-    /// `round_to` first: Rust's `{:.2}` rounds ties to even while `toFixed`
-    /// rounds them up, so the tie direction is settled in decimal before
-    /// printing (the workspace idiom); the printed `-` is ASCII, as
-    /// `toFixed` prints (`format_number`'s U+2212 minus is for display,
-    /// never the URL).
+    /// [`to_fixed`] (exact, ASCII `-` as `toFixed` prints; never
+    /// `format_number`'s U+2212 minus, which is for display, never the URL).
     const fn number_def(key: &'static str, debounce_ms: u64) -> QueryParamDef<f64> {
         QueryParamDef {
             key,
@@ -537,7 +583,7 @@ mod url_tests {
     // (TS `null`); these test defs never do, hence the allow.
     #[allow(clippy::unnecessary_wraps)]
     fn serialize_fixed2(value: &f64) -> Option<String> {
-        Some(format!("{:.2}", round_to(*value, 2)))
+        Some(to_fixed(*value, 2))
     }
 
     fn parse_center_opt(raw: Option<&str>) -> Option<[f64; 2]> {
@@ -549,9 +595,9 @@ mod url_tests {
     #[allow(clippy::unnecessary_wraps)]
     fn serialize_center(value: &[f64; 2]) -> Option<String> {
         Some(format!(
-            "{:.4},{:.4}",
-            round_to(value[0], 4),
-            round_to(value[1], 4)
+            "{},{}",
+            to_fixed(value[0], 4),
+            to_fixed(value[1], 4)
         ))
     }
 
@@ -718,6 +764,16 @@ mod url_tests {
     }
 
     #[test]
+    fn serializes_ties_like_to_fixed() {
+        // The binary value decides, not the decimal digits: 2.675 is
+        // 2.6749999... underneath, while 2.5 ties up exactly.
+        assert_eq!(serialize_fixed2(&2.675), Some("2.67".to_string()));
+        assert_eq!(serialize_fixed2(&-2.675), Some("-2.67".to_string()));
+        assert_eq!(serialize_fixed2(&2.5), Some("2.50".to_string()));
+        assert_eq!(serialize_fixed2(&-0.00001), Some("-0.00".to_string()));
+    }
+
+    #[test]
     fn trim_slashes() {
         let cases = [
             ("", ""),
@@ -776,6 +832,23 @@ mod url_tests {
     }
 
     #[test]
+    fn default_equals_follows_object_is() {
+        // `Object.is(-0, 0)` is false: a `set(-0.0)` over a live `0.0`
+        // re-arms the debounce, as the TypeScript's early return skips it.
+        assert!(default_equals(&0.0, &0.0));
+        assert!(!default_equals(&-0.0, &0.0));
+        assert!(!default_equals(&0.0, &-0.0));
+        assert!(default_equals(&-0.0, &-0.0));
+        // `Object.is(NaN, NaN)` is true (params are finite by parse, so this
+        // only shows the rule is whole).
+        assert!(default_equals(&f64::NAN, &f64::NAN));
+        // Arrays compare element-wise, as the TypeScript's array branch does.
+        assert!(default_equals(&[1.0, -0.0], &[1.0, -0.0]));
+        assert!(!default_equals(&[1.0, 0.0], &[1.0, -0.0]));
+        assert!(!default_equals(&[1.0, 2.0], &[1.0, 3.0]));
+    }
+
+    #[test]
     fn write_merges_and_keeps_order() {
         let mut url = Url::from_query("a=1&b=2");
         url.write("b", Some("3".to_string()));
@@ -786,6 +859,19 @@ mod url_tests {
         assert_eq!(url.query(), "b=3&c=4");
         url.write("missing", None);
         assert_eq!(url.query(), "b=3&c=4");
+    }
+
+    #[test]
+    fn write_set_collapses_duplicate_keys() {
+        // `URLSearchParams.set` leaves one entry: the first keeps its
+        // position with the new value, later duplicates go.
+        let mut url = Url::from_query("a=1&a=2&b=3");
+        url.write("a", Some("9".to_string()));
+        assert_eq!(url.query(), "a=9&b=3");
+        // Delete still drops every occurrence.
+        let mut url = Url::from_query("a=1&a=2&b=3");
+        url.write("a", None);
+        assert_eq!(url.query(), "b=3");
     }
 
     #[test]

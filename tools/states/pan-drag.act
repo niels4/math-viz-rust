@@ -1,0 +1,18 @@
+# pan-drag (h2-input): a 50 px drag, still held.
+# The plane follows the pointer (at scale 0.5 a unit is 50 px wide, so the
+# center moves one unit left); the URL is unchanged — the drag's sets are
+# still inside their 200 ms debounce. Canvas center (928, 490) and content
+# box measured on the reference at 1440x900 (probe §1); re-check against
+# page.json's canvas box once h1/h2-plane land.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+down
+move 978 490 over 80
+shot pan-drag
+up
+wait 1200
