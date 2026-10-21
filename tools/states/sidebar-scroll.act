@@ -1,0 +1,15 @@
+# sidebar-scroll (fix-viewer-size phase 2): a wheel of 300 over the sidebar at
+# 1024 x 640. The reference's `overflow: auto` turns the wheel's pixels into
+# `scrollTop`, clamped: 300 over 735 of content in 526 of client gives the max,
+# 209. The wait lets the engines' overlay scrollbar fade (none shows a
+# classic one at rest).
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 216 400
+wheel 0 300
+wait 1000
+shot sidebar-scroll

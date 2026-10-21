@@ -1,0 +1,17 @@
+# sidebar-scroll-hover (fix-viewer-size phase 2): the pointer on a's value
+# box at its scrolled place, so the hover follows the scroll. The wheel of
+# 300 puts the box at (278, 225.5) 107 x 32 (the reference's own DOM), and
+# the box's hover look (the ring) and cursor follow it. The plane's cursor
+# rule does not reach here (the box is not the plane).
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 216 400
+wheel 0 300
+wait 1000
+move 331.5 241.5
+wait 500
+shot sidebar-scroll-hover

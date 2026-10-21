@@ -924,13 +924,18 @@ pub fn type_text(app: &mut App, text: &str) {
 /// live (the URL follows through the debounce). Deltas arrive in page px on
 /// both targets (the platform converts), so the DOM line mode never
 /// applies here — scripted notches match the reference's px notches exactly.
-pub fn wheel_over(app: &mut App, delta_y: f32) {
+///
+/// Whether the wheel was taken: the box's handler calls `preventDefault`
+/// (the page does not scroll), except while the field is typed into, when
+/// the handler returns before it and the page may scroll (fix-viewer-size
+/// phase 2: the sidebar's `overflow: auto`).
+pub fn wheel_over(app: &mut App, delta_y: f32) -> bool {
     let param = match app.input.hover.kind {
         HitKind::TransformField => crate::transform_row::index_param(app.input.hover.index),
         _ => None,
     };
     let Some(param) = param else {
-        return;
+        return false;
     };
     let mut box_ = machine(app, param);
     let typing = app.state.focus.contains(&param);
@@ -938,8 +943,10 @@ pub fn wheel_over(app: &mut App, delta_y: f32) {
     match box_.wheel(f64::from(delta_y), 0, shift, ctrl, meta, typing) {
         WheelAction::Handled { value: Some(next) } => {
             live_value(app, param, next, (app.input.time / MS) as u64);
+            true
         }
-        WheelAction::Handled { value: None } | WheelAction::PassThrough => {}
+        WheelAction::Handled { value: None } => true,
+        WheelAction::PassThrough => false,
     }
 }
 

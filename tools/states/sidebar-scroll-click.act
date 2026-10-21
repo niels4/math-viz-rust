@@ -1,0 +1,19 @@
+# sidebar-scroll-click (fix-viewer-size phase 2): the x³ cell clicked at its
+# scrolled place, so the click follows the scroll. The wheel of 40 puts the
+# cell at (216, 122) 87 x 34 (the reference's own DOM), clear of the top
+# bar's bottom edge at y 80, and the click lands on it: `func=x3` in the
+# url. (The plan's 300 would put the cell at y -47, off the window, where no
+# click can reach it — measured on ref-h11; the cell's own place is under
+# the top bar's box at a 100 wheel, where the top bar takes the click.)
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 216 400
+wheel 0 40
+wait 1000
+click 259.5 139
+wait 1500
+shot sidebar-scroll-click
