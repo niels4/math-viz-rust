@@ -1898,7 +1898,7 @@ mod tests {
         use crate::state::TransformParam;
 
         let _guard = mv_clay::tests_lock();
-        let mut app = moved_app("");
+        let mut app = moved_app("func=x1");
         assert_eq!(live_at(&mut app, 0).badge(), None);
         // A same-frame drag start and h change marks the badge at once.
         app.state.scrub_mode[TransformParam::H] = Some(ScrubMode::Coarse);

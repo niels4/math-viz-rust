@@ -174,6 +174,12 @@ pub enum HitKind {
     /// (`tabIndex={-1}` in `XField.tsx`): focus arrives by mouse, by focus
     /// or by Enter from the slider, and typing replaces the selected text.
     PointsField,
+    /// The welcome page's hero canvas link to `#function-viewer` (h11-hero;
+    /// `index` 0). A hot region over `hero_plane` with the pointer cursor;
+    /// a primary press and release both inside it navigate, as the anchor
+    /// does (77c4996). Never a focus stop: `tabIndex={-1}` on the anchor,
+    /// so the Tab walk stays gear then CTA.
+    WelcomeHero,
 }
 
 /// Whether a kind holds the pointer until release. The shell captures
@@ -494,7 +500,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
                     crate::settings::pointer_moved(app);
                     app.input.hover_fresh = false;
                 }
-                app.input.pointer = event.pos;
+                app.input.pointer = crate::fit::design_pos(app, event.pos);
             }
             // A drag the plane holds keeps panning under capture, wherever
             // the pointer is, as `setPointerCapture` keeps the hook's moves
@@ -522,7 +528,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             if event.pos != app.input.pointer {
                 crate::settings::pointer_moved(app);
             }
-            app.input.pointer = event.pos;
+            app.input.pointer = crate::fit::design_pos(app, event.pos);
             app.input.over = true;
             // Only the primary button acts, as the page's pointer handlers check `button === 0`.
             if event.button != 1 {
@@ -597,7 +603,7 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             // as a motion would have it (without this a wheel before any
             // motion finds no hover and the plane never zooms). A wheel is
             // a pointer act, so it ends a fresh mount's hover hold too.
-            app.input.pointer = event.pos;
+            app.input.pointer = crate::fit::design_pos(app, event.pos);
             app.input.over = true;
             app.input.hover_fresh = false;
             retarget(app);

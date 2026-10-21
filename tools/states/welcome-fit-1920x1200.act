@@ -1,0 +1,12 @@
+# welcome-fit-1920x1200 (h10-fit): the welcome page at fit 1 in a 1920 x 1200
+# window (the paper filling a larger window, the composition centred), dark
+# Arctic Ice, reduced motion.
+route welcome
+size 1920 1200
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+shot welcome-fit-1920x1200

@@ -1,0 +1,15 @@
+# hero-click-mid-loop (h11-hero): reduced motion off; wait 3000 with loop
+# running; click; wait 2000; move off.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion off
+wait 3000
+click 940 450
+wait 2000
+move 720 48
+wait 300
+shot hero-click-mid-loop

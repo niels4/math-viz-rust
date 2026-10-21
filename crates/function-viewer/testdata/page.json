@@ -1,5 +1,5 @@
 {
- "reference": "math-viz2 68e1c7b",
+ "reference": "math-viz2 c6754e7",
  "shots": {
   "default": {
    "size": [
@@ -83,7 +83,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -250,7 +250,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -330,7 +332,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -497,7 +499,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -524,7 +528,7 @@
       1099,
       76,
       304,
-      253
+      297
      ],
      "radio_system": [
       1113,
@@ -631,7 +635,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -765,6 +769,12 @@
       704.5,
       43.203125,
       24
+     ],
+     "menu_dev_link": [
+      1112,
+      324,
+      278,
+      36
      ]
     },
     "missing": [
@@ -790,7 +800,8 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link"
     ]
    },
    "chromium": {
@@ -811,7 +822,7 @@
       1099,
       76,
       304,
-      253
+      297
      ],
      "radio_system": [
       1113,
@@ -918,7 +929,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -1052,6 +1063,12 @@
       704.5,
       43.203125,
       24
+     ],
+     "menu_dev_link": [
+      1112,
+      324,
+      278,
+      36
      ]
     },
     "missing": [
@@ -1077,7 +1094,8 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link"
     ]
    }
   },
@@ -1104,7 +1122,7 @@
       1099,
       76,
       304,
-      253
+      297
      ],
      "radio_system": [
       1113,
@@ -1205,7 +1223,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -1339,6 +1357,12 @@
       704.5,
       43.203125,
       24
+     ],
+     "menu_dev_link": [
+      1112,
+      324,
+      278,
+      36
      ]
     },
     "missing": [
@@ -1365,7 +1389,8 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link"
     ]
    },
    "chromium": {
@@ -1386,7 +1411,7 @@
       1099,
       76,
       304,
-      253
+      297
      ],
      "radio_system": [
       1113,
@@ -1487,7 +1512,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -1621,6 +1646,12 @@
       704.5,
       43.203125,
       24
+     ],
+     "menu_dev_link": [
+      1112,
+      324,
+      278,
+      36
      ]
     },
     "missing": [
@@ -1647,7 +1678,8 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link"
     ]
    }
   },
@@ -1910,7 +1942,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -2167,7 +2201,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -2253,7 +2289,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -2420,7 +2456,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -2500,7 +2538,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -2667,7 +2705,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -2753,7 +2793,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -2920,7 +2960,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -3000,7 +3042,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -3167,7 +3209,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -3253,7 +3297,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -3420,7 +3464,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -3500,7 +3546,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -3667,7 +3713,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -3753,7 +3801,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -3925,7 +3973,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -4005,7 +4055,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -4177,7 +4227,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -4263,7 +4315,7 @@
      "value_line": [
       41,
       230,
-      148.5,
+      158.90625,
       36
      ],
      "form_line": [
@@ -4393,9 +4445,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -4445,7 +4497,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -4525,7 +4579,7 @@
      "value_line": [
       41,
       230,
-      148.53125,
+      158.9375,
       36
      ],
      "form_line": [
@@ -4655,9 +4709,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -4707,7 +4761,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -4793,7 +4849,7 @@
      "value_line": [
       41,
       230,
-      148.5,
+      158.90625,
       36
      ],
      "form_line": [
@@ -4917,9 +4973,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -4970,7 +5026,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -5050,7 +5108,7 @@
      "value_line": [
       41,
       230,
-      148.53125,
+      158.9375,
       36
      ],
      "form_line": [
@@ -5174,9 +5232,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -5227,7 +5285,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -5313,7 +5373,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -5485,7 +5545,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -5565,7 +5627,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -5737,7 +5799,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -5823,7 +5887,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -5995,7 +6059,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -6075,7 +6141,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -6247,7 +6313,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -6333,7 +6401,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -6505,7 +6573,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -6585,7 +6655,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -6757,7 +6827,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -6843,7 +6915,7 @@
      "value_line": [
       41,
       230,
-      148.5,
+      158.90625,
       36
      ],
      "form_line": [
@@ -7025,7 +7097,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -7105,7 +7179,7 @@
      "value_line": [
       41,
       230,
-      148.53125,
+      158.9375,
       36
      ],
      "form_line": [
@@ -7287,7 +7361,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -7373,7 +7449,7 @@
      "value_line": [
       41,
       230,
-      148.5,
+      158.90625,
       36
      ],
      "form_line": [
@@ -7497,9 +7573,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -7550,7 +7626,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -7630,7 +7708,7 @@
      "value_line": [
       41,
       230,
-      148.53125,
+      158.9375,
       36
      ],
      "form_line": [
@@ -7754,9 +7832,9 @@
       18
      ],
      "role_p": [
-      86.390625,
+      104.390625,
       701.5,
-      137.609375,
+      119.609375,
       30
      ],
      "readout_p": [
@@ -7807,7 +7885,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -7905,7 +7985,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -8070,7 +8150,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -8162,7 +8244,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -8327,7 +8409,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -8425,7 +8509,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -8590,7 +8674,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -8682,7 +8768,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -8847,7 +8933,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -9115,7 +9203,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -9377,7 +9467,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -9463,7 +9555,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -9630,7 +9722,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -9710,7 +9804,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -9877,7 +9971,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -9963,7 +10059,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -10135,7 +10231,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -10215,7 +10313,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -10387,7 +10485,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -10473,7 +10573,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -10645,7 +10745,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -10725,7 +10827,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -10897,7 +10999,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -10983,7 +11087,7 @@
      "value_line": [
       41,
       230.5,
-      94.046875,
+      104.453125,
       35
      ],
      "form_line": [
@@ -11155,7 +11259,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -11235,7 +11341,7 @@
      "value_line": [
       41,
       230.5,
-      94.078125,
+      104.484375,
       35
      ],
      "form_line": [
@@ -11407,7 +11513,9 @@
      "welcome_chip_k",
      "welcome_chip_b",
      "welcome_chip_h",
-     "hero_plane"
+     "hero_plane",
+     "welcome_dev_link",
+     "menu_dev_link"
     ]
    }
   },
@@ -11507,6 +11615,12 @@
       190,
       840,
       520
+     ],
+     "welcome_dev_link": [
+      652.25,
+      844,
+      135.375,
+      16
      ]
     },
     "missing": [
@@ -11560,7 +11674,8 @@
      "readout_p",
      "readout_q",
      "field_p",
-     "tip_p"
+     "tip_p",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -11654,6 +11769,12 @@
       190,
       840,
       520
+     ],
+     "welcome_dev_link": [
+      652.3125,
+      844,
+      135.375,
+      16
      ]
     },
     "missing": [
@@ -11707,7 +11828,8 @@
      "readout_p",
      "readout_q",
      "field_p",
-     "tip_p"
+     "tip_p",
+     "menu_dev_link"
     ]
    }
   },
@@ -11807,6 +11929,12 @@
       190,
       840,
       520
+     ],
+     "welcome_dev_link": [
+      652.25,
+      844,
+      135.375,
+      16
      ]
     },
     "missing": [
@@ -11860,7 +11988,8 @@
      "readout_p",
      "readout_q",
      "field_p",
-     "tip_p"
+     "tip_p",
+     "menu_dev_link"
     ]
    },
    "chromium": {
@@ -11954,6 +12083,12 @@
       190,
       840,
       520
+     ],
+     "welcome_dev_link": [
+      652.3125,
+      844,
+      135.375,
+      16
      ]
     },
     "missing": [
@@ -12007,7 +12142,950 @@
      "readout_p",
      "readout_q",
      "field_p",
-     "tip_p"
+     "tip_p",
+     "menu_dev_link"
+    ]
+   }
+  },
+  "welcome-fit-1024x640": {
+   "size": [
+    1024,
+    640
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      369.9987487792969,
+      135.3992156982422,
+      596.4000244140625,
+      369.20001220703125
+     ],
+     "root": [
+      0,
+      0,
+      1024,
+      640
+     ],
+     "header": [
+      22.71875,
+      17.03125,
+      978.5625,
+      28.390625
+     ],
+     "title": [
+      57.598751068115234,
+      196.45921325683594,
+      269.79998779296875,
+      68.16001892089844
+     ],
+     "gear": [
+      972.890625,
+      17.03125,
+      28.390625,
+      28.390625
+     ],
+     "sidebar": [
+      0,
+      0,
+      1023.9974975585938,
+      639.9984130859375
+     ],
+     "mark": [
+      22.71875,
+      21.28125,
+      19.875,
+      19.875
+     ],
+     "description": [
+      57.598751068115234,
+      284.49920654296875,
+      269.79998779296875,
+      70.29000854492188
+     ],
+     "cta": [
+      57.598751068115234,
+      374.6692199707031,
+      217.77029418945312,
+      37.6300048828125
+     ],
+     "hint": [
+      57.598751068115234,
+      425.0792236328125,
+      239.70263671875,
+      18.459991455078125
+     ],
+     "welcome_chip_a": [
+      206.42140197753906,
+      425.0792236328125,
+      18.460006713867188,
+      18.459991455078125
+     ],
+     "welcome_chip_k": [
+      230.5614013671875,
+      425.0792236328125,
+      18.460006713867188,
+      18.459991455078125
+     ],
+     "welcome_chip_b": [
+      254.70140075683594,
+      425.0792236328125,
+      18.460006713867188,
+      18.459991455078125
+     ],
+     "welcome_chip_h": [
+      278.8414001464844,
+      425.0792236328125,
+      18.459991455078125,
+      18.459991455078125
+     ],
+     "hero_plane": [
+      369.9987487792969,
+      135.3992156982422,
+      596.4000244140625,
+      369.20001220703125
+     ],
+     "welcome_dev_link": [
+      463.896240234375,
+      600.2384643554688,
+      96.11627197265625,
+      11.3599853515625
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      369.9987487792969,
+      135.3992156982422,
+      596.4000244140625,
+      369.20001220703125
+     ],
+     "root": [
+      0,
+      0,
+      1024,
+      640
+     ],
+     "header": [
+      22.71875,
+      17.03125,
+      978.5625,
+      28.390625
+     ],
+     "title": [
+      57.59874725341797,
+      196.45921325683594,
+      269.79998779296875,
+      68.15998840332031
+     ],
+     "gear": [
+      972.890625,
+      17.03125,
+      28.390625,
+      28.390625
+     ],
+     "sidebar": [
+      0,
+      0,
+      1023.9974975585938,
+      639.9984130859375
+     ],
+     "mark": [
+      22.71875,
+      21.28125,
+      19.875,
+      19.875
+     ],
+     "description": [
+      57.59874725341797,
+      284.49920654296875,
+      269.79998779296875,
+      70.29000854492188
+     ],
+     "cta": [
+      57.59874725341797,
+      374.6692199707031,
+      217.22671508789062,
+      37.629974365234375
+     ],
+     "hint": [
+      57.59874725341797,
+      425.0791931152344,
+      239.25888061523438,
+      18.46002197265625
+     ],
+     "welcome_chip_a": [
+      205.97764587402344,
+      425.0791931152344,
+      18.460006713867188,
+      18.46002197265625
+     ],
+     "welcome_chip_k": [
+      230.11764526367188,
+      425.0791931152344,
+      18.460006713867188,
+      18.46002197265625
+     ],
+     "welcome_chip_b": [
+      254.2576446533203,
+      425.0791931152344,
+      18.460006713867188,
+      18.46002197265625
+     ],
+     "welcome_chip_h": [
+      278.39764404296875,
+      425.0791931152344,
+      18.459991455078125,
+      18.46002197265625
+     ],
+     "hero_plane": [
+      369.9987487792969,
+      135.3992156982422,
+      596.4000244140625,
+      369.20001220703125
+     ],
+     "welcome_dev_link": [
+      463.94061279296875,
+      600.2384033203125,
+      96.11627197265625,
+      11.3599853515625
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
+    ]
+   }
+  },
+  "welcome-fit-1280x1000": {
+   "size": [
+    1280,
+    1000
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      463.9937438964844,
+      271.1912536621094,
+      739.199951171875,
+      457.6000061035156
+     ],
+     "root": [
+      0,
+      0,
+      1280,
+      1000
+     ],
+     "header": [
+      28.15625,
+      21.109375,
+      1223.6875,
+      35.1875
+     ],
+     "title": [
+      76.79374694824219,
+      346.8712463378906,
+      334.4000244140625,
+      84.48001098632812
+     ],
+     "gear": [
+      1216.65625,
+      21.109375,
+      35.1875,
+      35.1875
+     ],
+     "sidebar": [
+      0,
+      0,
+      1279.987548828125,
+      999.9962768554688
+     ],
+     "mark": [
+      28.15625,
+      26.390625,
+      24.625,
+      24.625
+     ],
+     "description": [
+      76.79374694824219,
+      455.9912414550781,
+      334.4000244140625,
+      87.12002563476562
+     ],
+     "cta": [
+      76.79374694824219,
+      567.751220703125,
+      269.9124755859375,
+      46.6400146484375
+     ],
+     "hint": [
+      76.79374694824219,
+      630.2312622070312,
+      297.09625244140625,
+      22.8800048828125
+     ],
+     "welcome_chip_a": [
+      261.25,
+      630.2312622070312,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_k": [
+      291.1700134277344,
+      630.2312622070312,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_b": [
+      321.0899963378906,
+      630.2312622070312,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_h": [
+      351.010009765625,
+      630.2312622070312,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "hero_plane": [
+      463.9937438964844,
+      271.1912536621094,
+      739.199951171875,
+      457.6000061035156
+     ],
+     "welcome_dev_link": [
+      580.373779296875,
+      950.7162475585938,
+      119.12994384765625,
+      14.08001708984375
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      463.9937438964844,
+      271.1912536621094,
+      739.199951171875,
+      457.6000061035156
+     ],
+     "root": [
+      0,
+      0,
+      1280,
+      1000
+     ],
+     "header": [
+      28.15625,
+      21.109375,
+      1223.6875,
+      35.1875
+     ],
+     "title": [
+      76.79374694824219,
+      346.8712463378906,
+      334.4000244140625,
+      84.48001098632812
+     ],
+     "gear": [
+      1216.65625,
+      21.109375,
+      35.1875,
+      35.1875
+     ],
+     "sidebar": [
+      0,
+      0,
+      1279.987548828125,
+      999.9962158203125
+     ],
+     "mark": [
+      28.15625,
+      26.390625,
+      24.625,
+      24.625
+     ],
+     "description": [
+      76.79374694824219,
+      455.9912414550781,
+      334.4000244140625,
+      87.12002563476562
+     ],
+     "cta": [
+      76.79374694824219,
+      567.751220703125,
+      269.23876953125,
+      46.6400146484375
+     ],
+     "hint": [
+      76.79374694824219,
+      630.2312622070312,
+      296.5462646484375,
+      22.8800048828125
+     ],
+     "welcome_chip_a": [
+      260.70001220703125,
+      630.2312622070312,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_k": [
+      290.6199951171875,
+      630.2312622070312,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_b": [
+      320.5400085449219,
+      630.2312622070312,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_h": [
+      350.4599914550781,
+      630.2312622070312,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "hero_plane": [
+      463.9937438964844,
+      271.1912536621094,
+      739.199951171875,
+      457.6000061035156
+     ],
+     "welcome_dev_link": [
+      580.4287719726562,
+      950.7162475585938,
+      119.12994384765625,
+      14.08001708984375
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
+    ]
+   }
+  },
+  "welcome-fit-1280x800": {
+   "size": [
+    1280,
+    800
+   ],
+   "webkit": {
+    "boxes": {
+     "canvas": [
+      463.9937438964844,
+      171.1875,
+      739.199951171875,
+      457.5999755859375
+     ],
+     "root": [
+      0,
+      0,
+      1280,
+      800
+     ],
+     "header": [
+      28.15625,
+      21.109375,
+      1223.6875,
+      35.1875
+     ],
+     "title": [
+      76.79374694824219,
+      246.86749267578125,
+      334.4000244140625,
+      84.48001098632812
+     ],
+     "gear": [
+      1216.65625,
+      21.109375,
+      35.1875,
+      35.1875
+     ],
+     "sidebar": [
+      0,
+      0,
+      1279.987548828125,
+      799.98876953125
+     ],
+     "mark": [
+      28.15625,
+      26.390625,
+      24.625,
+      24.625
+     ],
+     "description": [
+      76.79374694824219,
+      355.98748779296875,
+      334.4000244140625,
+      87.12002563476562
+     ],
+     "cta": [
+      76.79374694824219,
+      467.74749755859375,
+      269.9124755859375,
+      46.6400146484375
+     ],
+     "hint": [
+      76.79374694824219,
+      530.2274780273438,
+      297.09625244140625,
+      22.8800048828125
+     ],
+     "welcome_chip_a": [
+      261.25,
+      530.2274780273438,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_k": [
+      291.1700134277344,
+      530.2274780273438,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_b": [
+      321.0899963378906,
+      530.2274780273438,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_h": [
+      351.010009765625,
+      530.2274780273438,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "hero_plane": [
+      463.9937438964844,
+      171.1875,
+      739.199951171875,
+      457.5999755859375
+     ],
+     "welcome_dev_link": [
+      580.373779296875,
+      750.708740234375,
+      119.12994384765625,
+      14.08001708984375
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
+    ]
+   },
+   "chromium": {
+    "boxes": {
+     "canvas": [
+      463.9937438964844,
+      171.1875,
+      739.199951171875,
+      457.5999755859375
+     ],
+     "root": [
+      0,
+      0,
+      1280,
+      800
+     ],
+     "header": [
+      28.15625,
+      21.109375,
+      1223.6875,
+      35.1875
+     ],
+     "title": [
+      76.79374694824219,
+      246.86749267578125,
+      334.4000244140625,
+      84.48001098632812
+     ],
+     "gear": [
+      1216.65625,
+      21.109375,
+      35.1875,
+      35.1875
+     ],
+     "sidebar": [
+      0,
+      0,
+      1279.987548828125,
+      799.98876953125
+     ],
+     "mark": [
+      28.15625,
+      26.390625,
+      24.625,
+      24.625
+     ],
+     "description": [
+      76.79374694824219,
+      355.98748779296875,
+      334.4000244140625,
+      87.1199951171875
+     ],
+     "cta": [
+      76.79374694824219,
+      467.74749755859375,
+      269.23876953125,
+      46.6400146484375
+     ],
+     "hint": [
+      76.79374694824219,
+      530.2274780273438,
+      296.5462646484375,
+      22.8800048828125
+     ],
+     "welcome_chip_a": [
+      260.70001220703125,
+      530.2274780273438,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_k": [
+      290.6199951171875,
+      530.2274780273438,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "welcome_chip_b": [
+      320.5400085449219,
+      530.2274780273438,
+      22.879974365234375,
+      22.8800048828125
+     ],
+     "welcome_chip_h": [
+      350.4599914550781,
+      530.2274780273438,
+      22.8800048828125,
+      22.8800048828125
+     ],
+     "hero_plane": [
+      463.9937438964844,
+      171.1875,
+      739.199951171875,
+      457.5999755859375
+     ],
+     "welcome_dev_link": [
+      580.4287719726562,
+      750.708740234375,
+      119.12994384765625,
+      14.08001708984375
+     ]
+    },
+    "missing": [
+     "menu",
+     "radio_system",
+     "radio_dark",
+     "radio_light",
+     "option_0",
+     "option_1",
+     "option_2",
+     "option_3",
+     "option_4",
+     "option_5",
+     "swatch_0",
+     "overlay_button",
+     "overlay_tip",
+     "card_function",
+     "radio_0",
+     "radio_1",
+     "radio_2",
+     "radio_3",
+     "readout",
+     "value_line",
+     "form_line",
+     "card_transform",
+     "row_a",
+     "row_k",
+     "row_b",
+     "row_h",
+     "chip_a",
+     "field_a",
+     "arrows_a",
+     "box_a",
+     "tip_a",
+     "reset_a",
+     "reset_all",
+     "flip_a",
+     "flip_b",
+     "ruler_a",
+     "tape_a",
+     "ruler_h",
+     "ruler_k",
+     "slider_p",
+     "thumb_p",
+     "slider_tip_p",
+     "card_points",
+     "row_p",
+     "row_q",
+     "mark_p",
+     "role_p",
+     "readout_p",
+     "readout_q",
+     "field_p",
+     "tip_p",
+     "menu_dev_link"
     ]
    }
   }

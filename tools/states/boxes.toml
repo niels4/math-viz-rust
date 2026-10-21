@@ -134,3 +134,9 @@ welcome_chip_k = '[data-testid="root-view"] span[data-param="k"]'
 welcome_chip_b = '[data-testid="root-view"] span[data-param="b"]'
 welcome_chip_h = '[data-testid="root-view"] span[data-param="h"]'
 hero_plane = '[data-testid="root-view"] canvas'
+
+# h11-default: the reference's two dev-pages elements, left out of the port by
+# the user's ruling (category (f)). welcome_dev_link on the welcome route's foot;
+# menu_dev_link in the open settings menu (both routes).
+welcome_dev_link = '[data-testid="root-view"] main + a[href="#dev"]'
+menu_dev_link = 'div[id^="settings-menu-"] a[href="#dev"]'
