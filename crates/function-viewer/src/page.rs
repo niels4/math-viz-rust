@@ -210,11 +210,18 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
         // The scrub ruler floats under its row while a box scrubs (h5-ruler).
         crate::ruler::layout_open_drag(app);
     });
-    app.clay
+    let commands = app
+        .clay
         .as_mut()
         .expect("clay context initialised")
         .end_layout()
-        .to_vec()
+        .to_vec();
+    // The menu's regions, in the space the menu is drawn in: on the viewer
+    // the menu sits where Clay laid it out (fix-fit-menu).
+    app.input.z = 1;
+    crate::settings::declare_regions(app, crate::fit::MenuSpace::IDENTITY);
+    app.input.z = 0;
+    commands
 }
 
 /// The canvas's border box, once laid out.
@@ -463,14 +470,12 @@ fn draw_welcome(app: &mut App, theme: &mv_theme::Theme, density: f32) {
     app.vg.restore();
     if let Some(plate) = plate {
         // The menu at natural size: its design box onto the anchor, as the
-        // popover's inverse zoom maps it.
-        let (right, top) = crate::fit::menu_anchor(f64::from(app.size[0]), fit_f64);
-        // `as` at the f64/f32 boundary: the layout is f32 throughout.
-        let dx = right as f32 - crate::fit::MENU_WIDTH as f32 - plate.x;
-        let dy = top as f32 - plate.y;
+        // popover's inverse zoom maps it. The same space the menu's regions
+        // take (fix-fit-menu), so the drawing and the hit test agree.
+        let space = crate::fit::menu_space(f64::from(app.size[0]), fit_f64, plate);
         app.vg.save();
         app.vg.reset_transform();
-        app.vg.translate(dx, dy);
+        app.vg.translate(space.offset[0], space.offset[1]);
         paint_menu_shadow(app, theme);
         draw_commands(app, density, &menu);
         // The menu's swatches, inside the natural-size menu.

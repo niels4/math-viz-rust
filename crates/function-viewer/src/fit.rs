@@ -11,6 +11,8 @@
 //! window (re-measured every frame, as the `ResizeObserver` re-measures at
 //! every resize).
 
+use mv_sys::clay;
+
 use crate::app::App;
 
 /// The top row's offsets and sizes in design px (`.top_bar`).
@@ -60,6 +62,78 @@ pub fn menu_anchor(window_width: f64, fit: f64) -> (f64, f64) {
         window_width - zoomed(TOP_SIDE, fit),
         zoomed(TOP_OFFSET + TOP_HEIGHT, fit) + MENU_GAP,
     )
+}
+
+/// Where the settings menu sits, in the two spaces the welcome route draws
+/// it in: the frame's design space (where Clay lays it out and where the
+/// pointer is mapped back into) and the screen (where it is painted, at its
+/// natural size under the zoomed gear).
+///
+/// The menu keeps its natural size (`[popover] { zoom: calc(1 / var(--fit)) }`)
+/// while the frame around it is scaled by the fit, so the menu's box moves
+/// by `offset` screen px away from where the frame's layout put it. The
+/// drawing translates the menu's commands by that offset; the hit test maps
+/// a drawn box back into the design space with [`MenuSpace::hit`]. One
+/// source for both, so a pointer over a drawn cell hits that cell at every
+/// fit.
+#[derive(Clone, Copy, Debug)]
+pub struct MenuSpace {
+    /// The menu's move from the frame's design space to the screen, in screen px.
+    pub offset: [f32; 2],
+    /// The frame's scale: the design space is the screen's, divided by it.
+    pub scale: f32,
+}
+
+impl MenuSpace {
+    /// The viewer route's space: no move and no scale, the menu where Clay
+    /// laid it out.
+    pub const IDENTITY: Self = Self {
+        offset: [0.0, 0.0],
+        scale: 1.0,
+    };
+
+    /// The box a menu element's design box is drawn at, in screen px: the
+    /// menu keeps its natural size, so only the move applies.
+    #[must_use]
+    pub fn drawn(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
+        clay::BoundingBox {
+            x: box_.x + self.offset[0],
+            y: box_.y + self.offset[1],
+            width: box_.width,
+            height: box_.height,
+        }
+    }
+
+    /// The design-space box a menu element's region takes, so a pointer over
+    /// its drawn box lands in it: the drawn box divided by the frame's
+    /// scale, because the pointer arrives in the design space (the root
+    /// scale's inverse).
+    #[must_use]
+    pub fn region(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
+        clay::BoundingBox {
+            x: (box_.x + self.offset[0]) / self.scale,
+            y: (box_.y + self.offset[1]) / self.scale,
+            width: box_.width / self.scale,
+            height: box_.height / self.scale,
+        }
+    }
+}
+
+/// The menu's space on the welcome route: the natural-size anchor under the
+/// zoomed gear, the frame's scale being the fit.
+///
+/// `plate` is the menu's laid-out box in the frame's design space.
+#[must_use]
+pub fn menu_space(window_width: f64, fit: f64, plate: clay::BoundingBox) -> MenuSpace {
+    let (right, top) = menu_anchor(window_width, fit);
+    MenuSpace {
+        // `as` at the f64/f32 boundary: the layout is f32 throughout.
+        offset: [
+            right as f32 - MENU_WIDTH as f32 - plate.x,
+            top as f32 - plate.y,
+        ],
+        scale: fit as f32,
+    }
 }
 
 /// The page's fit from the window's logical size and backing pixels

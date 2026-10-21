@@ -439,6 +439,85 @@ pub fn menu_below(app: &mut App, dy: f32) {
     });
 }
 
+/// Declares the menu's own regions, in the space the menu is drawn in.
+///
+/// The menu's cells and rows are laid out by Clay in the frame's design
+/// space, but on the welcome route the menu is painted at its natural size
+/// under the zoomed gear, moved by `space`. A region declared against the
+/// laid-out box would therefore sit a fit's width away from the menu the
+/// user sees, and a click on a visible cell would hit nothing (fix-fit-menu).
+/// The regions take the laid-out boxes through `space`, so the drawing and
+/// the hit test share one transform.
+///
+/// The declarations keep the Clay element's own ids, so the boxes resolve
+/// through the layout; the space is the only difference.
+///
+/// The pointer cursor on the cells and the rows is claude0's consistency
+/// call in the user's place (2026-10-20, overturnable): the same kind of
+/// control as the selector cells, which the user wants with the pointer. The
+/// reference measures default in all three engines (its labels carry no
+/// cursor rule), so matching it is a two-line revert; see decisions.md.
+pub fn declare_regions(app: &mut App, space: crate::fit::MenuSpace) {
+    if !app.settings.open {
+        return;
+    }
+    let theme = app.theme;
+    let scheme = theme.resolved_scheme();
+    let checked = checked_cell(&theme);
+    for (index, _) in LIGHT_DARK_ORDER.iter().enumerate() {
+        let Some(box_) = menu_box(app, "MenuCell", index as u32) else {
+            continue;
+        };
+        crate::input::region_kept(
+            app,
+            Hit {
+                kind: HitKind::SettingsLightDark,
+                index: index as i64,
+            },
+            space.region(box_),
+            Cursor::Pointer,
+            Cursor::Pointer,
+            index == checked,
+            crate::ui::corner_radius_all(0.0),
+        );
+    }
+    let slugs = shown_slugs(scheme);
+    let selected = checked_row(&theme);
+    for (index, _) in slugs.iter().enumerate() {
+        let Some(box_) = menu_box(app, "MenuRow", index as u32) else {
+            continue;
+        };
+        crate::input::region_kept(
+            app,
+            Hit {
+                kind: HitKind::SettingsTheme,
+                index: index as i64,
+            },
+            space.region(box_),
+            Cursor::Pointer,
+            Cursor::Pointer,
+            index == selected,
+            crate::ui::corner_radius_all(0.0),
+        );
+    }
+}
+
+/// A menu element's laid-out box, by its Clay id's name and index.
+fn menu_box(app: &App, name: &str, index: u32) -> Option<clay::BoundingBox> {
+    let id = mv_clay::id(name, index);
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(id);
+    data.found.then_some(data.boundingBox)
+}
+
+/// The menu's own laid-out box, when it is open.
+pub fn menu_plate(app: &App) -> Option<clay::BoundingBox> {
+    menu_box(app, layout::MENU_ID, 0)
+}
+
 /// The Appearance section: the caps legend over the three-cell segmented control.
 fn appearance(app: &mut App, theme: &ThemeState) {
     let mut section = crate::ui::empty_decl();
@@ -586,23 +665,8 @@ fn cell(app: &mut App, option: LightDark, index: usize, checked: bool) {
             false,
         );
     });
-    // Pointer on the cells (fix-cursor): claude0's consistency call in the
-    // user's place (2026-10-20, overturnable) — the same kind of control as
-    // the selector cells, which the user wants with the pointer. The
-    // reference measures default in all three engines (its labels carry no
-    // cursor rule), so matching it is a two-line revert; see decisions.md.
-    crate::input::region(
-        app,
-        mv_clay::id("MenuCell", index as u32),
-        Hit {
-            kind: HitKind::SettingsLightDark,
-            index: index as i64,
-        },
-        Cursor::Pointer,
-        Cursor::Pointer,
-        checked,
-        crate::ui::corner_radius_all(0.0),
-    );
+    // The cells' regions are declared after the layout, in the space the
+    // menu is drawn in (`declare_regions`).
 }
 
 /// The selection message under the appearance section.
@@ -746,21 +810,8 @@ fn row(app: &mut App, slug: ThemeSlug, index: usize, selected: bool) {
             });
         }
     });
-    // Pointer on the rows (fix-cursor): as the cells above, claude0's
-    // consistency call (overturnable); the reference measures default.
-    // See decisions.md.
-    crate::input::region(
-        app,
-        mv_clay::id("MenuRow", index as u32),
-        Hit {
-            kind: HitKind::SettingsTheme,
-            index: index as i64,
-        },
-        Cursor::Pointer,
-        Cursor::Pointer,
-        selected,
-        crate::ui::corner_radius_all(0.0),
-    );
+    // The rows' regions are declared after the layout, in the space the
+    // menu is drawn in (`declare_regions`).
 }
 
 /// Declares a square icon element painting `kind` in `ink`.
@@ -1231,6 +1282,71 @@ mod tests {
                 index: 1,
             }
         );
+    }
+
+    /// The menu's cells and rows are hit where they are drawn, at every fit
+    /// (fix-fit-menu).
+    ///
+    /// The menu keeps its natural size under the zoomed gear while the frame
+    /// around it is scaled by the fit, so the drawn box and the laid-out box
+    /// differ. The test lays the welcome page out with the menu open at a
+    /// shrunk window and at the design size, takes each cell's and each
+    /// row's drawn centre, and presses it: the hit must be that cell or
+    /// row.
+    #[test]
+    fn the_menu_is_hit_where_it_is_drawn_at_every_fit() {
+        let _guard = mv_clay::tests_lock();
+        for (window, pixels) in [
+            ([1024.0, 640.0], [2048, 1280]),
+            ([1440.0, 900.0], [2880, 1800]),
+        ] {
+            let mut app = crate::fixture::headless_app();
+            assert!(mv_text::init(&mut app.fonts));
+            crate::ui::init_clay(&mut app);
+            app.size = window;
+            app.pixels = pixels;
+            app.url = crate::url::Url::new("#");
+            app.theme.light_dark = LightDark::Dark;
+            app.settings.open();
+            let fit = crate::fit::current_fit(app.size, app.pixels) as f32;
+            let size = app.size;
+            let _commands = crate::welcome::layout_welcome(&mut app, size, fit);
+            crate::input::collect_regions(&mut app);
+            let space = crate::fit::menu_space(
+                f64::from(app.size[0]),
+                f64::from(fit),
+                menu_plate(&app).expect("the menu is laid out"),
+            );
+            // Every cell and every row, by the hit it must resolve to.
+            for (index, _) in LIGHT_DARK_ORDER.iter().enumerate() {
+                let drawn = space.drawn(menu_box(&app, "MenuCell", index as u32).expect("cell"));
+                let at = [drawn.x + drawn.width / 2.0, drawn.y + drawn.height / 2.0];
+                // The pointer arrives in the design space (the root scale's
+                // inverse), as `design_pos` maps it.
+                let design = crate::fit::design_pos(&app, at);
+                assert_eq!(
+                    crate::input::hit_at(&app.input.regions, design),
+                    Hit {
+                        kind: HitKind::SettingsLightDark,
+                        index: index as i64,
+                    },
+                    "cell {index} at {at:?} (fit {fit})"
+                );
+            }
+            for (index, _) in shown_slugs(app.theme.resolved_scheme()).iter().enumerate() {
+                let drawn = space.drawn(menu_box(&app, "MenuRow", index as u32).expect("row"));
+                let at = [drawn.x + drawn.width / 2.0, drawn.y + drawn.height / 2.0];
+                let design = crate::fit::design_pos(&app, at);
+                assert_eq!(
+                    crate::input::hit_at(&app.input.regions, design),
+                    Hit {
+                        kind: HitKind::SettingsTheme,
+                        index: index as i64,
+                    },
+                    "row {index} at {at:?} (fit {fit})"
+                );
+            }
+        }
     }
 
     #[test]
