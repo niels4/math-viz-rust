@@ -643,26 +643,26 @@ mod tests {
     }
 
     /// Ports `SideBar.test.tsx`'s "puts the picked function in the URL, and
-    /// leaves x out of it": a fresh page graphs x; picking x2 checks it and
-    /// writes `func=x2`; picking x again takes `func` out of the URL.
+    /// leaves x2 out of it": a fresh page graphs x²; picking x checks it and
+    /// writes `func=x1`; picking x² again takes `func` out of the URL.
     #[test]
     fn picking_x2_writes_func_and_picking_x_removes_it() {
         let _guard = mv_clay::tests_lock();
         let mut app = crate::fixture::headless_app();
         assert!(mv_text::init(&mut app.fonts));
         crate::ui::init_clay(&mut app);
-        // A fresh page graphs x.
-        assert_eq!(*app.func_param.get(), FunctionSlug::X1);
-        assert_eq!(app.url.query(), "");
-        // Picking x2 checks it and writes func=x2, starting the switch.
-        pick_function(&mut app, FunctionSlug::X2, 1);
+        // A fresh page graphs x².
         assert_eq!(*app.func_param.get(), FunctionSlug::X2);
-        assert_eq!(app.url.query(), "func=x2");
-        assert!(app.shown.is_switching());
-        assert_eq!(app.input.focus, cell_hit(1));
-        // Picking x again takes func out of the URL.
+        assert_eq!(app.url.query(), "");
+        // Picking x checks it and writes func=x1, starting the switch.
         pick_function(&mut app, FunctionSlug::X1, 0);
         assert_eq!(*app.func_param.get(), FunctionSlug::X1);
+        assert_eq!(app.url.query(), "func=x1");
+        assert!(app.shown.is_switching());
+        assert_eq!(app.input.focus, cell_hit(0));
+        // Picking x² again takes func out of the URL.
+        pick_function(&mut app, FunctionSlug::X2, 1);
+        assert_eq!(*app.func_param.get(), FunctionSlug::X2);
         assert_eq!(app.url.query(), "");
     }
 
@@ -710,7 +710,7 @@ mod tests {
         };
         assert!(key(&mut app, &right));
         assert_eq!(*app.func_param.get(), FunctionSlug::X2);
-        assert_eq!(app.url.query(), "func=x2");
+        assert_eq!(app.url.query(), "");
         assert_eq!(app.input.focus, cell_hit(1));
         // Off the group the arrows go elsewhere.
         crate::input::set_focus(&mut app, Hit::default(), false);
@@ -725,7 +725,7 @@ mod tests {
         let mut app = crate::fixture::headless_app();
         assert!(mv_text::init(&mut app.fonts));
         crate::ui::init_clay(&mut app);
-        pick_function(&mut app, FunctionSlug::X2, 1);
+        pick_function(&mut app, FunctionSlug::X1, 0);
         // The switch's turn: held, the new curve still at draw 0.
         plot_step(&mut app, 16_000_000);
         assert!(app.shown.is_switching());
@@ -742,7 +742,7 @@ mod tests {
         assert_eq!(
             crate::plot::curves(&app.shown),
             vec![crate::plot::PlotCurve {
-                func: crate::functions::base(FunctionSlug::X2),
+                func: crate::functions::base(FunctionSlug::X1),
                 alpha: 1.0,
                 draw_to: 1.0,
             }]
@@ -759,7 +759,7 @@ mod tests {
         let mut app = crate::fixture::headless_app();
         assert!(mv_text::init(&mut app.fonts));
         crate::ui::init_clay(&mut app);
-        pick_function(&mut app, FunctionSlug::X2, 1);
+        pick_function(&mut app, FunctionSlug::X1, 0);
         plot_step(&mut app, 16_000_000);
         plot_step(&mut app, 32_000_000);
         // Mid-switch, the clock anchored at the last step.

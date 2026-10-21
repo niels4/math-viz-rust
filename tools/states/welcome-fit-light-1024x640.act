@@ -1,0 +1,11 @@
+# welcome-fit-light-1024x640 (h10-fit): the welcome page at fit 0.71 in
+# light Clean Teal, reduced motion.
+route welcome
+size 1024 640
+density 2
+scheme light
+mode light
+theme clean-teal
+reduced-motion on
+wait 2000
+shot welcome-fit-light-1024x640

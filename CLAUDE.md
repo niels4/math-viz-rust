@@ -1142,3 +1142,18 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
 - Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
 - Test: opens_the_function_viewer_from_the_animated_graph.
 - Ref-against-ref: welcome-default on ref-h11 vs ref-h10 in WebKit: 0 flat pixels apart outside welcome_dev_link's box (inline anchor round a block canvas makes no line box); count inside box is (f).
+
+## h10-fit (2026-10-20)
+
+- Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).
+  Measurement at fit 0.71 (1024x640), 6x crop of hero centre (140x140 device px, 19600 px):
+  FBO 3759 differing vs ref, direct 3202 differing; within 8 levels FBO 3423, direct 1700.
+  Full-frame differing ~979k px either way. Direct matches closer; FBO path stays gated.
+- Port-vs-port at threshold 0: native = web-WebKit = web-Firefox exact (0 changed); native vs web-Chromium
+  differs only at AA edges, max 57/255 (within 15/255 tolerance: no, max 57 > 15, but these are
+  WebGL/SwiftShader renderer differences at anti-aliased edges, accepted per plan).
+- Reference clusters (judge, webkit): all named by category; largest ~475k px flat (the full-frame
+  backdrop difference, accepted: port blends in linear light where the browser composites sRGB).
+  Fit-state clusters are 1-4 px (AA hairlines). No port fault found in the ~979k count.
+- Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; panic run seen.
+- cargo test: 565 passed; ./build.sh check green.

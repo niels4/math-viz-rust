@@ -483,9 +483,9 @@ mod tests {
 
     #[test]
     fn shows_the_bare_function_when_every_value_is_at_its_default() {
-        // A fresh page graphs x, untransformed.
-        let line = value_line(FunctionSlug::X1, &none());
-        assert_eq!(spoken(&line), "f(x) = x");
+        // A fresh page graphs x², untransformed.
+        let line = value_line(FunctionSlug::X2, &none());
+        assert_eq!(spoken(&line), "f(x) = x²");
     }
 
     #[test]

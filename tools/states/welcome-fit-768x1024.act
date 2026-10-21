@@ -1,0 +1,11 @@
+# welcome-fit-768x1024 (h10-fit): the welcome page at fit 0.53 in a portrait
+# 768 x 1024 window, dark Arctic Ice, reduced motion.
+route welcome
+size 768 1024
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+shot welcome-fit-768x1024

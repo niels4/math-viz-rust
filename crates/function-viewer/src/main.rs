@@ -21,6 +21,7 @@ pub mod app;
 pub mod app_loop;
 pub mod camera;
 pub mod draw;
+pub mod fit;
 pub mod fit_scale;
 pub mod fixture;
 pub mod flex;
@@ -1386,6 +1387,20 @@ impl Main {
         // One turn of the loop: the timers that fell due, a frame when
         // anything changed or moves, and how the loop goes on from here.
         let app = &mut data.app;
+        // The hero's bitmap renders before the frame begins (h10-fit): this
+        // path always targets the default framebuffer, which the pre-pass
+        // leaves bound.
+        {
+            let size = app.size;
+            let pixels = app.pixels;
+            let density = if size[0] > 0.0 {
+                pixels[0] as f32 / size[0]
+            } else {
+                1.0
+            };
+            let theme = crate::ui::current_theme(app).clone();
+            crate::welcome::render_hero_plane(app, &theme, density);
+        }
         let drawn = crate::app_loop::iterate(app);
         if drawn {
             app.window().gl_swap_window();

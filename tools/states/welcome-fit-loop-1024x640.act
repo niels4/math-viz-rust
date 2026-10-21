@@ -1,0 +1,11 @@
+# welcome-fit-loop-1024x640 (h10-fit): the welcome loop running at fit 0.71,
+# no reduced motion; one shot at +1800 (x2, k mid-drag), as h10-loop's
+# states. The loop's timing is unchanged by the fit.
+route welcome
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 1800
+shot welcome-fit-loop-1024x640
