@@ -1136,3 +1136,19 @@ no new tokens (all eight tabled).
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
+
+
+## h10-fit (2026-10-20)
+
+- Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).
+  Measurement at fit 0.71 (1024x640), 6x crop of hero centre (140x140 device px, 19600 px):
+  FBO 3759 differing vs ref, direct 3202 differing; within 8 levels FBO 3423, direct 1700.
+  Full-frame differing ~979k px either way. Direct matches closer; FBO path stays gated.
+- Port-vs-port at threshold 0: native = web-WebKit = web-Firefox exact (0 changed); native vs web-Chromium
+  differs only at AA edges, max 57/255 (within 15/255 tolerance: no, max 57 > 15, but these are
+  WebGL/SwiftShader renderer differences at anti-aliased edges, accepted per plan).
+- Reference clusters (judge, webkit): all named by category; largest ~475k px flat (the full-frame
+  backdrop difference, accepted: port blends in linear light where the browser composites sRGB).
+  Fit-state clusters are 1-4 px (AA hairlines). No port fault found in the ~979k count.
+- Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; panic run seen.
+- cargo test: 565 passed; ./build.sh check green.
