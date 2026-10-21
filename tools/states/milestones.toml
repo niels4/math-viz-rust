@@ -35,4 +35,4 @@ H10 = ["welcome-route", "welcome-default", "welcome-default-tron-cyan", "welcome
 # selector cells the user asked for, overturnable) and the default restored
 # on leave.
 FIXCURSOR = ["cursor-cells-hover", "cursor-cells-leave", "cursor-menu-cell", "cursor-menu-leave", "cursor-cta"]
-H11 = ["hero-hover", "hero-click", "hero-click-mid-loop", "hero-click-corner", "hero-press-release-outside", "hero-click-fit-1024x640", "cursor-hero", "welcome-tab-cta", "welcome-cta-click"]
+H11 = ["hero-hover", "hero-click", "hero-click-mid-loop", "hero-click-corner", "hero-press-release-outside", "hero-click-fit-1024x640", "cursor-hero", "welcome-tab-cta", "welcome-cta-click", "viewer-fit-1024x640", "viewer-fit-800x600", "viewer-fit-1920x1200"]

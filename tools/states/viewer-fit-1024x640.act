@@ -1,0 +1,13 @@
+# viewer-fit-1024x640 (fix-viewer-size): the viewer page at a 1024 x 640
+# window, as math-viz2's is at c6754e7. The reference's grid gives the
+# header (16, 16, 992, 64), the sidebar (16, 96, 400, 528) with its
+# content clipped at the padding box (client 526) and scrolling (the
+# content is 735 tall), and the canvas (432, 96, 576, 528). The port's
+# page grew past the window's bottom here before the fix.
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot viewer-fit-1024x640
