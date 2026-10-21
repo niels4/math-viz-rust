@@ -216,15 +216,6 @@ impl HandleId {
             _ => None,
         }
     }
-
-    /// The handle's index in the built pair (its hit-test slot).
-    fn index(self) -> usize {
-        match self {
-            HandleId::Shift => 0,
-            HandleId::Scale => 1,
-            HandleId::PointP => 0,
-        }
-    }
 }
 
 /// The shift handle's two lit parameters, then the scale handle's (the
@@ -346,15 +337,16 @@ pub fn plane_hover(app: &mut App) {
 }
 
 /// The canvas's cursor from the hover and press state
-/// (`CartesianPlane.tsx`'s rule: `dragging || panning` grabs closed, else
-/// `hovering` grabs open, else the crosshair). The press on the plane or a
-/// handle is the `panning` half (the hook sets it on any canvas press and
-/// clears it on release); `app.dragging` is the `dragging` half. The open
-/// hand reads `app.hovered`, the hook's `hovering = hoveredHandleIndex !== -1`
-/// (`ea29aa9`: the state is gone, the index is the value). Only while the
-/// pointer or press names the plane: anywhere else the regions' cursors stand.
-/// Runs after the dispatch and the retarget, so its cursor wins. `pub` for the
-/// input layer's unpressed-move path.
+/// (`CartesianPlane.tsx`'s rule at `c6754e7`: `dragging || panning ? "grab-
+/// active" : hovering ? "grab-hover" : "pan"`, where `hovering` is the
+/// hovered handle's index, not a separate boolean (`ea29aa9` moved it into
+/// `useMouseHandles`). The press on the plane or a handle is the `panning`
+/// half (the hook sets it on any canvas press and clears it on release);
+/// `app.dragging` is the `dragging` half. The open hand reads `app.hovered`,
+/// the port of the hovered index. Only while the pointer or press names the
+/// plane: anywhere else the regions' cursors stand. Runs after the dispatch
+/// and the retarget, so its cursor wins. `pub` for the input layer's
+/// unpressed-move path.
 pub fn plane_cursor(app: &mut App) {
     let on_plane =
         app.input.hover.kind == HitKind::Plane || app.input.pressed.kind == HitKind::Plane;
@@ -397,7 +389,7 @@ pub fn plane_down(app: &mut App, button: PointerButton) {
             Some(HitTarget::Handle(i)) => {
                 if let Some(index) = HandleId::from_index(i) {
                     let point = from_px(&grid, px);
-                    let anchor = handles[index.index()].at;
+                    let anchor = handles[i].at;
                     app.grab = [anchor.x - point.x, anchor.y - point.y];
                     app.dragged = Some(index);
                     app.dragging = true;
