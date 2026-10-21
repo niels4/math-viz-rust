@@ -1,0 +1,12 @@
+# viewer-fit-1920x1200 (fix-viewer-size): the viewer page at a 1920 x 1200
+# window. The reference's grid gives the header (16, 16, 1888, 64), the
+# sidebar (16, 96, 400, 1088) with its content fitting (client 1086, no
+# scroll), and the canvas (432, 96, 1472, 1088) - the grid growing, the
+# sidebar with room to spare.
+size 1920 1200
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot viewer-fit-1920x1200

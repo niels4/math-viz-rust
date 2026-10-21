@@ -36,7 +36,7 @@ use crate::app_loop::{MS, Time};
 use crate::camera::{self, PointerButton};
 use crate::grid::{GridLayout, layout_grid};
 use crate::input::{Cursor, Hit, HitKind, region_kept, region_of};
-use crate::plane_geometry::{from_px, hit_test};
+use crate::plane_geometry::{HitTarget, from_px, hit_test};
 use crate::state::TransformParam;
 use crate::url::{QueryParam, QueryParamDef, default_equals};
 
@@ -202,6 +202,8 @@ pub enum HandleId {
     Shift,
     /// The square: sets a and b.
     Scale,
+    /// P's marker on the graph: sets p.
+    PointP,
 }
 
 impl HandleId {
@@ -220,6 +222,7 @@ impl HandleId {
         match self {
             HandleId::Shift => 0,
             HandleId::Scale => 1,
+            HandleId::PointP => 0,
         }
     }
 }
@@ -230,6 +233,7 @@ fn handle_params(id: HandleId) -> &'static [TransformParam] {
     match id {
         HandleId::Shift => &[TransformParam::H, TransformParam::K],
         HandleId::Scale => &[TransformParam::A, TransformParam::B],
+        HandleId::PointP => &[],
     }
 }
 
@@ -299,13 +303,15 @@ pub fn clear_q(app: &mut App) {
 }
 
 /// The hover dispatch for an unpressed move over the plane
-/// (`CartesianPlane.tsx`'s `onPointerMove`): the hit handle's hover first
-/// (hovering on, its two params lit), then, when the hovered index changed,
-/// the previously hovered handle's hover-end (its params off only when the
-/// stored list still equals them). The new hover first is load-bearing: a
-/// jump straight from the diamond to the square leaves hovering false with
-/// a and b lit (the old end's same-list check no-ops on the new list), and
-/// the cursor falls back to pan. Same-index moves and empty moves change
+/// (`CartesianPlane.tsx`'s `onPointerMove`, through `useMouseHandles`): the
+/// hit handle's hover (its two params lit) first, then, when the hovered
+/// index changed, the previously hovered handle's hover-end (its params off
+/// only when the stored list still equals them). The order is the source's,
+/// so a jump straight from the diamond to the square lights a and b while h
+/// and k drop. The hook used to set its own `hovering` state between the two
+/// handlers, which left it false across that jump; `ea29aa9` derives it
+/// after both, and this port reads `app.hovered` (the `lastHoveredIndex` ref)
+/// in the cursor rule instead. Same-index moves and empty moves change
 /// nothing, so the frame stays clean.
 pub fn plane_hover(app: &mut App) {
     if app.input.hover.kind != HitKind::Plane {
@@ -317,20 +323,22 @@ pub fn plane_hover(app: &mut App) {
         return;
     };
     let handles = crate::page::build_handles(app);
-    let index = hit_test(&grid, &handles, at).and_then(HandleId::from_index);
+    let markers = crate::page::build_markers(app);
+    let index = match hit_test(&grid, &handles, &markers, at) {
+        Some(HitTarget::Handle(i)) => HandleId::from_index(i),
+        Some(HitTarget::Marker(_)) => Some(HandleId::PointP),
+        None => None,
+    };
     hover_q(app, index, from_px(&grid, at));
     if index == app.hovered {
         return;
     }
-    // The source's statement order: the hit handle's hover (hovering on),
-    // then the previous index's hover-end (hovering off) when the index
-    // changed — a diamond-to-square jump lands hovering false.
+    // The source's statement order: the hit handle's hover, then the previous
+    // index's hover-end when the index changed.
     if let Some(next) = index {
-        app.hovering = true;
         app.state.set_hover(handle_params(next), true);
     }
     if let Some(last) = app.hovered {
-        app.hovering = false;
         app.state.set_hover(handle_params(last), false);
     }
     app.hovered = index;
@@ -341,10 +349,12 @@ pub fn plane_hover(app: &mut App) {
 /// (`CartesianPlane.tsx`'s rule: `dragging || panning` grabs closed, else
 /// `hovering` grabs open, else the crosshair). The press on the plane or a
 /// handle is the `panning` half (the hook sets it on any canvas press and
-/// clears it on release); `app.dragging` is the `dragging` half. Only
-/// while the pointer or press names the plane: anywhere else the regions'
-/// cursors stand. Runs after the dispatch and the retarget, so its cursor
-/// wins. `pub` for the input layer's unpressed-move path.
+/// clears it on release); `app.dragging` is the `dragging` half. The open
+/// hand reads `app.hovered`, the hook's `hovering = hoveredHandleIndex !== -1`
+/// (`ea29aa9`: the state is gone, the index is the value). Only while the
+/// pointer or press names the plane: anywhere else the regions' cursors stand.
+/// Runs after the dispatch and the retarget, so its cursor wins. `pub` for the
+/// input layer's unpressed-move path.
 pub fn plane_cursor(app: &mut App) {
     let on_plane =
         app.input.hover.kind == HitKind::Plane || app.input.pressed.kind == HitKind::Plane;
@@ -353,7 +363,7 @@ pub fn plane_cursor(app: &mut App) {
     }
     let cursor = if app.dragging || app.input.pressed.kind == HitKind::Plane {
         Cursor::Grabbing
-    } else if app.hovering {
+    } else if app.hovered.is_some() {
         Cursor::Grab
     } else {
         Cursor::Crosshair
@@ -381,16 +391,32 @@ pub fn plane_down(app: &mut App, button: PointerButton) {
     // the drag path picks the hover up from the first move.
     if let (Some(grid), Some(px)) = (plane_grid(app), canvas_at(app)) {
         let handles = crate::page::build_handles(app);
-        if let Some(index) = hit_test(&grid, &handles, px).and_then(HandleId::from_index) {
-            let point = from_px(&grid, px);
-            let anchor = handles[index.index()].at;
-            app.grab = [anchor.x - point.x, anchor.y - point.y];
-            app.dragged = Some(index);
-            app.dragging = true;
-            let params = handle_params(index);
-            app.state.scrub_mode[params[0]] = Some(crate::scrub::ScrubMode::Coarse);
-            app.state.scrub_mode[params[1]] = Some(crate::scrub::ScrubMode::Coarse);
-            app.dirty = true;
+        let markers = crate::page::build_markers(app);
+        let hit = hit_test(&grid, &handles, &markers, px);
+        match hit {
+            Some(HitTarget::Handle(i)) => {
+                if let Some(index) = HandleId::from_index(i) {
+                    let point = from_px(&grid, px);
+                    let anchor = handles[index.index()].at;
+                    app.grab = [anchor.x - point.x, anchor.y - point.y];
+                    app.dragged = Some(index);
+                    app.dragging = true;
+                    let params = handle_params(index);
+                    app.state.scrub_mode[params[0]] = Some(crate::scrub::ScrubMode::Coarse);
+                    app.state.scrub_mode[params[1]] = Some(crate::scrub::ScrubMode::Coarse);
+                    app.dirty = true;
+                }
+            }
+            Some(HitTarget::Marker(_)) => {
+                let point = from_px(&grid, px);
+                let p = *app.p_param.get();
+                app.grab = [p - point.x, 0.0];
+                app.state.p_dragging = true;
+                app.dragging = true;
+                app.dragged = Some(HandleId::PointP);
+                app.dirty = true;
+            }
+            None => {}
         }
     }
     plane_cursor(app);
@@ -457,6 +483,11 @@ fn drag_move(app: &mut App) {
             app.h_param.set(point.x + gx, now_ms);
             app.k_param.set(point.y + gy, now_ms);
         }
+        Some(HandleId::PointP) => {
+            let gx = app.grab[0];
+            app.p_param
+                .set(crate::point_format::quantize(point.x + gx), now_ms);
+        }
         // No press without a drag: unreachable while `dragging` holds (set
         // together in `plane_down`), and nothing may flush here.
         None => {}
@@ -507,6 +538,10 @@ pub fn plane_up(app: &mut App) {
                 app.state.scrub_mode[TransformParam::K] = None;
                 app.h_param.flush(&mut app.url);
                 app.k_param.flush(&mut app.url);
+            }
+            Some(HandleId::PointP) => {
+                app.state.p_dragging = false;
+                app.p_param.flush(&mut app.url);
             }
             // No press without a drag: unreachable while `dragging` holds
             // (set together in `plane_down`), and nothing may flush here.
@@ -1071,30 +1106,29 @@ mod tests {
     fn hovering_the_diamond_lights_h_and_k() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         assert_eq!(diamond, [450.0, 450.0]);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
-        assert!(app.hovering);
         assert_eq!(app.hovered, Some(HandleId::Shift));
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
     }
 
     #[test]
-    fn hovering_straight_to_the_square_leaves_pan_with_a_b_lit() {
-        // The new hover fires before the old handle's hover-end (the
-        // source's order), so hovering falls false while a and b light.
+    fn hovering_straight_to_the_square_gives_the_open_hand_with_a_b_lit() {
+        // `ea29aa9`: the hover derives from the hovered index, so a jump
+        // straight from the diamond to the square still shows the open hand
+        // while a and b light and h and k drop.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         let square = handle_px(&app, 1);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         handle_input(&mut app, pointer_to(square), 32 * MS);
-        assert!(!app.hovering);
         assert_eq!(app.hovered, Some(HandleId::Scale));
-        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::A, TransformParam::B]);
     }
 
@@ -1106,7 +1140,6 @@ mod tests {
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         handle_input(&mut app, pointer_to([100.0, 100.0]), 32 * MS);
-        assert!(!app.hovering);
         assert_eq!(app.hovered, None);
         assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
         assert!(app.state.lit().is_empty());
@@ -1157,7 +1190,7 @@ mod tests {
     fn dragging_the_diamond_sets_h_and_k_coarse_with_no_pan() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         assert!(app.dragging);
@@ -1187,11 +1220,11 @@ mod tests {
         assert_eq!(*app.center_param.get(), [0.0, 0.0]);
         // The drag's sets are still inside their 200 ms debounce: the URL
         // holds the opening query.
-        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3");
+        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3&p=5");
         // The loop's param step (not the camera's frame step) fires the
         // debounce past its deadline.
         crate::transform_section::params_step(&mut app, 300);
-        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6");
+        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6&p=5");
         // Letting go flushes both and clears the modes; the pointer sits on
         // the handle, so the open hand and the lit pair stay.
         t += 16;
@@ -1199,7 +1232,7 @@ mod tests {
         assert!(!app.dragging);
         assert_eq!(app.state.scrub_mode[TransformParam::H], None);
         assert_eq!(app.state.scrub_mode[TransformParam::K], None);
-        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6");
+        assert_eq!(app.url.query(), "func=x2&a=2&h=2&k=-3.6&p=5");
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
     }
@@ -1208,7 +1241,7 @@ mod tests {
     fn dragging_the_square_sets_a_and_b() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let square = handle_px(&app, 1);
         assert_eq!(square, [500.0, 350.0]);
         handle_input(&mut app, left_button(square, true), 0);
@@ -1237,7 +1270,7 @@ mod tests {
         assert_eq!(app.camera.center, [0.0, 0.0]);
         t += 16;
         handle_input(&mut app, left_button([460.0, 410.0], false), t * MS);
-        assert_eq!(app.url.query(), "func=x2&a=0.8&h=1&k=-3&b=0.2");
+        assert_eq!(app.url.query(), "func=x2&a=0.8&h=1&k=-3&p=5&b=0.2");
         assert_eq!(app.state.scrub_mode[TransformParam::A], None);
         assert_eq!(app.state.scrub_mode[TransformParam::B], None);
     }
@@ -1248,7 +1281,7 @@ mod tests {
         // retargets the moves): the values follow, the camera never moves.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         handle_input(&mut app, pointer_to([950.0, 450.0]), 16 * MS);
@@ -1260,6 +1293,57 @@ mod tests {
         );
         assert_eq!(*app.k_param.get(), -3.0);
         assert_eq!(app.camera.center, [0.0, 0.0]);
-        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3");
+        assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3&p=5");
+    }
+
+    /// Ported from `CartesianPlane.test.tsx` ("drags a point instead of the
+    /// plane, with an open hand over it and a closed one while held").
+    #[test]
+    fn drags_a_point_instead_of_the_plane_with_an_open_hand_over_it_and_a_closed_one_while_held() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x1&p=2");
+        // P sits at plane (2, 2) = (500, 200) px (x1, so y = x).
+        let p_px = [500.0_f32, 200.0_f32];
+        handle_input(&mut app, pointer_to(p_px), 16 * MS);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
+        // P is under the pointer, so Q is suppressed.
+        assert_eq!(app.state.q_x, None);
+
+        handle_input(&mut app, left_button(p_px, true), 0);
+        assert!(app.dragging);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grabbing);
+        assert!(app.state.p_dragging);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+
+        // +40 px horizontally: p follows the pointer, quantized.
+        let mut t = 0i64;
+        for i in 1..=5 {
+            t += 16;
+            handle_input(
+                &mut app,
+                pointer_to([p_px[0] + 8.0 * i as f32, p_px[1]]),
+                t * MS,
+            );
+            frame(&mut app, t);
+        }
+        assert!(
+            (app.p_param.get() - 2.8).abs() < 1e-9,
+            "p = {}",
+            app.p_param.get()
+        );
+        assert!(app.state.p_dragging);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+        assert_eq!(app.state.q_x, None);
+
+        t += 16;
+        handle_input(
+            &mut app,
+            left_button([p_px[0] + 40.0, p_px[1]], false),
+            t * MS,
+        );
+        assert!(!app.dragging);
+        assert!(!app.state.p_dragging);
+        assert_eq!(app.url.query(), "func=x1&p=2.8");
     }
 }

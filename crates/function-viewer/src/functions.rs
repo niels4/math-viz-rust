@@ -5,7 +5,7 @@
 //! - `src/components/views/FunctionViewer/baseFunctions.ts`: [`base`], the
 //!   function each picker option graphs.
 //! - `src/components/views/FunctionViewer/queryParams.ts`: [`FunctionSlug`],
-//!   [`FUNCTION_SLUGS`], [`FUNC_PARAM`] (key `func`, default `x1`).
+//!   [`FUNCTION_SLUGS`], [`FUNC_PARAM`] (key `func`, default `x2`).
 //! - `src/components/views/FunctionViewer/baseFunctions.ts` (at `5cef052`):
 //!   [`unit_x`], the plane x where a function shows its scale handle.
 //!
@@ -95,7 +95,7 @@ fn parse_func(raw: Option<&str>) -> Option<FunctionSlug> {
     }
 }
 
-/// `funcParam`'s serialiser: the slug itself, always. The default `x1` stays
+/// `funcParam`'s serialiser: the slug itself, always. The default `x2` stays
 /// out of the URL through `url_value`'s serialise-equals-default deletion,
 /// as the TS comment promises.
 // Always `Some`: the `Option` satisfies the def's fn-pointer field type (a
@@ -106,10 +106,10 @@ fn serialize_func(slug: &FunctionSlug) -> Option<String> {
     Some(slug.as_str().to_owned())
 }
 
-/// `funcParam`: the function the plane graphs (key `func`, default `x1`).
+/// `funcParam`: the function the plane graphs (key `func`, default `x2`).
 pub static FUNC_PARAM: QueryParamDef<FunctionSlug> = QueryParamDef {
     key: "func",
-    default: FunctionSlug::X1,
+    default: FunctionSlug::X2,
     debounce_ms: DEFAULT_DEBOUNCE_MS,
     parse: parse_func,
     serialize: serialize_func,
@@ -196,8 +196,8 @@ mod tests {
     }
 
     #[test]
-    fn func_param_reads_x1_by_default_and_falls_back_to_it() {
-        assert_eq!(*QueryParam::new(&FUNC_PARAM, "").get(), FunctionSlug::X1);
+    fn func_param_reads_x2_by_default_and_falls_back_to_it() {
+        assert_eq!(*QueryParam::new(&FUNC_PARAM, "").get(), FunctionSlug::X2);
         assert_eq!(
             *QueryParam::new(&FUNC_PARAM, "func=x3").get(),
             FunctionSlug::X3
@@ -208,11 +208,11 @@ mod tests {
         );
         assert_eq!(
             *QueryParam::new(&FUNC_PARAM, "func=x9").get(),
-            FunctionSlug::X1
+            FunctionSlug::X2
         );
         assert_eq!(
             *QueryParam::new(&FUNC_PARAM, "func=").get(),
-            FunctionSlug::X1
+            FunctionSlug::X2
         );
     }
 
@@ -220,10 +220,10 @@ mod tests {
     fn func_param_keeps_the_default_out_of_the_url() {
         let mut url = Url::from_query("");
         let mut param = QueryParam::new(&FUNC_PARAM, "");
-        param.set_flushed(&mut url, FunctionSlug::X1);
-        assert_eq!(url.query(), "");
         param.set_flushed(&mut url, FunctionSlug::X2);
-        assert_eq!(url.query(), "func=x2");
+        assert_eq!(url.query(), "");
+        param.set_flushed(&mut url, FunctionSlug::X1);
+        assert_eq!(url.query(), "func=x1");
     }
 
     #[test]

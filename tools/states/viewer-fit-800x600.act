@@ -1,0 +1,13 @@
+# viewer-fit-800x600 (fix-viewer-size): the viewer page at an 800 x 600
+# window. The reference's grid gives the header (16, 16, 768, 64), the
+# sidebar (16, 96, 400, 488) with its content clipped at the padding box
+# (client 486) and scrolling, and the canvas (432, 96, 352, 488) - the
+# plane narrower than tall, the case where the row's share of the window
+# is smallest.
+size 800 600
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+shot viewer-fit-800x600

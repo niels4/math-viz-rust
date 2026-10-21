@@ -1,0 +1,13 @@
+# cursor-hero (h11-hero): fix-cursor shape, computed cursor on hero canvas.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+move 940 450
+move 941 450
+wait 300
+shot cursor-hero

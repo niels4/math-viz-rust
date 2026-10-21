@@ -1,8 +1,17 @@
-# handle-hover-move (h7-plane): the pointer from the diamond straight onto
-# the square in ONE move: the index change fires the diamond's hover-end
-# after the square's hover (the TS order), so hovering is false — cursor
-# pan — while a and b light and h and k do not. A stepped move would
-# re-hover; the single jump is the state.
+# handle-hover-move (h7-plane, re-pinned by ea29aa9 at c6754e7): the pointer
+# from the diamond straight onto the square in ONE move. The hover-end and the
+# new hover fire in the same move, but hovering is now the hovered index
+# (ea29aa9): grab-hover. A stepped move would re-hover; the single jump is the
+# state.
+#
+# Re-pinned again at c6754e7 (7686c89): under this query P sits at plane
+# (2, -1) — the square's own place — so the marker beats the coincident handle
+# (the hit test's last-index rule) and P, which has no onHover handler, wins the
+# hover. The lit line is therefore EMPTY, not "a and b lit": read on ref-h11 at
+# c6754e7, WebKit/Chromium/Firefox alike, the cursor is grab-hover and nothing
+# is lit (the same query with p=5, P away from the square, lights a and b).
+# The spec expected a and b lit; the reference reads nothing lit.
+# Behaviour: cursor grab-hover; the lit line empty.
 size 1440 900
 density 2
 scheme dark

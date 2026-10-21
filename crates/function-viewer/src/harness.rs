@@ -535,6 +535,19 @@ fn harness_frame(h: &mut Harness<'_>) {
     for fact in facts {
         crate::input::handle_input(h.app, fact.input, fact.time);
     }
+    // The hero's bitmap renders before any target binds (h10-fit): the
+    // pre-pass ends on the default target, which the bind below replaces.
+    {
+        let size = h.app.size;
+        let pixels = h.app.pixels;
+        let density = if size[0] > 0.0 {
+            pixels[0] as f32 / size[0]
+        } else {
+            1.0
+        };
+        let theme = crate::ui::current_theme(h.app).clone();
+        crate::welcome::render_hero_plane(h.app, &theme, density);
+    }
     if h.window {
         mv_nvg::Framebuffer::bind_default();
     } else if let Some(fb) = &h.fb {

@@ -1,0 +1,21 @@
+# p-hover-box (h11-p-drag): P's 48 px hit box, measured from its centre
+# (1028, 290): 23 px right is inside the box (the open hand, grab-hover),
+# 25 px right is outside it (the pan cursor, and Q at the quantized x 2.50).
+# The box's edge is at 24 px: 24 px right still hits (measured), 25 px does
+# not. Two shots.
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# shot 1 cursor grab-hover, no q line; shot 2 cursor pan, q 2.5.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1029 291
+wait 800
+move 1051 290
+wait 500
+shot p-hover-box-inside
+move 1053 290
+wait 500
+shot p-hover-box-outside

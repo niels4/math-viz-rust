@@ -126,8 +126,11 @@ DOM_JS = "(props) => {" + RUN_JS + r"""
 # The page's boxes by name, from tools/states/boxes.toml (name = CSS selector): each
 # selector's first shown element's box, in CSS px, or the name in `missing` when no shown
 # element matches. A layout the reference hides (a media query's display: none) is left out.
+# A box whose element overflows it (fix-viewer-size: the sidebar's `overflow: auto`)
+# also records the scroll triple, under the same name: scrollTop, scrollHeight and
+# clientHeight.
 FIXTURE_JS = """(pairs) => {
-  const boxes = {}, missing = [];
+  const boxes = {}, missing = [], scroll = {};
   for (const [name, selector] of pairs) {
     const el = document.querySelector(selector);
     if (el === null || getComputedStyle(el).display === 'none' ||
@@ -137,8 +140,11 @@ FIXTURE_JS = """(pairs) => {
     }
     const r = el.getBoundingClientRect();
     boxes[name] = [r.x, r.y, r.width, r.height];
+    if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+      scroll[name] = {top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight};
+    }
   }
-  return {viewport: [innerWidth, innerHeight], boxes, missing};
+  return {viewport: [innerWidth, innerHeight], boxes, missing, scroll};
 }
 """
 
@@ -196,6 +202,19 @@ FIXTURE_STATES = (
     # h10-page: the welcome page's layout at rest (reduced motion, so the
     # hero is the still), read on the welcome route.
     "welcome-default",
+    # h10-fit: the shrunk page's boxes at three window sizes, read on the
+    # welcome route at density 2 (CSS px either way); the layout tests pin
+    # the vitest fit cases against them.
+    "welcome-fit-1024x640",
+    "welcome-fit-1280x1000",
+    "welcome-fit-1280x800",
+    # fix-viewer-size: the viewer page sized from the window, at three sizes
+    # (the row shorter than the sidebar's content at the two small ones, the
+    # grid growing at the large one); the fixture records the sidebar's
+    # scroll triple where the reference's content overflows.
+    "viewer-fit-1024x640",
+    "viewer-fit-800x600",
+    "viewer-fit-1920x1200",
 )
 FIXTURE_ENGINES = ("webkit", "chromium")
 FIXTURE = REPO / "crates" / "function-viewer" / "testdata" / "page.json"

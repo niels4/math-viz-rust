@@ -1,0 +1,24 @@
+# p-drag (h11-p-drag): a press 10 px right of P's centre (CSS (1038, 290),
+# the grab is p − point.x = 2 − 2.2 = −0.2) and a drag +50 px in 5 px steps
+# over 160 ms (handle-drag-shift's pattern, every step hits even one render
+# stale), held: p = 3.00 (point.x 3.2 plus the grab −0.2), P's label
+# (3.00, 9.00), P's drop line (the vertical one: P is above the view at
+# plane y = 9, so the horizontal one is off the canvas), the closed hand
+# (grab-active), the slider thumb at 3 with its dragging look (pDraggingAtom
+# is shared), the x field 3.00, the camera unchanged, a b h k unchanged, no
+# row lit, no ruler, no moved badge (transformDrag is false).
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# cursor grab-active; the lit line empty; the p line 3; the url line p=3.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1038 290
+wait 200
+down
+wait 150
+move 1088 290 over 160
+wait 300
+shot p-drag

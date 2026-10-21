@@ -1158,6 +1158,61 @@ no new tokens (all eight tabled).
   motion draws once (`Module.frames == 1`) and sleeps (`waitevent`, no
   trace lines between shots).
 
+### h11-p-drag (P dragged on the graph: 7686c89; the hover's derived rule: ea29aa9)
+
+- The hit test's order is the source's: the handles first, then the markers
+  that carry a handler, **last index wins**, so a marker beats a coincident
+  handle. `PlotMarker` gains `draggable: bool` (P only; Q never) and the
+  port's `hit_test` returns `HitTarget::Marker(i)`. The marker's box is
+  `max(|dx|, |dy|) <= MARKER_HIT_BOX / 2` with `MARKER_HIT_BOX = 48`
+  (`markerHitBox` in `drawCartesianPlane.ts`), against the diamond's
+  `|dx| + |dy| <= 10` and the square's `max <= 8`. Measured on ref-h11
+  (c6754e7): 24 px off P's centre still hits, 25 px does not, on all four
+  sides — the box is exactly 48 × 48 CSS px.
+- **P's centre at the default x² is (1028, 290) CSS** (measured, not
+  estimated: the bullseye's core is a solid disc of `--point-p`
+  rgb(249, 168, 212) 6 CSS px in radius, its blob spanning device x
+  2045–2066, y 569–590 = CSS 1022.5–1033.0, 284.5–295.0). The old
+  estimate in h11-p-drag's progress file was the label pill's centroid,
+  not the marker's. The origin is (928, 490) CSS: the x-axis line (the
+  2 px `chartAxis` stroke) occupies device rows 978–981.
+- `ea29aa9` supersedes h7-plane's diamond-to-square quirk: the cursor is
+  now the hovered index's, so the jump lands **grab-hover**, not pan. The
+  handle-hover-move state is re-pinned accordingly.
+- **But under handle-hover-move's own query (`func=x2&a=2&h=1&k=-3`) P
+  sits at plane (2, −1) — the square handle's place** — so the marker wins
+  the hit test and P (which has no `onHover` handler) wins the hover:
+  **nothing is lit**, not "a and b lit". The same query with `p=5` lights
+  a and b, which is why the port's `hovering_straight_to_the_square…`
+  test seeds `p=5`. Read on ref-h11 in WebKit, Chromium and Firefox.
+- The P drag's numbers: the press sets `grab.x = p − point.x` (so a press
+  10 px right of P's centre gives the grab −0.2, at 50 px a unit), each
+  move writes `p = quantize(point.x + grab.x)` (the quantum 0.01), the
+  release clears `p_dragging` and flushes `p` at once. The camera never
+  sees the drag's moves. The slider's thumb shows its dragging look
+  while P is dragged on the graph (`pDraggingAtom` is shared with the
+  slider), and the moved badge stays absent (`transformDrag` is false —
+  the transform's scrub modes, not the P drag, drive it).
+- The cursor after a P release is **pan**, not grab-hover, whenever the
+  drag moved P out from under the pointer (the drag in `p-drag` puts P
+  at plane (3, 9), above the view, so the pointer at (1088, 290) is
+  outside P's box). `p-drag-quantized` does read grab-hover, because P
+  stays at (2.06, 4.16) under the pointer. The spec expected grab-hover
+  for both; the reference reads pan for the first two.
+- **The plane's cursor rule must run after the region's cursor, in the
+  same frame.** h7-plane gave the canvas's own rule the last word (the
+  region's cursor knows nothing of the hover, so the open hand over a
+  handle would be lost), but h10-page split the viewer out of
+  `draw_page` and left `update_cursor` (the region's crosshair) at the
+  end of `draw_page`, after `plane_cursor` inside `draw_viewer`: the
+  crosshair then won, and a hovered handle showed the crosshair where
+  the reference shows the open hand. Measured on ref-h11 at `c6754e7`:
+  `handle-hover-shift` reads `grab-hover`, the port read `pan`. The fix
+  is one call in `draw_page` after `update_cursor` (the rule is a
+  function of the state, not of the frame, so the order is the whole
+  fix); `page.rs` has the regression test.
+
+
 ### wrap (the documents, the release check and the fix-forward tail)
 
 - README.md rewritten in math-viz-rust's shape (toolchain trimmed, setup,
@@ -1212,3 +1267,73 @@ no new tokens (all eight tabled).
 ## Long runs
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
+
+## h11-hero
+- Hero link: region over `WelcomeHeroPlane` (box 840x520), HitKind::WelcomeHero appended, Cursor::Pointer, never a focus stop (tabIndex -1). click() navigates on WelcomeHero too. welcome_key unchanged. The region follows CTA's path under the fit.
+- Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
+- Test: opens_the_function_viewer_from_the_animated_graph.
+- Ref-against-ref proof (2026-10-20, phase 2): `welcome-default` on ref-h11 (c6754e7) and on
+  ref-h10 (68e1c7b) in WebKit, threshold 0: 2866 changed pixels in all, of which 165 flat
+  (judge's rule) and every one of them inside `welcome_dev_link`'s box (652.25, 844,
+  135.375 x 16 CSS); 0 flat pixels apart outside it. The one changed pixel outside the box
+  (device 1492, 1720, CSS 746, 860) is the link's last glyph row, a 1-level AA edge on the
+  text (14,23,26 -> 15,24,27): category (a), not a moved box. So the count inside the box
+  is (f) (the dev-pages link the port carries by ruling) and nothing else of the welcome
+  page moved at c6754e7.
+- The hero's screen centre under the fit: page.json's `welcome-fit-1024x640` `hero_plane`
+  box (369.999, 135.399, 596.400, 369.200 CSS) centres at (668.2, 320.0); the click at
+  (668, 320) navigates (route function-viewer, url empty), the region hit-tested through
+  `fit::design_pos` like the CTA's.
+- Sweep H11: 9 states x 16 offsets = 288 runs (native + web-WebKit), 0 crashes; the panic
+  run (`MV_PANIC_AT_FRAME=1`, hero-hover) crashes on both surfaces, 16 of 16 each, so the
+  sweep sees a crash.
+
+## fix-viewer-size phase 1 (2026-10-21)
+
+- The viewer's content row takes the window's share, as math-viz2's grid does
+  (`grid-template-rows: max-content minmax(0, 1fr)`, `height: 100dvh` at
+  `c6754e7`): the sidebar is the Panel scroll container, with Clay's clip
+  (`horizontal: false, vertical: true`, the scroller's `childOffset`) on the
+  sidebar's element. A Clay clip container does NOT take its content's size as
+  its minimum along the clipped axis, which is exactly what lets the row shrink
+  to the window; the probe needed no fallback to an explicit
+  `app.size[1] - 112.0`. The element's id is `SCROLLER_IDS[Panel]` ("Panel"),
+  so `page::SIDEBAR_ID` now names the scroller and the readers below ask for
+  the same element.
+- Clay's border takes no layout space (the browser's `border-box` does): the
+  sidebar's padding is its CSS padding plus its 1 px border, and the scroll
+  container's border is 1.0, so the client height is the box less 2.
+- The paints the port makes over the sidebar's content after the Clay commands
+  (the readout's two lines, the rows' rings and chevrons, the slider, Reset
+  all's focus ring, the Points card's rows) are scissored to the sidebar's
+  padding box; the floats outside it (the ruler, the tips) keep their paint.
+  A scissor is set with `vg.save()` / `vg.scissor` / `vg.restore()` around the
+  passes, since NanoVG's `nvgScissor` is not part of the saved state.
+- The reference's own numbers, measured at `c6754e7` and confirmed by the
+  port's layout test: the header is (16, 16, W - 32, 64), the content row is
+  H - 112 tall from y = 96, the sidebar is (16, 96, 400, H - 112) with a client
+  height of H - 114, and the canvas is (432, 96, W - 448, H - 112). The
+  sidebar's content is 735 CSS px tall at every size, so it scrolls whenever
+  H < 849; the port's Panel maxima are the reference's (209 at 1024 x 640, 249
+  at 800 x 600, 0 at 1920 x 1200).
+- The reference's page never scrolls (`100dvh`): the Page scroller stays
+  inactive, and the port's own `views.json` route, camera, shown transform and
+  cursor lines equal the reference's DOM read at the three sizes.
+- The port's sidebar content height is 736.5 where the reference's flex column
+  reads 735: a half pixel, with no pixel out of place (the cards lay out from
+  the top, so the last visible card sits where the reference's does).
+
+## h10-fit (2026-10-20)
+
+- Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).
+  Measurement at fit 0.71 (1024x640), 6x crop of hero centre (140x140 device px, 19600 px):
+  FBO 3759 differing vs ref, direct 3202 differing; within 8 levels FBO 3423, direct 1700.
+  Full-frame differing ~979k px either way. Direct matches closer; FBO path stays gated.
+- Port-vs-port at threshold 0: native = web-WebKit = web-Firefox exact (0 changed); native vs web-Chromium
+  differs only at AA edges, max 57/255 (within 15/255 tolerance: no, max 57 > 15, but these are
+  WebGL/SwiftShader renderer differences at anti-aliased edges, accepted per plan).
+- Reference clusters (judge, webkit): all named by category; largest ~475k px flat (the full-frame
+  backdrop difference, accepted: port blends in linear light where the browser composites sRGB).
+  Fit-state clusters are 1-4 px (AA hairlines). No port fault found in the ~979k count.
+- Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; panic run seen.
+- cargo test: 565 passed; ./build.sh check green.

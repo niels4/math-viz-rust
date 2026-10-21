@@ -356,6 +356,7 @@ mod tests {
             label: None,
             drop_lines: false,
             guide: false,
+            draggable: false,
         }
     }
 

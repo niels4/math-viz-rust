@@ -1,0 +1,11 @@
+# welcome-fit-1280x800 (h10-fit): the welcome page at fit 0.88 in a
+# 1280 x 800 window, dark Arctic Ice, reduced motion.
+route welcome
+size 1280 800
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+shot welcome-fit-1280x800

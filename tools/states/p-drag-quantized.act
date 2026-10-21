@@ -1,0 +1,24 @@
+# p-drag-quantized (h11-p-drag): a press on P's centre (the grab is p −
+# point.x = 0) and a 3 px move: p = 2.06 exactly (the drag writes
+# quantize(point.x + grab), the quantum 0.01). The release flushes the url
+# at once: p=2.06.
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# the held shot cursor grab-active, the p line 2.06, the url line p=2.06;
+# after the release cursor grab-hover (the pointer is still on P), the p
+# line 2.06.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1028 290
+wait 200
+down
+wait 150
+move 1031 290
+wait 300
+shot p-drag-quantized-held
+up
+wait 600
+shot p-drag-quantized

@@ -1,0 +1,14 @@
+# hero-hover (h11-hero): the pointer at the hero's centre (about (940, 450)),
+# settled by a 1 px nudge; the cursor line pointer; the still hero.
+route welcome
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+move 940 450
+move 941 450
+wait 300
+shot hero-hover

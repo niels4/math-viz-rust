@@ -144,11 +144,11 @@ pub struct App {
     /// The flip toggle's state: the pending flip, its spring, the press
     /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
     pub flip: crate::flip::FlipState,
-    /// The plane's handle hover: the cursor rule's `hovering` and the last
-    /// hovered handle (`None` for none), as `CartesianPlane.tsx`'s
-    /// `hovering` state and `lastHoveredIndex` ref do (h7-plane;
-    /// `plane_input.rs` owns the dispatch).
-    pub hovering: bool,
+    /// The last hovered handle (`None` for none), the `lastHoveredIndex`
+    /// ref of `useMouseHandles.ts` (h7-plane; `plane_input.rs` owns the
+    /// dispatch). It carries what the hook's `hovering` state did: the
+    /// cursor rule reads it directly as "the pointer is on a handle"
+    /// (`ea29aa9`, which deleted the separate state).
     pub hovered: Option<HandleId>,
     /// A plane handle drag in flight, with the press's grab offset in plane
     /// units (the `dragging` state and the `grab` ref at `251c080`).
@@ -195,6 +195,12 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub welcome: crate::welcome_step::WelcomeState,
+    /// The hero plane's offscreen bitmap at the device ratio (h10-fit;
+    /// `welcome.rs` owns the composite, `page.rs` paints it; `None` until
+    /// the first welcome frame).
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub hero_plane: Option<crate::welcome::HeroPlaneCache>,
 }
 
 impl App {
@@ -337,7 +343,7 @@ impl App {
             // query (`selector::init_func_from_url`).
             func_param: crate::url::QueryParam::new(&crate::functions::FUNC_PARAM, ""),
             shown: crate::plot::Shown::new(crate::functions::base(
-                crate::functions::FunctionSlug::X1,
+                crate::functions::FUNC_PARAM.default,
             )),
             plot_frame_at: None,
             plot_hold: false,
@@ -361,7 +367,6 @@ impl App {
             scrub_resting: None,
             overlay_tip_since: None,
             flip: crate::flip::FlipState::new(),
-            hovering: false,
             hovered: None,
             dragging: false,
             grab: [0.0, 0.0],
@@ -373,6 +378,7 @@ impl App {
             slider_edit: false,
             backdrop: None,
             welcome: crate::welcome_step::WelcomeState::fresh(),
+            hero_plane: None,
         }
     }
 }
