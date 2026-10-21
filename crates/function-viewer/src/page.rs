@@ -412,6 +412,15 @@ pub fn draw_page(app: &mut App, now: crate::app_loop::Time) {
         snapshot_frame(app);
     }
     crate::input::update_cursor(app);
+    // The canvas's own cursor wins per frame (h7-plane): the regions'
+    // cursor doesn't know the hover rule (a diamond-to-square jump leaves
+    // pan under the pointer), so the state rule re-resolves after every
+    // layout's retarget. It must come after `update_cursor` above: the
+    // region's cursor (the crosshair) knows nothing of the hover, so the
+    // other order leaves the crosshair under a hovered handle, where the
+    // reference shows the open hand (measured on ref-h11 at `c6754e7`:
+    // `handle-hover-shift` reads grab-hover, the port read pan).
+    crate::plane_input::plane_cursor(app);
 }
 
 /// Paints the welcome page's frame: the backdrop h10-hero fills in, the
@@ -587,11 +596,6 @@ fn draw_viewer(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Tim
     // The P edit tip's arrows on its plate, as the scrub tip's
     // (h8-points-field).
     crate::x_field::paint_tip_arrows(app);
-    // The canvas's own cursor wins per frame (h7-plane): the regions'
-    // cursor doesn't know the hover rule (a diamond-to-square jump leaves
-    // pan under the pointer), so the state rule re-resolves after every
-    // layout's retarget.
-    crate::plane_input::plane_cursor(app);
 }
 
 /// Paints the top bar's shadow: 0 6 px 18 px in the shadow colour
@@ -846,5 +850,55 @@ mod tests {
         assert_eq!(shown.h, 2.0);
         let handles = build_handles(&app);
         assert_eq!((handles[0].at.x, handles[0].at.y), (0.0, 0.0));
+    }
+
+    /// The plane's own cursor rule wins over the canvas region's cursor
+    /// (h7-plane's per-frame cursor win). h10-page's split of the viewer
+    /// out of `draw_page` left `update_cursor` (the region's crosshair)
+    /// after the plane's rule, so a hovered handle showed the crosshair
+    /// where the reference shows the open hand: measured on ref-h11 at
+    /// `c6754e7`, `handle-hover-shift` reads `grab-hover`, and the port
+    /// read `pan`.
+    #[test]
+    fn the_plane_cursor_rule_wins_over_the_canvas_region_cursor() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1440.0, 900.0];
+        app.pixels = [2880, 1800];
+        app.url = crate::url::Url::new("#function-viewer?func=x2&a=2&h=1&k=-3&p=5");
+        // The diamond's page px (the shift handle at plane (1, -3)).
+        app.hovered = Some(crate::plane_input::HandleId::Shift);
+        let mut regions = app.input.regions.clone();
+        regions.push(crate::input::Region {
+            hit: crate::input::Hit {
+                kind: crate::input::HitKind::Plane,
+                index: 0,
+            },
+            r#box: mv_sys::clay::BoundingBox {
+                x: 432.0,
+                y: 96.0,
+                width: 992.0,
+                height: 788.0,
+            },
+            cursor: crate::input::Cursor::Crosshair,
+            pressed: crate::input::Cursor::Grabbing,
+            radius: crate::ui::corner_radius_all(0.0),
+            clip: None,
+            z: 0,
+        });
+        app.input.regions = regions;
+        app.input.hover = crate::input::Hit {
+            kind: crate::input::HitKind::Plane,
+            index: 0,
+        };
+        app.input.over = true;
+        // The region's cursor alone: the crosshair.
+        crate::input::update_cursor(&mut app);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        // The plane's rule after it: the open hand, as the reference.
+        crate::plane_input::plane_cursor(&mut app);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
     }
 }
