@@ -180,6 +180,41 @@ theme-demo page and the dev pages' links, `main.tsx`'s mounting, `useHotReload`,
 the test harness under `src/test/`, `scripts/`, the `docs/` build, and the
 screen-reader live region (`decisions.md` has the reasons).
 
+## Your own checks
+
+What the harness can't measure, because it runs headless with synthesised input: no display, no real pointer or keyboard, Playwright's WebKit instead of Safari.
+
+- **A real trackpad and mouse on the plane:** drag, flick (a fling glides on and eases to a stop), wheel and two-finger scroll zoom about the cursor, pinch to zoom. Check: in the native window and in Safari, beside math-viz2 in Safari.
+- **The scrub drag with a real mouse:** a value box drag (moves after 3 px; Shift fine at a tenth, Ctrl snaps; the ruler rides under k's row), the wheel over a box, arrow nudges, Esc revert, double-click reset, both tips. Check: in the native window and in Safari.
+- **The handle and slider drags with a real mouse:** the shift diamond and scale square (both params lit, rulers out while held), the x-of-P slider (thumb jumps to the pointer, arrows/Home/End, Enter opens the field). Check: in the native window and in Safari.
+- **Dragging P along the curve with a real mouse:** the open hand over P, the closed one while it is held, and the slider's thumb showing its dragging look. Check: in the native window and in Safari, beside math-viz2 in Safari.
+- **Clicking the hero mid-loop:** the welcome page's graph is a link into the viewer, so a click on it navigates and the cursor is a hand over it. Check: the native window and Safari, while the welcome loop plays.
+- **The welcome loop at real speed:** the tour through scrubs and switches, natively and in Safari (the harness judges paused-clock frames, not motion). Check: `build/release/native/function-viewer` left running on the welcome page, and the web build in Safari.
+- **The fit in a real window:** resize a Safari window across 1024x640, 1280x1000, 1280x800 and 768x1024 (every part inside, no scrolling; the menu under the gear at natural size in a small window; the plane sharp on a 2x and a 1x screen). Check: the web build in a real Safari window.
+- **The sidebar's scroll:** the sidebar's content is taller than a short window, so it scrolls; a wheel over it scrolls the panel, a wheel over the plane zooms. Check: the native window and Safari at 1024x640.
+- **Safari itself:** the web build beside math-viz2 at 1440x900. Tab walks fields in Safari only with "Press Tab to highlight each item" on (the port follows the Chromium order); buttons don't take focus on click there.
+- **The composited colour on your display:** Digital Color Meter in Display P3 on a param chip in the native window, in the web build in Safari, and in math-viz2 in Safari -- the same.
+- **Text weight under macOS smoothing:** the browsers' text carries more ink than the port's at small sizes; kept as drawn. Check: the title and the readout beside math-viz2 in Safari.
+- **The system theme flipping the running app:** Appearance Light/Dark in System with the menu open and closed (the page follows at once with its 250 ms fade); Reduce motion on (switches land at once, no frames).
+- **The view transition's feel:** the 250 ms linear cross-fade on a theme pick, real trackpad and display vs the paused clock.
+- **Prefs across a real restart:** pick a theme and a mode, quit, launch again: the same (`prefs.json` under the app's own path); in Safari a reload keeps them (the port's own keys); math-viz2's own settings untouched either way.
+- **The web build's URL:** reload and back/forward across `/` and `/#function-viewer` (history entries from the wordmark, the button and the hero), a theme pick recolours both routes.
+- **The popover and menu feel:** the settings menu's open/close (its 160 ms animation is skipped in the port), the macOS focus ring vs the port's ring, the rest tip's 400 ms delay, the typing tip while typing.
+- **The Arctic Ice Secondary by eye:** the recolored Secondary against the card background, dark room and bright room, in a live window.
+- **A Windows and a Linux build:** build and run each, and its `--script` frames against macOS's (`tools/run diff`).
+
+## Known gaps
+
+What the port leaves out, one line each with how you check it yourself.
+
+- **Screen readers.** SDL and Clay expose no accessibility tree, so a screen reader finds nothing on the page; the keyboard model (Tab, focus rings, every key) is what remains. Check: VoiceOver over the native window and the web build.
+- **The not-found page and the dev pages.** The template's not-found route, the developer theme-demo page and the two links that point at them are not ported (the user's ruling of 2026-10-20: the dev pages and their links are out of scope); an unknown hash shows the welcome page. The port's settings menu is **44 CSS px shorter** than math-viz2's, because the excluded "Developer pages" row (36 px plus its 8 px gap) is not drawn; the row's own box (`menu_dev_link`, 278 x 36 CSS) and the 44 px of card it leaves below the port's card bottom are the run's category (f), 11 506 of 31 580 px at 1024 x 640. Check: any other `#word` in the web build, and the foot of the settings menu.
+- **The font-loading state.** Natively fonts are always loaded, so labels always show; a cold web load may flash fallback faces before the fonts arrive, unmeasured. Check: a cold load with the cache off.
+- **Click-to-caret placement.** Clicking into a typing field collapses the caret to the end; only whole scalars delete. Check: click mid-text while typing, natively.
+- **Touch.** One finger may act as the mouse, but pinch and multi-touch are untested on a phone or tablet. Check: the web build in Safari on an iPhone and an iPad.
+- **Static text doesn't select.** Field text selects while editing, but static labels never do. Check: drag across a row name in the port.
+
+
 ## Release
 
 `./build.sh release` builds `build/release/native/function-viewer` and
