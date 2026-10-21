@@ -962,6 +962,7 @@ mod tests {
         assert_eq!(app.url.query(), "");
     }
 
+    #[test]
     fn navigation_sets_the_route_and_enters_it() {
         // Tests run natively; on the web the same sync-and-enter runs
         // beside the `location.hash` assignment. The button to
