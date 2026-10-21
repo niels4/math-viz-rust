@@ -1173,6 +1173,18 @@ no new tokens (all eight tabled).
   outside P's box). `p-drag-quantized` does read grab-hover, because P
   stays at (2.06, 4.16) under the pointer. The spec expected grab-hover
   for both; the reference reads pan for the first two.
+- **The plane's cursor rule must run after the region's cursor, in the
+  same frame.** h7-plane gave the canvas's own rule the last word (the
+  region's cursor knows nothing of the hover, so the open hand over a
+  handle would be lost), but h10-page split the viewer out of
+  `draw_page` and left `update_cursor` (the region's crosshair) at the
+  end of `draw_page`, after `plane_cursor` inside `draw_viewer`: the
+  crosshair then won, and a hovered handle showed the crosshair where
+  the reference shows the open hand. Measured on ref-h11 at `c6754e7`:
+  `handle-hover-shift` reads `grab-hover`, the port read `pan`. The fix
+  is one call in `draw_page` after `update_cursor` (the rule is a
+  function of the state, not of the frame, so the order is the whole
+  fix); `page.rs` has the regression test.
 
 
 
