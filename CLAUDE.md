@@ -248,12 +248,23 @@ One block per milestone, appended in merge order; empty until the first mileston
   white text) while the text keeps the focused ink; it paints only while
   focused (blur keeps the caret, drops the paint). No caret bar appears in
   headless screenshots (3/3 absent), so none paints.
-- Under the harness's density-2 pages, Chromium under-applies wheel notches
-  (two -100 notches read 1.04 there, 1.06 in every other engine/target pair
-  including dsf-1 Chromium probes; a page-level listener still reports -100
-  everywhere — unrooted, past the page): ref and port agree per engine, so
-  web-chromium judges against ref-chromium directly and native-vs-web-chromium
-  carries the digit as a recorded input quirk, not a defect.
+- Under the harness's density-2 pages, headless Chromium reports **half the
+  wheel delta to a page's DOM listeners** and scrolls its own content by the
+  full amount. Measured: it holds on a bare HTML page too and in real Chrome
+  headless, so it is not Playwright's; headed Chrome 155 at scale 2 reports the
+  full delta. The reference's sidebar is scrolled by the browser and the port's
+  by the app, so in the harness's web-chromium the port's sidebar scrolls half
+  as far (150 / 50 / 20 against the reference's 209 / 100 / 40). At scale 1,
+  under a synthetic full-delta WheelEvent at scale 2, and in headed Chrome 155
+  at scale 2, the port scrolls exactly as the reference does (209 / 100).
+  Category (e), a harness quirk; evidence
+  `/opt/dev/tmp/math-viz2-rust/fix-viewer-size/review/dsf-proof/reads.txt`.
+  The zoom notch is the same cause: two -100 notches read 1.04 there, 1.06 in
+  every other engine/target pair (including dsf-1 Chromium probes; a
+  page-level listener still reports -100 everywhere — unrooted, past the
+  page). Ref and port agree per engine, so web-chromium judges against
+  ref-chromium directly and native-vs-web-chromium carries the digit as a
+  recorded input quirk, not a defect.
 - A shot never iterates: debounced state needs a wait before the shot, or
   the framebuffer predates the deadline while the URL line already moved on.
 - The caret is scalar indices (a browser deletes one UTF-16 unit; SDL only
@@ -1342,6 +1353,10 @@ no new tokens (all eight tabled).
 
 ### fix-viewer-size phase 2: the sidebar's wheel scroll (2026-10-21)
 
+The scroll is **ported** (the user's ruling of 2026-10-21, relayed by claude0-88:
+the port's sidebar scrolls in short windows, as math-viz2's does). The wheel arm
+and its five states are not a separate commit any more; phase 2 stands.
+
 - **The reference's rule, measured on ref-h11 (`c6754e7`) in WebKit, Chromium
   and Firefox alike** (`.local/probe/wheel_ref*.py`): a wheel over the sidebar
   turns its pixels into the sidebar's `scrollTop`, clamped — 300 px over 735 of
@@ -1362,10 +1377,10 @@ no new tokens (all eight tabled).
   takes the wheel first. The scroll sets `app.dirty`, so the next layout
   applies the offset as Clay's clip `childOffset`.
 - **The `scroll` views line**: the Panel's offset in CSS px, written whenever
-  it moves, beside the port's other behaviour lines. `act.py`'s
-  `port_scroll`/`reference_scroll` read it against the reference's sidebar
-  `scrollTop` (the second child of the page div, the same element the
-  fixture's scroll triple names).
+  it moves, beside the port's other behaviour lines. The reference's own
+  `scrollTop` (the sidebar, the second child of the page div, the same element
+  the fixture's scroll triple names) is read by the probe, not by the harness:
+  `act.py`'s two scroll readers had no caller and are gone (wrap-w2b).
 - **The states' coordinates come from the reference's own DOM**, not from
   arithmetic: at 1024 x 640 the x³ cell is at (216, 162) 87 x 34, and a's
   value box at (278, 434.5) 107 x 32; after a 300 px wheel the cell is at
@@ -1377,17 +1392,15 @@ no new tokens (all eight tabled).
 - **The sidebar's element name has one owner**: `scroll::PANEL_ID` (the
   scroller's table), with `page::SIDEBAR_ID` pointing at it and a test that
   pins the two together.
-- **The x³ cell cannot be clicked at a 300 px wheel**: the cell lands at
-  y −47, off the window and under the top bar's box, and the click lands on
-  the top bar (the reference's own hash stays bare). A 40 px wheel puts it
-  at (216, 122), clear of the top bar, and the click reaches it. The
-  states' coordinates come from the reference's DOM, not from arithmetic.
 - **The readout's inner spacing is not this milestone's**: the form line's
-  terms sit 2 to 5 CSS px off the reference's (the `h` term's chip at CSS
+  terms sat 2 to 5 CSS px off the reference's (the `h` term's chip at CSS
   159 against the port's 154.5), the same offsets as at rest. Wrap's
-  `17c8bcf` ("readout spacing from the CSS") is the fix; measured with it,
-  the five states' WebKit flat-apart counts fall from 279 / 654 / 52 / 333 /
-  67 to 0 / 15 / 0 / 0 / 15.
+  `17c8bcf` ("readout spacing from the CSS") is the fix. Measured on the
+  tree that carries it, against ref-h11 in WebKit, the five states' flat-apart
+  counts are **0 / 15 / 0 / 0 / 15** (`sidebar-scroll`, `-part`, `-click`,
+  `-hover`, `-plane`; wrap-w2b's judge, `.local/shots/wrap-w2b/judgment/`),
+  against 279 / 654 / 52 / 333 / 67 before it. The 15 px that remain are the
+  value line's `x` glyph, category (a).
 
 ### fix-fit-menu (2026-10-21)
 

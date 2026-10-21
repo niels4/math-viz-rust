@@ -49,7 +49,7 @@ What kept it fast and honest:
 - **Reviews beside merges.** No merge waited for a review; findings became fix-forward work.
 - **A human, lightly.** I answered a handful of questions, reported two things I saw, and merged to main when I wanted to deploy.
 
-The Function Viewer reached parity with the original in under nine hours; the welcome screen followed the same morning, and the welcome page's link into the viewer and the point dragged on the graph came after that. About 330 commits, 640 unit tests and 240 scripted states across three browser engines and the native build. The first attempt, a port of an Odin version of the app, had taken 28 hours the day before; this run reused its libraries, harness and lessons.
+The Function Viewer reached parity with the original in under nine hours; the welcome screen followed the same morning, and the welcome page's link into the viewer and the point dragged on the graph came after that. 337 commits, 644 unit tests and 237 scripted states across three browser engines and the native build. The first attempt, a port of an Odin version of the app, had taken 28 hours the day before; this run reused its libraries, harness and lessons.
 
 The native app was verified on macOS and the web app in WebKit, Chromium and Firefox; the Windows and Linux builds come from the same sources and are untested so far. Deliberate differences from the original are listed in `decisions.md`.
 
