@@ -1132,6 +1132,49 @@ no new tokens (all eight tabled).
   motion draws once (`Module.frames == 1`) and sleeps (`waitevent`, no
   trace lines between shots).
 
+### h11-p-drag (P dragged on the graph: 7686c89; the hover's derived rule: ea29aa9)
+
+- The hit test's order is the source's: the handles first, then the markers
+  that carry a handler, **last index wins**, so a marker beats a coincident
+  handle. `PlotMarker` gains `draggable: bool` (P only; Q never) and the
+  port's `hit_test` returns `HitTarget::Marker(i)`. The marker's box is
+  `max(|dx|, |dy|) <= MARKER_HIT_BOX / 2` with `MARKER_HIT_BOX = 48`
+  (`markerHitBox` in `drawCartesianPlane.ts`), against the diamond's
+  `|dx| + |dy| <= 10` and the square's `max <= 8`. Measured on ref-h11
+  (c6754e7): 24 px off P's centre still hits, 25 px does not, on all four
+  sides — the box is exactly 48 × 48 CSS px.
+- **P's centre at the default x² is (1028, 290) CSS** (measured, not
+  estimated: the bullseye's core is a solid disc of `--point-p`
+  rgb(249, 168, 212) 6 CSS px in radius, its blob spanning device x
+  2045–2066, y 569–590 = CSS 1022.5–1033.0, 284.5–295.0). The old
+  estimate in h11-p-drag's progress file was the label pill's centroid,
+  not the marker's. The origin is (928, 490) CSS: the x-axis line (the
+  2 px `chartAxis` stroke) occupies device rows 978–981.
+- `ea29aa9` supersedes h7-plane's diamond-to-square quirk: the cursor is
+  now the hovered index's, so the jump lands **grab-hover**, not pan. The
+  handle-hover-move state is re-pinned accordingly.
+- **But under handle-hover-move's own query (`func=x2&a=2&h=1&k=-3`) P
+  sits at plane (2, −1) — the square handle's place** — so the marker wins
+  the hit test and P (which has no `onHover` handler) wins the hover:
+  **nothing is lit**, not "a and b lit". The same query with `p=5` lights
+  a and b, which is why the port's `hovering_straight_to_the_square…`
+  test seeds `p=5`. Read on ref-h11 in WebKit, Chromium and Firefox.
+- The P drag's numbers: the press sets `grab.x = p − point.x` (so a press
+  10 px right of P's centre gives the grab −0.2, at 50 px a unit), each
+  move writes `p = quantize(point.x + grab.x)` (the quantum 0.01), the
+  release clears `p_dragging` and flushes `p` at once. The camera never
+  sees the drag's moves. The slider's thumb shows its dragging look
+  while P is dragged on the graph (`pDraggingAtom` is shared with the
+  slider), and the moved badge stays absent (`transformDrag` is false —
+  the transform's scrub modes, not the P drag, drive it).
+- The cursor after a P release is **pan**, not grab-hover, whenever the
+  drag moved P out from under the pointer (the drag in `p-drag` puts P
+  at plane (3, 9), above the view, so the pointer at (1088, 290) is
+  outside P's box). `p-drag-quantized` does read grab-hover, because P
+  stays at (2.06, 4.16) under the pointer. The spec expected grab-hover
+  for both; the reference reads pan for the first two.
+
+
 
 ## Long runs
 
