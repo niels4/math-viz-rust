@@ -510,7 +510,7 @@ fn icon(
 /// shrinks the canvas (h10-fit's item 2; the planner's expected winner), or
 /// paints vector-direct under the root scale. Flipped for the measurement
 /// run; the kept path stays.
-pub const HERO_FBO: bool = true;
+pub const HERO_FBO: bool = false;
 
 /// The hero plane's offscreen bitmap: the canvas bitmap at the device ratio
 /// of the design size (`useUpdateCanvas`: `max(1, round(838 · dpr)) × max(1,
