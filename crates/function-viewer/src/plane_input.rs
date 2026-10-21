@@ -1100,7 +1100,7 @@ mod tests {
     fn hovering_the_diamond_lights_h_and_k() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         assert_eq!(diamond, [450.0, 450.0]);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
@@ -1116,7 +1116,7 @@ mod tests {
         // while a and b light and h and k drop.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         let square = handle_px(&app, 1);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
@@ -1184,7 +1184,7 @@ mod tests {
     fn dragging_the_diamond_sets_h_and_k_coarse_with_no_pan() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         assert!(app.dragging);
@@ -1235,7 +1235,7 @@ mod tests {
     fn dragging_the_square_sets_a_and_b() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let square = handle_px(&app, 1);
         assert_eq!(square, [500.0, 350.0]);
         handle_input(&mut app, left_button(square, true), 0);
@@ -1275,7 +1275,7 @@ mod tests {
         // retargets the moves): the values follow, the camera never moves.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // +p=5: P is parked away from the handles. Under the x² default (h11-default) P would sit at plane (2, -1) -- the square handle's own place -- and the marker would win the hit test (the last-index rule), so the reference reads the same thing: handle-hover-move lights nothing (see .local/briefs/progress/h11-p-drag.md). The TS's handle tests render no P marker; the port's drive the whole App.
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         handle_input(&mut app, pointer_to([950.0, 450.0]), 16 * MS);
@@ -1296,8 +1296,8 @@ mod tests {
     fn drags_a_point_instead_of_the_plane_with_an_open_hand_over_it_and_a_closed_one_while_held() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x&p=2");
-        // P sits at plane (2, 2) = (500, 200) px.
+        seed_view(&mut app, "func=x1&p=2");
+        // P sits at plane (2, 2) = (500, 200) px (x1, so y = x).
         let p_px = [500.0_f32, 200.0_f32];
         handle_input(&mut app, pointer_to(p_px), 16 * MS);
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
@@ -1338,6 +1338,6 @@ mod tests {
         );
         assert!(!app.dragging);
         assert!(!app.state.p_dragging);
-        assert_eq!(app.url.query(), "func=x&p=2.8");
+        assert_eq!(app.url.query(), "func=x1&p=2.8");
     }
 }
