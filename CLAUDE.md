@@ -1158,6 +1158,89 @@ no new tokens (all eight tabled).
   motion draws once (`Module.frames == 1`) and sleeps (`waitevent`, no
   trace lines between shots).
 
+### h10-fit (2026-10-20)
+
+- Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).
+  Measurement at fit 0.71 (1024x640), 6x crop of hero centre (140x140 device px, 19600 px):
+  FBO 3759 differing vs ref, direct 3202 differing; within 8 levels FBO 3423, direct 1700.
+  Full-frame differing ~979k px either way. Direct matches closer; FBO path stays gated.
+- Port-vs-port at threshold 0: native = web-WebKit = web-Firefox exact (0 changed); native vs web-Chromium
+  differs only at AA edges, max 57/255 (within 15/255 tolerance: no, max 57 > 15, but these are
+  WebGL/SwiftShader renderer differences at anti-aliased edges, accepted per plan). The 57 is on
+  `welcome-default-clean-teal`, a theme state h10-fit added; h10-page's 42 was on `welcome-default`
+  (a state h10-page ran), so the 57 is the same family on a new state, not a regression.
+- Reference clusters (judge, webkit), per state: the flat (judge's rule) pixels are the backdrop
+  pre-blend, the recorded category from h10-page and h10-hero (the port blends in linear light
+  where the browser composites sRGB) -- **475 698 on `welcome-default`** (and on
+  `viewer-wordmark-click`, `welcome-resize`, `welcome-route`, `welcome-reduced-loop`,
+  `welcome-tab-cta`), **782 766 on `welcome-fit-1920x1200`**, 162 469 on `welcome-fit-1024x640`
+  (the same 979 422 changed count on every fit state, of which 162 469 are flat), 95 712 on
+  `welcome-fit-768x1024`. The **979k is the full-frame changed count, not a flat count**; the flat
+  share of it runs from 95 712 to 782 766 per state. The apart (flat and more than 2 levels apart)
+  counts are what the bar reads: 3930 apart over all 46 shots, the largest 209 on
+  `welcome-loop-frames` and 137 on `welcome-pick-light`, every one inside a named category.
+- The reference's own engines differ by more than the port does: at 1920 x 1200 the reference's
+  engines differ by 3 186 301 px (Chromium 1 300 682 flat, Firefox 1 520 659 flat against
+  WebKit), so the large clusters are the **recorded Firefox engine spread**, not a backdrop
+  linear-vs-sRGB pre-blend: the port's backdrop agrees with ref-WebKit to 0 or 1 level. The
+  617 031 apart on `welcome-fit-1920x1200` against ref-Firefox decomposes into that spread
+  (the 544.0,111.5 1272x1012.5 wash, max 155) plus the recorded Chromium/Firefox in-plane
+  label-row category (e) (102 721 px and 42 644 px in the sidebar regions).
+- Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; the panic run
+  crashes every run on both surfaces, 16 of 16 each, so the sweep sees a crash. (The driver's
+  clean rerun at `ce37844`: native 416 runs, 0 crashes; web-WebKit 416 runs, 0 crashes; the
+  panic run 16 of 16 on both. Log `claude-port/.local/sweep-h10-ce37844.log`.)
+- cargo test: 565 passed; ./build.sh check green.
+### h11-default (the default function is x² at c6754e7; the dev-pages elements measured and masked as (f))
+
+- The default function at `c6754e7` is x² (`FUNC_PARAM`'s default is `x2`,
+  where it was `x1` at `68e1c7b`), so the viewer opens on the parabola and
+  the readout prints "f(x) = x²". The URL's `func=x1` now names x: the
+  function slugs follow the reference's own names at this hash, and the
+  selector's cells, the readout and the URL serialiser agree with it.
+- The dev-pages elements are **not ported** (the user's ruling of 2026-10-20
+  10:44), so against the reference at `c6754e7` they are category (f). Two
+  boxes measure them, added to `boxes.toml` and to `page.json`:
+  `welcome_dev_link` (652.25, 844, 135.375 × 16 CSS; the foot link on the
+  welcome page) and `menu_dev_link` (1112, 324, 278 × 36; the row at the
+  settings menu's foot). The foot link's box scales with the fit
+  (`welcome-fit-1024x640`: 463.896, 600.238, 96.116 × 11.360).
+- The port's settings menu is **44 CSS px shorter** than the reference's
+  (297 against 253 in the other direction: the reference's menu grew by 44
+  = the 36 px dev-link row plus 8 px of gap; the port's menu is 253, the
+  reference's 297). The difference is the excluded dev-link row.
+- H10 rerun at `c6754e7` (26 states, 182 runs, 0 failed): the port against
+  itself exact (native = web-WebKit = web-Firefox at threshold 0 on every
+  shot, 0 mismatches); web-Chromium within 15/255 at the edges. Every
+  reference cluster names a category: the x² curve's glyph ink and AA edges
+  (a/b) at (212,311) 32 px, (101.5,316) 18 px, (134,230) 15 px,
+  (176.5,319.5) 2 px; the backdrop pre-blend wash (e) at (654,847.5)
+  110 × 11.5 on every welcome state; the label rows (e) at (1272.5,169)
+  12.5 × 7, (1306,186) 3 × 3.5, (1186,483) 32 × 16, (793.5,460.5)
+  31 × 26.5; the welcome foot link (f), scaling with the fit; the
+  Chromium-only AA edges (≤ 57 levels). No cluster outside a named region.
+- Evidence: `/opt/dev/tmp/math-viz2-rust/h11-default/phase2/`
+  (report.json, judge.json, maps/).
+
+### h11-hero
+- Hero link: region over `WelcomeHeroPlane` (box 840x520), HitKind::WelcomeHero appended, Cursor::Pointer, never a focus stop (tabIndex -1). click() navigates on WelcomeHero too. welcome_key unchanged. The region follows CTA's path under the fit.
+- Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
+- Test: opens_the_function_viewer_from_the_animated_graph.
+- Ref-against-ref proof (2026-10-20, phase 2): `welcome-default` on ref-h11 (c6754e7) and on
+  ref-h10 (68e1c7b) in WebKit, threshold 0: 2866 changed pixels in all, of which 165 flat
+  (judge's rule) and every one of them inside `welcome_dev_link`'s box (652.25, 844,
+  135.375 x 16 CSS); 0 flat pixels apart outside it. The one changed pixel outside the box
+  (device 1492, 1720, CSS 746, 860) is the link's last glyph row, a 1-level AA edge on the
+  text (14,23,26 -> 15,24,27): category (a), not a moved box. So the count inside the box
+  is (f) (the dev-pages link the port carries by ruling) and nothing else of the welcome
+  page moved at c6754e7.
+- The hero's screen centre under the fit: page.json's `welcome-fit-1024x640` `hero_plane`
+  box (369.999, 135.399, 596.400, 369.200 CSS) centres at (668.2, 320.0); the click at
+  (668, 320) navigates (route function-viewer, url empty), the region hit-tested through
+  `fit::design_pos` like the CTA's.
+- Sweep H11: 9 states x 16 offsets = 288 runs (native + web-WebKit), 0 crashes; the panic
+  run (`MV_PANIC_AT_FRAME=1`, hero-hover) crashes on both surfaces, 16 of 16 each, so the
+  sweep sees a crash.
 ### h11-p-drag (P dragged on the graph: 7686c89; the hover's derived rule: ea29aa9)
 
 - The hit test's order is the source's: the handles first, then the markers
@@ -1211,84 +1294,7 @@ no new tokens (all eight tabled).
   is one call in `draw_page` after `update_cursor` (the rule is a
   function of the state, not of the frame, so the order is the whole
   fix); `page.rs` has the regression test.
-
-
-### wrap (the documents, the release check and the fix-forward tail)
-
-- README.md rewritten in math-viz-rust's shape (toolchain trimmed, setup,
-  build and run with both routes, the harness, one line per module as the
-  plan's module map stands, release, unverified platforms, where the port
-  stands at 68e1c7b, your own checks with how to check each, known gaps);
-  decisions.md consolidated (not-ported list, the run's calls, every
-  deliberate difference with its state, the measured engine quirks, the bar
-  with the largest named cluster of each category); CLAUDE.md consolidated
-  (every milestone block kept as written, in merge order; h10-loop and
-  h10-fit fold in at phase 2, when the H10 union's numbers land too).
-- Fix-forward code items, each committed: readout_width reuses
-  number_style(); slider_tip_p trailing space dropped; point_slider key()
-  threads Ignored as false through the chain; settings.rs/page.rs theme
-  clones scoped or borrowed (page.rs's draw keeps one documented clone;
-  split_at_mut reviewed and kept); mv-numfmt digits moved not cloned;
-  act.py detail.command after --window; welcome_loop allows deleted,
-  ease_drag #[must_use], fit_scale WebKit in backticks; scrub_value dead
-  chevrons deleted; points_section mark() drops _shape, letter() renames
-  _letter, paint_readout's allow carries its reason; plane_input allows
-  carry reasons, HOLD_CAMERA_STEP names the FFI constraint; paint_extras
-  doc names draw_page; live.rs gains LiveWhat::Hash (the hash verb works in
-  --live runs); web/library.js mirrors the capture guards (no active
-  pointer, button 0 for mouse, clear on up/cancel/blur); x_field already
-  uses escapes; h4-readout progress keeps the porter's p_param attribution;
-  h6-p-transform's brace and the to_fixed switches verified done at merge.
-- Readout spacing from the CSS (the union's h-plate item, fixed not named):
-  the h term sat 2 CSS px left (minus 3 px pad unmodeled, form frac pad 3
-  instead of round(0.15em)=2, sup margin 1 px unmodeled, Term paint arm 3
-  px off) plus square value-bar ends; layout now matches the reference DOM
-  within 0.03 px run by run; readout-lit-hk -7707 flat px. Covers the h4
-  value-line items too (same Term-arm root cause).
-- f-zone census narrowed to the 5 measured editing states + points-default
-  (all 0); blur (185) and esc (368) censused as glyph ink (a).
-  Cap-plate re-judged vs ref-h9: port 0 px Secondary caps in both states
-  (walk, kept deliberately); ref 8260 px in focus-radio, timing-dependent
-  in flip-focus — the settled walk record confirmed.
-- Evidence hygiene: h9's two screenshots renamed (not diff maps); h8
-  field 6x crops unswapped (open=primary ring, invalid=destructive);
-  h10-seam records the 20 outside-gear entries (all Secondary, max 27);
-  h10-hero's 5 px corrected to 9 (22 rows vs 20) with the pixels lens's
-  recount superseding the table; h10-page names the Chromium 41-57s and the
-  Firefox menu islands; h10-hero shift gloss reworded; fix-cursor's M3 and
-  census corrected to the kept pointer and reference-cursors.json;
-  h10-page's CTA restricted to Enter, welcome.rs narrowed to pub(crate),
-  shape allow reasoned, hover-hold comments reworded to determinism.
-- h10-loop and h10-fit blocks and the H10 union's category maxima fold in
-  at phase 2 (merge claude-port at h10-fit's merge); docs/ is rebuilt by
-  ./build.sh pages and proved by tools/run pages as the last commit.
-
-
-## Long runs
-
-t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
-
-## h11-hero
-- Hero link: region over `WelcomeHeroPlane` (box 840x520), HitKind::WelcomeHero appended, Cursor::Pointer, never a focus stop (tabIndex -1). click() navigates on WelcomeHero too. welcome_key unchanged. The region follows CTA's path under the fit.
-- Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
-- Test: opens_the_function_viewer_from_the_animated_graph.
-- Ref-against-ref proof (2026-10-20, phase 2): `welcome-default` on ref-h11 (c6754e7) and on
-  ref-h10 (68e1c7b) in WebKit, threshold 0: 2866 changed pixels in all, of which 165 flat
-  (judge's rule) and every one of them inside `welcome_dev_link`'s box (652.25, 844,
-  135.375 x 16 CSS); 0 flat pixels apart outside it. The one changed pixel outside the box
-  (device 1492, 1720, CSS 746, 860) is the link's last glyph row, a 1-level AA edge on the
-  text (14,23,26 -> 15,24,27): category (a), not a moved box. So the count inside the box
-  is (f) (the dev-pages link the port carries by ruling) and nothing else of the welcome
-  page moved at c6754e7.
-- The hero's screen centre under the fit: page.json's `welcome-fit-1024x640` `hero_plane`
-  box (369.999, 135.399, 596.400, 369.200 CSS) centres at (668.2, 320.0); the click at
-  (668, 320) navigates (route function-viewer, url empty), the region hit-tested through
-  `fit::design_pos` like the CTA's.
-- Sweep H11: 9 states x 16 offsets = 288 runs (native + web-WebKit), 0 crashes; the panic
-  run (`MV_PANIC_AT_FRAME=1`, hero-hover) crashes on both surfaces, 16 of 16 each, so the
-  sweep sees a crash.
-
-## fix-viewer-size phase 1 (2026-10-21)
+### fix-viewer-size phase 1 (2026-10-21)
 
 - The viewer's content row takes the window's share, as math-viz2's grid does
   (`grid-template-rows: max-content minmax(0, 1fr)`, `height: 100dvh` at
@@ -1322,18 +1328,72 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
 - The port's sidebar content height is 736.5 where the reference's flex column
   reads 735: a half pixel, with no pixel out of place (the cards lay out from
   the top, so the last visible card sits where the reference's does).
+### wrap (the documents, the release check and the fix-forward tail)
 
-## h10-fit (2026-10-20)
+- README.md as main's 7b973cd left it (the user approved it as it stands),
+  its facts brought to c6754e7; decisions.md consolidated (not-ported list,
+  the run's calls, every deliberate difference with its state, the measured
+  engine quirks, the bar with the largest named cluster of each category);
+  CLAUDE.md consolidated (every milestone block kept as written, in merge
+  order: h10-fit, h11-default, h11-hero, h11-p-drag and fix-viewer-size
+  folded in at the merge of claude-port at 021ac91).
+- Fix-forward code items, each committed: readout_width reuses
+  number_style(); slider_tip_p trailing space dropped; point_slider key()
+  threads Ignored as false through the chain; settings.rs/page.rs theme
+  clones scoped or borrowed (page.rs's draw keeps one documented clone;
+  split_at_mut reviewed and kept); mv-numfmt digits moved not cloned;
+  act.py detail.command after --window; welcome_loop allows deleted,
+  ease_drag #[must_use], fit_scale WebKit in backticks; scrub_value dead
+  chevrons deleted; points_section mark() drops _shape, letter() renames
+  _letter, paint_readout's allow carries its reason; plane_input allows
+  carry reasons, HOLD_CAMERA_STEP names the FFI constraint; paint_extras
+  doc names draw_page; live.rs gains LiveWhat::Hash (the hash verb works in
+  --live runs); web/library.js mirrors the capture guards (no active
+  pointer, button 0 for mouse, clear on up/cancel/blur); x_field already
+  uses escapes; h4-readout progress keeps the porter's p_param attribution;
+  h6-p-transform's brace and the to_fixed switches verified done at merge.
+- Phase W1 adds: `tools/src/states.py::is_milestone` accepts any key of
+  `milestones.toml` (a group that is not a stretch of the history, like
+  FIXCURSOR, is a group of states all the same, and `tools/run states
+  FIXCURSOR` must find it); `welcome.rs`'s crate-internal items are
+  `pub(crate)` (the idiom skill's "`pub` only at a crate's surface", the
+  binary crate's surface is the crate); the welcome clock's stale stamp is
+  dropped on the still path, so the motion coming back mid-stay adds
+  `firstFrameMs` again and not a capped 50 ms (the hook's effect is keyed
+  on `animate` and restarts with `last === null`); the fit state's comment
+  names the design centre it clicks, not the rendered screen centre.
+- Readout spacing from the CSS (the union's h-plate item, fixed not named):
+  the h term sat 2 CSS px left (minus 3 px pad unmodeled, form frac pad 3
+  instead of round(0.15em)=2, sup margin 1 px unmodeled, Term paint arm 3
+  px off) plus square value-bar ends; layout now matches the reference DOM
+  within 0.03 px run by run; readout-lit-hk -7707 flat px. Covers the h4
+  value-line items too (same Term-arm root cause).
+- f-zone census narrowed to the 5 measured editing states + points-default
+  (all 0); blur (185) and esc (368) censused as glyph ink (a).
+  Cap-plate re-judged vs ref-h9: port 0 px Secondary caps in both states
+  (walk, kept deliberately); ref 8260 px in focus-radio, timing-dependent
+  in flip-focus — the settled walk record confirmed.
+- Evidence hygiene: h9's two screenshots renamed (not diff maps); h8
+  field 6x crops unswapped (open=primary ring, invalid=destructive);
+  h10-seam records the 20 outside-gear entries (all Secondary, max 27);
+  h10-hero's 5 px corrected to 9 (22 rows vs 20) with the pixels lens's
+  recount superseding the table; h10-page names the Chromium 41-57s and the
+  Firefox menu islands; h10-hero shift gloss reworded; fix-cursor's M3 and
+  census corrected to the kept pointer and reference-cursors.json;
+  h10-page's CTA restricted to Enter, welcome.rs narrowed to pub(crate),
+  shape allow reasoned, hover-hold comments reworded to determinism.
+- The h10-fit block is corrected: the per-state flat counts (475 698 on
+  welcome-default, 782 766 on welcome-fit-1920x1200, 162 469 on
+  welcome-fit-1024x640), the 979k as the full-frame changed count, the
+  reference's own Firefox engine spread (3 186 301 px at 1920 x 1200) as
+  the category of the large clusters, and the driver's clean sweep rerun at
+  ce37844 (native 416, web-WebKit 416, 0 crashes; the panic run 16 of 16
+  on both).
+- docs/ is rebuilt by ./build.sh pages and proved by tools/run pages as
+  the last commit.
 
-- Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).
-  Measurement at fit 0.71 (1024x640), 6x crop of hero centre (140x140 device px, 19600 px):
-  FBO 3759 differing vs ref, direct 3202 differing; within 8 levels FBO 3423, direct 1700.
-  Full-frame differing ~979k px either way. Direct matches closer; FBO path stays gated.
-- Port-vs-port at threshold 0: native = web-WebKit = web-Firefox exact (0 changed); native vs web-Chromium
-  differs only at AA edges, max 57/255 (within 15/255 tolerance: no, max 57 > 15, but these are
-  WebGL/SwiftShader renderer differences at anti-aliased edges, accepted per plan).
-- Reference clusters (judge, webkit): all named by category; largest ~475k px flat (the full-frame
-  backdrop difference, accepted: port blends in linear light where the browser composites sRGB).
-  Fit-state clusters are 1-4 px (AA hairlines). No port fault found in the ~979k count.
-- Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; panic run seen.
-- cargo test: 565 passed; ./build.sh check green.
+
+## Long runs
+
+t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
+
