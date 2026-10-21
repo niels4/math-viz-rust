@@ -38,4 +38,7 @@ FIXCURSOR = ["cursor-cells-hover", "cursor-cells-leave", "cursor-menu-cell", "cu
 # H11 at c6754e7: h11-hero's hero states, then h11-p-drag's P states (the
 # point P dragged on the graph, 7686c89) and fix-viewer-size's viewer-fit
 # states; the merge unions the lines.
-H11 = ["hero-hover", "hero-click", "hero-click-mid-loop", "hero-click-corner", "hero-press-release-outside", "hero-click-fit-1024x640", "cursor-hero", "welcome-tab-cta", "welcome-cta-click", "p-hover", "p-hover-box", "p-hover-move", "p-drag", "p-drag-release", "p-drag-no-pan", "p-drag-out", "p-drag-over-handle", "p-drag-quantized", "viewer-fit-1024x640", "viewer-fit-800x600", "viewer-fit-1920x1200"]
+H11 = ["hero-hover", "hero-click", "hero-click-mid-loop", "hero-click-corner", "hero-press-release-outside", "hero-click-fit-1024x640", "cursor-hero", "welcome-tab-cta", "welcome-cta-click", "p-hover", "p-hover-box", "p-hover-move", "p-drag", "p-drag-release", "p-drag-no-pan", "p-drag-out", "p-drag-over-handle", "p-drag-quantized", "viewer-fit-1024x640", "viewer-fit-800x600", "viewer-fit-1920x1200", "sidebar-scroll", "sidebar-scroll-part", "sidebar-scroll-click", "sidebar-scroll-hover", "sidebar-scroll-plane"]
+# fix-fit-menu: the welcome page's settings menu hit where it is drawn under
+# the fit: the light/dark cell and a theme row picked in a shrunk window.
+FIXFITMENU = ["welcome-fit-menu-1024x640", "welcome-fit-menu-pick-light-1024x640", "welcome-fit-menu-pick-theme-768x1024", "welcome-pick-light", "welcome-settings-open"]

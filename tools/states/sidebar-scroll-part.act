@@ -1,0 +1,13 @@
+# sidebar-scroll-part (fix-viewer-size phase 2): a wheel of 100 over the
+# sidebar at 1024 x 640 — unclamped, `scrollTop` 100. The same wheel as
+# sidebar-scroll, a third of it.
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 216 400
+wheel 0 100
+wait 1000
+shot sidebar-scroll-part

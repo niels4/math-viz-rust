@@ -1,0 +1,18 @@
+# welcome-fit-menu-pick-theme-768x1024 (fix-fit-menu): the gear clicked at
+# its zoomed centre (740, 23) in a 768 x 1024 window, then the "Tron Cyan"
+# theme row at its drawn centre (599, 227). The shot: the page in Tron Cyan,
+# the row checked. The behaviour: the theme line reads tron-cyan, as the
+# reference's reads.
+route welcome
+size 768 1024
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 740 23
+wait 500
+click 599 227
+wait 500
+shot welcome-fit-menu-pick-theme-768x1024

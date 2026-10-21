@@ -181,6 +181,7 @@ pub fn live_start(app: &mut App, run: &mv_script::Script, out: &str) -> bool {
             shown: String::new(),
             welcome_loop: None,
             route: None,
+            scroll: String::new(),
             script_route: crate::harness::script_hash_route(run),
         };
         if !crate::harness::play(&mut h, run) {

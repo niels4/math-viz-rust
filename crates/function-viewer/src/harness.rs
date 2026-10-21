@@ -145,6 +145,10 @@ pub struct Harness<'a> {
     /// `None` until the first frame records it, so the line is written at
     /// start and whenever the route changes.
     pub route: Option<String>,
+    /// The sidebar's scroll offset as last written to `views.json`
+    /// (fix-viewer-size phase 2; the behaviour checks read it against the
+    /// reference's sidebar `scrollTop`).
+    pub scroll: String,
     /// The script's hash route: a mid-run `hash` edit keeps it on every
     /// surface (the README's harness contract; act.py's `self.route`).
     pub script_route: String,
@@ -188,6 +192,7 @@ pub fn run_harness(
         shown: String::new(),
         welcome_loop: None,
         route: None,
+        scroll: String::new(),
         script_route: script_hash_route(run),
     };
     if !crate::platform_native::platform_make_dir(out) {
@@ -570,6 +575,15 @@ fn harness_frame(h: &mut Harness<'_>) {
         h.route = Some(h.app.url.route().to_string());
         h.views
             .extend_from_slice(route_line(h.app.url.route()).as_bytes());
+    }
+    // The sidebar's scroll offset, whenever it moved (fix-viewer-size phase
+    // 2; the behaviour checks read it against the reference's sidebar
+    // `scrollTop`). Written on the Panel's own offset, so the page's
+    // inactive Page scroller writes nothing.
+    let scroll = scroll_line(h.app.scroll[crate::scroll::Scroller::Panel].offset);
+    if scroll != h.scroll {
+        h.scroll = scroll;
+        h.views.extend_from_slice(h.scroll.as_bytes());
     }
     // The lit parameter, whenever the highlight moves (h4-readout; the
     // behaviour checks read it against the reference's data-lit).
@@ -992,6 +1006,14 @@ fn url_line(url: &str) -> String {
 /// Pure, like `url_line` above, so the shape is testable without the app.
 fn route_line(route: &str) -> String {
     format!("{{\"route\": {}}}\n", json_string(route))
+}
+
+/// One `scroll` line: the sidebar's scroll offset in CSS px, as the frame
+/// left it (fix-viewer-size phase 2; the shape the behaviour check's reader
+/// expects against the reference's sidebar `scrollTop`). Pure, like
+/// `route_line` above, so the shape is testable without the app.
+fn scroll_line(offset: f32) -> String {
+    format!("{{\"scroll\": {}}}\n", fmt_g17(f64::from(offset)))
 }
 
 /// One `camera` line: the plane's center and scale with whether a frame is
@@ -1474,6 +1496,13 @@ mod tests {
             route_line("function-viewer"),
             "{\"route\": \"function-viewer\"}\n"
         );
+    }
+
+    #[test]
+    fn scroll_line_has_its_shape() {
+        assert_eq!(scroll_line(0.0), "{\"scroll\": 0}\n");
+        assert_eq!(scroll_line(209.0), "{\"scroll\": 209}\n");
+        assert_eq!(scroll_line(100.5), "{\"scroll\": 100.5}\n");
     }
 
     #[test]

@@ -1314,7 +1314,10 @@ no new tokens (all eight tabled).
   all's focus ring, the Points card's rows) are scissored to the sidebar's
   padding box; the floats outside it (the ruler, the tips) keep their paint.
   A scissor is set with `vg.save()` / `vg.scissor` / `vg.restore()` around the
-  passes, since NanoVG's `nvgScissor` is not part of the saved state.
+  passes. NanoVG's scissor IS part of the saved state (`NVGstate` holds it,
+  `nvgSave`/`nvgRestore` copy the whole state), so the pair is belt-and-braces,
+  not the reason the scissor is undone: the `restore()` brings back the state
+  the `save()` took, scissor included.
 - The reference's own numbers, measured at `c6754e7` and confirmed by the
   port's layout test: the header is (16, 16, W - 32, 64), the content row is
   H - 112 tall from y = 96, the sidebar is (16, 96, 400, H - 112) with a client
@@ -1397,3 +1400,75 @@ no new tokens (all eight tabled).
 
 t0a owns this paragraph. This repo is built by many parallel milestones under the `long-run` skill: the brief (`math-viz2-rust.md`), the plan (`math-viz2-rust.plan.md`) and the progress index (`math-viz2-rust.progress.md`) live in `.local/briefs/` (gitignored scratch); each milestone's record is `.local/briefs/progress/<slug>.md`. Commit on the branch at each verified step (`./build.sh check && git add <paths> && git commit`, paths staged by name, joined with `&&` only). Edit only the files the plan's §5 assigns yours; a change needed in another milestone's file goes in the return, not the file. When a dependency merges into `claude-port`, merge it into the branch at a clean point (`git merge claude-port`, never a rebase).
 
+## fix-viewer-size phase 2: the sidebar's wheel scroll (2026-10-21)
+
+- **The reference's rule, measured on ref-h11 (`c6754e7`) in WebKit, Chromium
+  and Firefox alike** (`.local/probe/wheel_ref*.py`): a wheel over the sidebar
+  turns its pixels into the sidebar's `scrollTop`, clamped — 300 px over 735 of
+  content in 526 of client gives the max 209; 100 px gives 100; a wheel up from
+  the top gives 0. The page itself never scrolls. A wheel over the plane zooms
+  the plane and leaves the sidebar at 0. A wheel over a value box steps the
+  box (`preventDefault`) and leaves the sidebar where it was — but only while
+  the field is NOT typed into: the box's handler returns before its
+  `preventDefault` when the field has the focus, and the page then scrolls
+  (measured: the sidebar reaches 100 and 200 with the field typed into).
+  The engines show no classic scrollbar at rest or after a wheel
+  (`offsetWidth - clientWidth` is 2, the border).
+- **The port's arm** (`input.rs`'s wheel arm, beside the box's): the value box
+  keeps the wheel (`scrub_value::wheel_over` now reports whether it took it),
+  the plane keeps its zoom, and everything else goes to
+  `scroll::scroll_wheel(app, pos, delta)`, which takes the innermost active
+  container under the pointer. The Page scroller is inactive, so the Panel
+  takes the wheel first. The scroll sets `app.dirty`, so the next layout
+  applies the offset as Clay's clip `childOffset`.
+- **The `scroll` views line**: the Panel's offset in CSS px, written whenever
+  it moves, beside the port's other behaviour lines. `act.py`'s
+  `port_scroll`/`reference_scroll` read it against the reference's sidebar
+  `scrollTop` (the second child of the page div, the same element the
+  fixture's scroll triple names).
+- **The states' coordinates come from the reference's own DOM**, not from
+  arithmetic: at 1024 x 640 the x³ cell is at (216, 162) 87 x 34, and a's
+  value box at (278, 434.5) 107 x 32; after a 300 px wheel the cell is at
+  y -47 (off the window, under the top bar's box, where a click lands on the
+  top bar) and the box at y 225.5. `sidebar-scroll-click` therefore wheels 40
+  px, which puts the cell at (216, 122) — clear of the top bar — and the
+  click reaches it (`func=x3`). The plan's 300 px would have put the cell
+  where no click can reach it.
+- **The sidebar's element name has one owner**: `scroll::PANEL_ID` (the
+  scroller's table), with `page::SIDEBAR_ID` pointing at it and a test that
+  pins the two together.
+- **The x³ cell cannot be clicked at a 300 px wheel**: the cell lands at
+  y −47, off the window and under the top bar's box, and the click lands on
+  the top bar (the reference's own hash stays bare). A 40 px wheel puts it
+  at (216, 122), clear of the top bar, and the click reaches it. The
+  states' coordinates come from the reference's DOM, not from arithmetic.
+- **The readout's inner spacing is not this milestone's**: the form line's
+  terms sit 2 to 5 CSS px off the reference's (the `h` term's chip at CSS
+  159 against the port's 154.5), the same offsets as at rest. Wrap's
+  `17c8bcf` ("readout spacing from the CSS") is the fix; measured with it,
+  the five states' WebKit flat-apart counts fall from 279 / 654 / 52 / 333 /
+  67 to 0 / 15 / 0 / 0 / 15.
+
+## fix-fit-menu (2026-10-21)
+
+- The welcome page's settings menu is drawn at its natural size under the zoomed gear
+  (`[popover] { zoom: calc(1 / var(--fit)) }`), so at any fit below 1 its drawn box and
+  the box Clay laid it out in are two different places. The port painted the menu at the
+  anchor (`fit::menu_anchor`) but hit-tested the laid-out box, so a click on a visible
+  cell resolved outside it and hit nothing (h10-fit's review, finding 1).
+- One source for the placement now: `fit::MenuSpace` holds the menu's offset from the
+  frame's design space to the screen and the frame's scale. `page::draw_welcome`
+  translates the menu's commands by `space.offset`; `settings::declare_regions` declares
+  the six menu regions through `space.region(box)`, the drawn box taken into the design
+  space where `fit::design_pos` lands the pointer. The viewer route declares them in
+  `MenuSpace::IDENTITY`, where Clay laid them.
+- The regions are declared after the layout (the boxes are known only then), so
+  `settings::cell` and `settings::row` no longer declare them; `declare_regions` does,
+  with the same hits, cursors and stop flags.
+- A test (`the_menu_is_hit_where_it_is_drawn_at_every_fit`) opens the menu at fit 0.71
+  (1024 x 640) and at fit 1 and presses every cell's and every row's drawn centre: each
+  resolves to its own hit. Reverting the region's transform makes it fail at
+  (757.28, 106.44) - the reviewer's measurement.
+- The port's `fit::frame_size` and `fit::screen_to_design` stay uncalled outside their
+  own tests (the review's finding 3): this fix does not need them, so they are left for
+  wrap.

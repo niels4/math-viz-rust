@@ -1,0 +1,13 @@
+# sidebar-scroll-plane (fix-viewer-size phase 2): a wheel over the plane at
+# 1024 x 640. The camera zooms (the plane's own wheel) and the sidebar's
+# scroll stays 0: the wheel belongs to the plane, not to the sidebar.
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 2000
+move 700 300
+wheel 0 100
+wait 1500
+shot sidebar-scroll-plane

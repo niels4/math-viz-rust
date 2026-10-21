@@ -609,14 +609,25 @@ pub fn handle_input(app: &mut App, input: Input, time: Time) {
             retarget(app);
             // A wheel over a value box steps it (ignored while typed into,
             // when the page may scroll instead).
-            if app.input.hover.kind == HitKind::TransformField {
-                crate::scrub_value::wheel_over(app, event.delta[1]);
-            }
+            let over_box = app.input.hover.kind == HitKind::TransformField;
+            // The box's own handler calls `preventDefault` when it takes the
+            // wheel, so the page does not scroll then; while the field is
+            // typed into it returns before that, and the page may scroll
+            // (fix-viewer-size phase 2, the reference's `overflow: auto`).
+            let taken = over_box && crate::scrub_value::wheel_over(app, event.delta[1]);
             // The plane zooms about the pointer; a held drag keeps the hover
             // on the plane through capture, so a wheel mid-drag zooms, as the
             // hook's wheel and drag run on one loop.
             if app.input.hover.kind == HitKind::Plane {
                 crate::plane_input::plane_wheel(app, event.delta);
+            }
+            // A wheel over the sidebar scrolls it, by the wheel's own
+            // pixels, clamped to its range (the reference's `overflow: auto`
+            // on `.sidebar`; the wheel's pixels become `scrollTop`). The
+            // Panel is the only active container, so it takes the wheel
+            // before the page, which never scrolls (`100dvh`).
+            if !taken {
+                crate::scroll::scroll_wheel(app, event.pos, event.delta);
             }
         }
         Input::Pinch(event) => {
@@ -1165,6 +1176,93 @@ mod tests {
     /// 2 runs in 8. The shape follows `mv_clay::tests_lock`, but this is its
     /// own queue and its own lock.
     static SDL_QUEUE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// The viewer laid out at 1024 x 640, with its regions collected: the
+    /// Panel scroller's box and the sidebar's regions, as the wheel arm
+    /// finds them (fix-viewer-size phase 2).
+    fn viewer_at_1024x640() -> crate::app::App {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(&mut app);
+        app.size = [1024.0, 640.0];
+        app.pixels = [2048, 1280];
+        app.url = crate::url::Url::new("#function-viewer");
+        let _commands = crate::page::layout_page(&mut app);
+        crate::plane_input::declare_plane_region(&mut app);
+        crate::input::collect_regions(&mut app);
+        app
+    }
+
+    /// The Panel's scroll offset after a wheel of `dy` at `pos`.
+    fn wheel_scroll(app: &mut crate::app::App, pos: [f32; 2], dy: f32) -> f32 {
+        handle_input(
+            app,
+            Input::Wheel(WheelEvent {
+                delta: [0.0, dy],
+                pos,
+            }),
+            0,
+        );
+        app.scroll[crate::scroll::Scroller::Panel].offset
+    }
+
+    /// A wheel over the sidebar scrolls it by the wheel's own pixels, clamped
+    /// to its range (the reference's `overflow: auto`: the wheel's pixels
+    /// become `scrollTop`).
+    #[test]
+    fn a_wheel_over_the_sidebar_scrolls_it_and_clamps() {
+        let mut app = viewer_at_1024x640();
+        let panel = crate::scroll::Scroller::Panel;
+        assert_eq!(app.scroll[panel].max, 209.0);
+        // 100 px: unclamped.
+        assert_eq!(wheel_scroll(&mut app, [216.0, 400.0], 100.0), 100.0);
+        // 300 px more: over the max, clamped to it.
+        assert_eq!(wheel_scroll(&mut app, [216.0, 400.0], 300.0), 209.0);
+        // Up: over the top, clamped to 0.
+        assert_eq!(wheel_scroll(&mut app, [216.0, 400.0], -300.0), 0.0);
+        crate::ui::release_clay(&mut app);
+        mv_text::destroy(&mut app.fonts);
+    }
+
+    /// A wheel over a value box steps the box and leaves the sidebar where it
+    /// was: the box's own handler takes the wheel (its `preventDefault`), so
+    /// the page does not scroll.
+    #[test]
+    fn a_wheel_over_a_value_box_takes_the_wheel_and_the_sidebar_stays() {
+        let mut app = viewer_at_1024x640();
+        let panel = crate::scroll::Scroller::Panel;
+        // a's value box at rest: (278, 434.5) 107 x 32.
+        wheel_scroll(&mut app, [331.5, 450.5], 100.0);
+        assert_eq!(app.scroll[panel].offset, 0.0);
+        assert_eq!(*app.a_param.get(), 0.97);
+        crate::ui::release_clay(&mut app);
+        mv_text::destroy(&mut app.fonts);
+    }
+
+    /// A wheel over the plane zooms the plane and leaves the sidebar at 0:
+    /// the plane's own canvas takes the wheel, as the reference's does.
+    #[test]
+    fn a_wheel_over_the_plane_zooms_it_and_the_sidebar_stays() {
+        let mut app = viewer_at_1024x640();
+        let panel = crate::scroll::Scroller::Panel;
+        wheel_scroll(&mut app, [700.0, 300.0], 100.0);
+        assert_eq!(app.scroll[panel].offset, 0.0);
+        // The zoom runs over frames, so the camera is animating now.
+        assert!(app.camera.animating(), "the plane did not zoom");
+        crate::ui::release_clay(&mut app);
+        mv_text::destroy(&mut app.fonts);
+    }
+
+    /// A wheel outside the sidebar leaves it alone.
+    #[test]
+    fn a_wheel_outside_the_sidebar_leaves_it() {
+        let mut app = viewer_at_1024x640();
+        // Over the top bar.
+        assert_eq!(wheel_scroll(&mut app, [500.0, 40.0], 100.0), 0.0);
+        crate::ui::release_clay(&mut app);
+        mv_text::destroy(&mut app.fonts);
+    }
 
     /// A synthetic pinch queued through the raw sys calls decodes to a pinch
     /// with its scale: the watch notes the raw union's scale as SDL queues

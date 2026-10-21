@@ -28,8 +28,9 @@ pub const SIDEBAR_RADIUS: f32 = 4.0;
 /// The sidebar is the Panel scroll container (fix-viewer-size): the element's
 /// name is the scroller's, `scroll::SCROLLER_IDS[Scroller::Panel]`, so the
 /// clip's container and the box the readers below ask for are one element.
-/// The test at the end of this file pins the two names together.
-pub const SIDEBAR_ID: &str = "Panel";
+/// The scroller's table owns the name; this constant only points at it, so
+/// the two cannot drift.
+pub const SIDEBAR_ID: &str = crate::scroll::PANEL_ID;
 
 /// The plane's two handles: the shift diamond at the live h, k, then the
 /// scale square at the unit point of the shown transform, in that order so
@@ -247,6 +248,12 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
     // scroll container's extent and the offset's clamp are read from it now
     // (fix-viewer-size). The offset does not move at rest.
     crate::scroll::update_scroll(app);
+    // The menu's regions, in the space the menu is drawn in: on the viewer
+    // the menu sits where Clay laid it out (fix-fit-menu). The boxes are
+    // known only now, after the layout.
+    app.input.z = 1;
+    crate::settings::declare_regions(app, crate::fit::MenuSpace::IDENTITY);
+    app.input.z = 0;
     commands
 }
 
@@ -274,7 +281,7 @@ fn sidebar_content_box(app: &App) -> Option<clay::BoundingBox> {
     data.found.then(|| {
         crate::scroll::grow_box(
             data.boundingBox,
-            -crate::scroll::scroll_border(app, crate::scroll::Scroller::Panel),
+            -app.scroll[crate::scroll::Scroller::Panel].border,
         )
     })
 }
@@ -526,14 +533,12 @@ fn draw_welcome(app: &mut App, theme: &mv_theme::Theme, density: f32) {
     app.vg.restore();
     if let Some(plate) = plate {
         // The menu at natural size: its design box onto the anchor, as the
-        // popover's inverse zoom maps it.
-        let (right, top) = crate::fit::menu_anchor(f64::from(app.size[0]), fit_f64);
-        // `as` at the f64/f32 boundary: the layout is f32 throughout.
-        let dx = right as f32 - crate::fit::MENU_WIDTH as f32 - plate.x;
-        let dy = top as f32 - plate.y;
+        // popover's inverse zoom maps it. The same space the menu's regions
+        // take (fix-fit-menu), so the drawing and the hit test agree.
+        let space = crate::fit::menu_space(f64::from(app.size[0]), fit_f64, plate);
         app.vg.save();
         app.vg.reset_transform();
-        app.vg.translate(dx, dy);
+        app.vg.translate(space.offset[0], space.offset[1]);
         paint_menu_shadow(app, theme);
         draw_commands(app, density, &menu);
         // The menu's swatches, inside the natural-size menu.
@@ -968,6 +973,18 @@ mod tests {
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
     }
 
+    /// The sidebar's element is the Panel scroll container: one name, owned
+    /// by the scroller's table, and the constant that points at it (fix-
+    /// viewer-size phase 2's fix-forward: the two readers of the same
+    /// element must not drift apart).
+    #[test]
+    fn the_sidebar_is_the_panel_scroll_container() {
+        assert_eq!(
+            crate::page::SIDEBAR_ID,
+            crate::scroll::SCROLLER_IDS[crate::scroll::Scroller::Panel]
+        );
+    }
+
     /// The viewer's layout at the three window sizes of fix-viewer-size: the
     /// header, the sidebar and the canvas against the reference's WebKit
     /// boxes in `testdata/page.json` (the reference at `c6754e7`), within the
@@ -1029,7 +1046,7 @@ mod tests {
             let sidebar = clay
                 .get_element_data(mv_clay::id(crate::page::SIDEBAR_ID, 0))
                 .boundingBox;
-            let border = crate::scroll::scroll_border(&app, crate::scroll::Scroller::Panel);
+            let border = app.scroll[crate::scroll::Scroller::Panel].border;
             let client = sidebar.height - 2.0 * border;
             let measures = crate::fixture::fixture_shot(&fixture, shot)
                 .expect("shot in fixture")

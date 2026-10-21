@@ -165,11 +165,22 @@ pub(crate) fn layout_welcome(app: &mut App, size: [f32; 2], fit: f32) -> Vec<cla
         crate::settings::menu_below(app, crate::settings::layout::MENU_OFFSET_Y / fit);
         app.input.z = 0;
     });
-    app.clay
+    let commands = app
+        .clay
         .as_mut()
         .expect("clay context initialised")
         .end_layout()
-        .to_vec()
+        .to_vec();
+    // The menu's regions, in the space the menu is drawn in: the natural
+    // size under the zoomed gear (fix-fit-menu). The boxes are known only
+    // now, after the layout.
+    if let Some(plate) = crate::settings::menu_plate(app) {
+        let space = crate::fit::menu_space(f64::from(size[0]), f64::from(fit), plate);
+        app.input.z = 1;
+        crate::settings::declare_regions(app, space);
+        app.input.z = 0;
+    }
+    commands
 }
 
 /// The top row: the mark left, the gear right, 40 tall at top 24 with 32 px

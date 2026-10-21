@@ -384,6 +384,49 @@ def reference_route(page: Page) -> str:
         }""")
 
 
+# The sidebar's scroll container in the reference: the page grid's second
+# column (`SideBar.module.css`'s `overflow: auto`), the same element the
+# port's Panel scroller is (fix-viewer-size phase 2).
+REFERENCE_SIDEBAR = "#root > div > div:nth-child(2)"
+
+
+def port_scroll(out: Path) -> float | None:
+    """The port's sidebar scroll offset at a run's end for the scroll behaviour check
+    (fix-viewer-size phase 2): the last `scroll` views line the native harness wrote (the
+    Panel's offset in CSS px). None when the port wrote no scroll line: a check that can't
+    run, not a failure."""
+    file = out / "views.json"
+    if not file.exists():
+        return None
+    scroll: float | None = None
+    for line in file.read_text().splitlines():
+        try:
+            parsed: Any = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(parsed, dict):
+            continue
+        view = cast(dict[str, object], parsed)
+        if set(view) == {"scroll"} and isinstance(view.get("scroll"), (int, float)):
+            scroll = float(cast(float, view["scroll"]))
+    return scroll
+
+
+def reference_scroll(page: Page) -> float:
+    """The reference's sidebar `scrollTop` for the same check: the scroll container's own
+    offset in CSS px, as the browser's `overflow: auto` keeps it (the wheel's pixels become
+    `scrollTop`, clamped to the range)."""
+    return float(
+        page.evaluate(
+            """(selector) => {
+              const side = document.querySelector(selector);
+              return side === null ? 0 : side.scrollTop;
+            }""",
+            REFERENCE_SIDEBAR,
+        )
+    )
+
+
 def init_script(start: Start, target: str, paused: bool) -> str:
     """Before any page script: the appearance prefs in math-viz2's keys and JSON shape
     (src/state/useAppTheme.ts: atomWithStorage under createJSONStorage, one JSON string per key;
@@ -884,7 +927,9 @@ def check_views(out: Path) -> list[str]:
     `url` (str) is the page's hash query, written whenever it changes (--query writes one at
     frame 0). A line holding only `route` (str) is the page's hash route ("" on the welcome page,
     "function-viewer" on the viewer), written at start and whenever the route changes (h10-page;
-    until it lands no run writes one). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
+    until it lands no run writes one). A line holding only `scroll` (a number) is the sidebar's
+    scroll offset in CSS px, written whenever it moves (fix-viewer-size phase 2: the reference's
+    `overflow: auto` and the port's Panel scroller). A line holding only `camera` ({center [x, y], scale, animating}) is the plane's
     camera, written whenever it changes (h2-input). A line holding only `lit` (a list of
     "a"/"b"/"h"/"k", or null at rest) is the highlighted parameters in order, written whenever
     the highlight moves (h4-readout; h4-rows reuses it for its rows; h7-p-state widens it from
@@ -920,6 +965,13 @@ def check_views(out: Path) -> list[str]:
         if set(view) == {"route"}:
             if not isinstance(view.get("route"), str):
                 problems.append(f"views.json line {number}: 'route' is not a string")
+            continue
+        if set(view) == {"scroll"}:
+            scroll = view.get("scroll")
+            if not isinstance(scroll, (int, float)) or isinstance(scroll, bool):
+                problems.append(f"views.json line {number}: 'scroll' is not a number")
+            elif scroll < 0:
+                problems.append(f"views.json line {number}: 'scroll' is below 0")
             continue
         if set(view) == {"camera"}:
             camera_raw: object = view.get("camera")
