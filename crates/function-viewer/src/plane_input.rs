@@ -295,13 +295,15 @@ pub fn clear_q(app: &mut App) {
 }
 
 /// The hover dispatch for an unpressed move over the plane
-/// (`CartesianPlane.tsx`'s `onPointerMove`): the hit handle's hover first
-/// (hovering on, its two params lit), then, when the hovered index changed,
-/// the previously hovered handle's hover-end (its params off only when the
-/// stored list still equals them). The new hover first is load-bearing: a
-/// jump straight from the diamond to the square leaves hovering false with
-/// a and b lit (the old end's same-list check no-ops on the new list), and
-/// the cursor falls back to pan. Same-index moves and empty moves change
+/// (`CartesianPlane.tsx`'s `onPointerMove`, through `useMouseHandles`): the
+/// hit handle's hover (its two params lit) first, then, when the hovered
+/// index changed, the previously hovered handle's hover-end (its params off
+/// only when the stored list still equals them). The order is the source's,
+/// so a jump straight from the diamond to the square lights a and b while h
+/// and k drop. The hook used to set its own `hovering` state between the two
+/// handlers, which left it false across that jump; `ea29aa9` derives it
+/// after both, and this port reads `app.hovered` (the `lastHoveredIndex` ref)
+/// in the cursor rule instead. Same-index moves and empty moves change
 /// nothing, so the frame stays clean.
 pub fn plane_hover(app: &mut App) {
     if app.input.hover.kind != HitKind::Plane {
@@ -318,15 +320,12 @@ pub fn plane_hover(app: &mut App) {
     if index == app.hovered {
         return;
     }
-    // The source's statement order: the hit handle's hover (hovering on),
-    // then the previous index's hover-end (hovering off) when the index
-    // changed — a diamond-to-square jump lands hovering false.
+    // The source's statement order: the hit handle's hover, then the previous
+    // index's hover-end when the index changed.
     if let Some(next) = index {
-        app.hovering = true;
         app.state.set_hover(handle_params(next), true);
     }
     if let Some(last) = app.hovered {
-        app.hovering = false;
         app.state.set_hover(handle_params(last), false);
     }
     app.hovered = index;
@@ -337,10 +336,12 @@ pub fn plane_hover(app: &mut App) {
 /// (`CartesianPlane.tsx`'s rule: `dragging || panning` grabs closed, else
 /// `hovering` grabs open, else the crosshair). The press on the plane or a
 /// handle is the `panning` half (the hook sets it on any canvas press and
-/// clears it on release); `app.dragging` is the `dragging` half. Only
-/// while the pointer or press names the plane: anywhere else the regions'
-/// cursors stand. Runs after the dispatch and the retarget, so its cursor
-/// wins. `pub` for the input layer's unpressed-move path.
+/// clears it on release); `app.dragging` is the `dragging` half. The open
+/// hand reads `app.hovered`, the hook's `hovering = hoveredHandleIndex !== -1`
+/// (`ea29aa9`: the state is gone, the index is the value). Only while the
+/// pointer or press names the plane: anywhere else the regions' cursors stand.
+/// Runs after the dispatch and the retarget, so its cursor wins. `pub` for the
+/// input layer's unpressed-move path.
 pub fn plane_cursor(app: &mut App) {
     let on_plane =
         app.input.hover.kind == HitKind::Plane || app.input.pressed.kind == HitKind::Plane;
@@ -349,7 +350,7 @@ pub fn plane_cursor(app: &mut App) {
     }
     let cursor = if app.dragging || app.input.pressed.kind == HitKind::Plane {
         Cursor::Grabbing
-    } else if app.hovering {
+    } else if app.hovered.is_some() {
         Cursor::Grab
     } else {
         Cursor::Crosshair
@@ -1069,16 +1070,16 @@ mod tests {
         let diamond = handle_px(&app, 0);
         assert_eq!(diamond, [450.0, 450.0]);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
-        assert!(app.hovering);
         assert_eq!(app.hovered, Some(HandleId::Shift));
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::H, TransformParam::K]);
     }
 
     #[test]
-    fn hovering_straight_to_the_square_leaves_pan_with_a_b_lit() {
-        // The new hover fires before the old handle's hover-end (the
-        // source's order), so hovering falls false while a and b light.
+    fn hovering_straight_to_the_square_gives_the_open_hand_with_a_b_lit() {
+        // `ea29aa9`: the hover derives from the hovered index, so a jump
+        // straight from the diamond to the square still shows the open hand
+        // while a and b light and h and k drop.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
         seed_view(&mut app, "func=x2&a=2&h=1&k=-3");
@@ -1086,9 +1087,8 @@ mod tests {
         let square = handle_px(&app, 1);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         handle_input(&mut app, pointer_to(square), 32 * MS);
-        assert!(!app.hovering);
         assert_eq!(app.hovered, Some(HandleId::Scale));
-        assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
         assert_eq!(app.state.lit(), vec![TransformParam::A, TransformParam::B]);
     }
 
@@ -1100,7 +1100,6 @@ mod tests {
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
         handle_input(&mut app, pointer_to([100.0, 100.0]), 32 * MS);
-        assert!(!app.hovering);
         assert_eq!(app.hovered, None);
         assert_eq!(app.input.cursor, crate::input::Cursor::Crosshair);
         assert!(app.state.lit().is_empty());

@@ -144,11 +144,11 @@ pub struct App {
     /// The flip toggle's state: the pending flip, its spring, the press
     /// counter and the frame clock (h6-curve; `flip.rs` owns the machine).
     pub flip: crate::flip::FlipState,
-    /// The plane's handle hover: the cursor rule's `hovering` and the last
-    /// hovered handle (`None` for none), as `CartesianPlane.tsx`'s
-    /// `hovering` state and `lastHoveredIndex` ref do (h7-plane;
-    /// `plane_input.rs` owns the dispatch).
-    pub hovering: bool,
+    /// The last hovered handle (`None` for none), the `lastHoveredIndex`
+    /// ref of `useMouseHandles.ts` (h7-plane; `plane_input.rs` owns the
+    /// dispatch). It carries what the hook's `hovering` state did: the
+    /// cursor rule reads it directly as "the pointer is on a handle"
+    /// (`ea29aa9`, which deleted the separate state).
     pub hovered: Option<HandleId>,
     /// A plane handle drag in flight, with the press's grab offset in plane
     /// units (the `dragging` state and the `grab` ref at `251c080`).
@@ -361,7 +361,6 @@ impl App {
             scrub_resting: None,
             overlay_tip_since: None,
             flip: crate::flip::FlipState::new(),
-            hovering: false,
             hovered: None,
             dragging: false,
             grab: [0.0, 0.0],
