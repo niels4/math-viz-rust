@@ -92,6 +92,7 @@ pub fn build_markers(app: &App) -> Vec<crate::plane_geometry::PlotMarker> {
         label: Some(point_label("P", p_point.x, p_point.y)),
         drop_lines: app.state.p_dragging,
         guide: false,
+        draggable: true,
     }];
     if let Some(q_x) = app.state.q_x {
         let q_point = crate::plot::PlotPoint {
@@ -105,6 +106,7 @@ pub fn build_markers(app: &App) -> Vec<crate::plane_geometry::PlotMarker> {
             label: Some(point_label("Q", q_point.x, q_point.y)),
             drop_lines: true,
             guide: true,
+            draggable: false,
         });
     }
     markers

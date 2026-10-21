@@ -130,17 +130,51 @@ pub fn handle_path(kind: HandleKind, at: [f64; 2]) -> HandlePath {
 /// source also skips a handle lacking the action's handler; both handles
 /// carry all five handlers at this hash, so the filter is left out, and the
 /// handlers themselves stay the app's dispatch.
+/// What a hit test returns: a handle slot or a marker slot. Markers are
+/// tested after the handles (so a marker beats a coincident handle, as
+/// `findLastIndex` over `[...handles, ...markers]` does).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HitTarget {
+    Handle(usize),
+    Marker(usize),
+}
+
+/// The marker hit box in px (`markerHitBox`): a marker is hit when
+/// `max(|dx|, |dy|) <= markerHitBox / 2`.
+pub const MARKER_HIT_BOX: f64 = 48.0;
+
 #[must_use]
-pub fn hit_test(grid: &GridLayout, handles: &[PlotHandle], at: [f64; 2]) -> Option<usize> {
-    handles.iter().rposition(|handle| {
+pub fn hit_test(
+    grid: &GridLayout,
+    handles: &[PlotHandle],
+    markers: &[PlotMarker],
+    at: [f64; 2],
+) -> Option<HitTarget> {
+    let mut result = None;
+    for (i, handle) in handles.iter().enumerate() {
         let [x, y] = to_px(grid, handle.at);
         let dx = (at[0] - x).abs();
         let dy = (at[1] - y).abs();
-        match handle.kind {
+        let hit = match handle.kind {
             HandleKind::Diamond => dx + dy <= DIAMOND_RADIUS,
             HandleKind::Square => dx.max(dy) <= SQUARE_SIDE / 2.0,
+        };
+        if hit {
+            result = Some(HitTarget::Handle(i));
         }
-    })
+    }
+    for (i, marker) in markers.iter().enumerate() {
+        if !marker.draggable {
+            continue;
+        }
+        let [x, y] = to_px(grid, marker.point);
+        let dx = (at[0] - x).abs();
+        let dy = (at[1] - y).abs();
+        if dx.max(dy) <= MARKER_HIT_BOX / 2.0 {
+            result = Some(HitTarget::Marker(i));
+        }
+    }
+    result
 }
 
 /// Clamp a canvas value into a range (`clamp` in `grid.ts`, which the draw
@@ -185,6 +219,9 @@ pub struct PlotMarker {
     pub label: Option<PlotLabel>,
     pub drop_lines: bool,
     pub guide: bool,
+    /// Whether the marker can be grabbed and dragged (`PlotMarker["handlers"]`
+    /// present at `7686c89`): P carries it, Q never does.
+    pub draggable: bool,
 }
 
 /// A marker's radius in px (`markerRadius`): the background fill, and the
@@ -692,10 +729,16 @@ mod tests {
         let grid = grid_400x300();
         let handles = [shift_handle()];
         // |dx| + |dy| = 10 still hits.
-        assert_eq!(hit_test(&grid, &handles, [255.0, 105.0]), Some(0));
-        assert_eq!(hit_test(&grid, &handles, [260.0, 100.0]), Some(0));
+        assert_eq!(
+            hit_test(&grid, &handles, &[], [255.0, 105.0]),
+            Some(HitTarget::Handle(0))
+        );
+        assert_eq!(
+            hit_test(&grid, &handles, &[], [260.0, 100.0]),
+            Some(HitTarget::Handle(0))
+        );
         // |dx| + |dy| = 11 misses.
-        assert_eq!(hit_test(&grid, &handles, [256.0, 105.0]), None);
+        assert_eq!(hit_test(&grid, &handles, &[], [256.0, 105.0]), None);
     }
 
     #[test]
@@ -703,9 +746,12 @@ mod tests {
         let grid = grid_400x300();
         let handles = [scale_handle()];
         // max(|dx|, |dy|) = 8 still hits.
-        assert_eq!(hit_test(&grid, &handles, [258.0, 108.0]), Some(0));
+        assert_eq!(
+            hit_test(&grid, &handles, &[], [258.0, 108.0]),
+            Some(HitTarget::Handle(0))
+        );
         // max(|dx|, |dy|) = 9 misses.
-        assert_eq!(hit_test(&grid, &handles, [258.0, 109.0]), None);
+        assert_eq!(hit_test(&grid, &handles, &[], [258.0, 109.0]), None);
     }
 
     #[test]
@@ -713,14 +759,17 @@ mod tests {
         // Both handles at (1, 1): the scale square beats the shift diamond.
         let grid = grid_400x300();
         let handles = [shift_handle(), scale_handle()];
-        assert_eq!(hit_test(&grid, &handles, [250.0, 100.0]), Some(1));
+        assert_eq!(
+            hit_test(&grid, &handles, &[], [250.0, 100.0]),
+            Some(HitTarget::Handle(1))
+        );
     }
 
     #[test]
     fn a_point_near_no_handle_misses() {
         let grid = grid_400x300();
-        assert_eq!(hit_test(&grid, &[shift_handle()], [0.0, 0.0]), None);
-        assert_eq!(hit_test(&grid, &[], [250.0, 100.0]), None);
+        assert_eq!(hit_test(&grid, &[shift_handle()], &[], [0.0, 0.0]), None);
+        assert_eq!(hit_test(&grid, &[], &[], [250.0, 100.0]), None);
     }
 
     /// A marker with P's ink at plane units, unset shape and nothing riding
@@ -733,6 +782,7 @@ mod tests {
             label: None,
             drop_lines: false,
             guide: false,
+            draggable: false,
         }
     }
 
