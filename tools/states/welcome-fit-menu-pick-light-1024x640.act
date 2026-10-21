@@ -1,0 +1,19 @@
+# welcome-fit-menu-pick-light-1024x640 (fix-fit-menu): the gear clicked at
+# its zoomed centre (987, 31) in a 1024 x 640 window, then the light/dark
+# control's "Light" cell at its drawn centre (941, 106) - the cell the
+# popover's `zoom: calc(1 / var(--fit))` leaves at natural size under the
+# gear. The shot: the page in Always light (Clean Teal). The behaviour: the
+# theme line reads clean-teal, as the reference's reads.
+route welcome
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 987 31
+wait 500
+click 941 106
+wait 500
+shot welcome-fit-menu-pick-light-1024x640

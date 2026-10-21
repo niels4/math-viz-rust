@@ -36,3 +36,6 @@ H10 = ["welcome-route", "welcome-default", "welcome-default-tron-cyan", "welcome
 # on leave.
 FIXCURSOR = ["cursor-cells-hover", "cursor-cells-leave", "cursor-menu-cell", "cursor-menu-leave", "cursor-cta"]
 H11 = ["hero-hover", "hero-click", "hero-click-mid-loop", "hero-click-corner", "hero-press-release-outside", "hero-click-fit-1024x640", "cursor-hero", "welcome-tab-cta", "welcome-cta-click"]
+# fix-fit-menu: the welcome page's settings menu hit where it is drawn under
+# the fit: the light/dark cell and a theme row picked in a shrunk window.
+FIXFITMENU = ["welcome-fit-menu-1024x640", "welcome-fit-menu-pick-light-1024x640", "welcome-fit-menu-pick-theme-768x1024", "welcome-pick-light", "welcome-settings-open"]

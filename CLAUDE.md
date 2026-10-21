@@ -1171,3 +1171,27 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
   Fit-state clusters are 1-4 px (AA hairlines). No port fault found in the ~979k count.
 - Sweep H10: 26 states x 16 offsets on native + web-WebKit = 832 runs, 0 crashes; panic run seen.
 - cargo test: 565 passed; ./build.sh check green.
+
+## fix-fit-menu (2026-10-21)
+
+- The welcome page's settings menu is drawn at its natural size under the zoomed gear
+  (`[popover] { zoom: calc(1 / var(--fit)) }`), so at any fit below 1 its drawn box and
+  the box Clay laid it out in are two different places. The port painted the menu at the
+  anchor (`fit::menu_anchor`) but hit-tested the laid-out box, so a click on a visible
+  cell resolved outside it and hit nothing (h10-fit's review, finding 1).
+- One source for the placement now: `fit::MenuSpace` holds the menu's offset from the
+  frame's design space to the screen and the frame's scale. `page::draw_welcome`
+  translates the menu's commands by `space.offset`; `settings::declare_regions` declares
+  the six menu regions through `space.region(box)`, the drawn box taken into the design
+  space where `fit::design_pos` lands the pointer. The viewer route declares them in
+  `MenuSpace::IDENTITY`, where Clay laid them.
+- The regions are declared after the layout (the boxes are known only then), so
+  `settings::cell` and `settings::row` no longer declare them; `declare_regions` does,
+  with the same hits, cursors and stop flags.
+- A test (`the_menu_is_hit_where_it_is_drawn_at_every_fit`) opens the menu at fit 0.71
+  (1024 x 640) and at fit 1 and presses every cell's and every row's drawn centre: each
+  resolves to its own hit. Reverting the region's transform makes it fail at
+  (757.28, 106.44) - the reviewer's measurement.
+- The port's `fit::frame_size` and `fit::screen_to_design` stay uncalled outside their
+  own tests (the review's finding 3): this fix does not need them, so they are left for
+  wrap.
