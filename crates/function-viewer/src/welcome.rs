@@ -670,7 +670,12 @@ fn paint_plane_direct(
 /// markers), the 1 px `--border` at radius 4, and the rounded cutouts — as
 /// `HeroPlane.tsx` draws them through `drawCartesianPlane` with empty extras
 /// and no legend.
-pub(crate) fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::BoundingBox, density: f32) {
+pub(crate) fn paint_hero(
+    app: &mut App,
+    theme: &mv_theme::Theme,
+    frame: &clay::BoundingBox,
+    density: f32,
+) {
     // The frame's background fill, under the ink (the DOM's canvas element
     // above its own background).
     app.vg.begin_path();
