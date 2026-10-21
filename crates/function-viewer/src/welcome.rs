@@ -18,9 +18,9 @@
 //!   template's not-found page and the dev theme-demo page are not ported:
 //!   `decisions.md`'s h10 lines). `trim_slashes` is already `url`'s.
 //!
-//! The layout is written against a frame size and a fit argument (both the
-//! window and 1 for now, with every position in design units), so h10-fit
-//! lands as a transform and a zoom, not a rewrite. The backdrop (paper and
+//! The layout is written against a frame size and a fit argument: the window
+//! over fit in design units, drawn under a NanoVG scale of fit with the top
+//! row zoomed and the menu at natural size (h10-fit). The backdrop (paper and
 //! lights) is h10-hero's: [`paint_backdrop`] is the one named call between
 //! the page background and the frame's content, painting nothing until it
 //! merges. Entering a route is a fresh mount (plan §3.7 Routes): entering
@@ -126,34 +126,43 @@ pub const CTA_RING_OFFSET: f32 = 1.0;
 pub const CTA_RING_INK: mv_nvg::Color = [0.0, 95.0 / 255.0, 204.0 / 255.0, 1.0];
 
 /// Lays out the welcome page in `app`'s Clay context against `size` at `fit`
-/// (both the window and 1 for now) and returns the frame's render commands.
-/// The caller opens the layout first and ends it after.
+/// and returns the frame's render commands. The layout runs in design units:
+/// the frame at window / fit (`.frame { width: calc(100% / var(--fit)); ...
+/// }`), drawn under a NanoVG scale of fit from the origin
+/// (`transform: scale(var(--fit))`, `transform-origin: 0 0`), so the content
+/// safe-centres inside the enlarged frame and shrinks as one picture; the
+/// top row lays out against the same frame (its offsets 24 and 32, its 40 px
+/// height and the 28 px mark scale by fit under the same scale, exactly as
+/// `zoom: var(--fit)` scales them about the origin), and the menu keeps its
+/// natural size (`[popover] { zoom: calc(1 / var(--fit)) }`) with its 8
+/// screen px gap laid out as 8 / fit. The caller opens the layout first and
+/// ends it after.
 pub fn layout_welcome(app: &mut App, size: [f32; 2], fit: f32) -> Vec<clay::RenderCommand> {
+    let frame = [size[0] / fit, size[1] / fit];
     app.clay
         .as_mut()
         .expect("clay context initialised")
         .set_layout_dimensions(clay::Dimensions {
-            width: size[0],
-            height: size[1],
+            width: frame[0],
+            height: frame[1],
         });
     app.clay
         .as_mut()
         .expect("clay context initialised")
         .begin_layout();
-    let frame = [size[0] / fit, size[1] / fit];
     let mut root = crate::ui::empty_decl();
     root.layout.sizing = clay::Sizing {
-        width: mv_clay::sizing_fixed(size[0]),
-        height: mv_clay::sizing_fixed(size[1]),
+        width: mv_clay::sizing_fixed(frame[0]),
+        height: mv_clay::sizing_fixed(frame[1]),
     };
     crate::ui::ui_scope(app, mv_clay::id("WelcomeRoot", 0), &root, |app| {
         // DOM order: the top row, then the frame; the menu floats last.
-        top_bar(app, size);
+        top_bar(app, frame);
         content_frame(app, frame);
         // The settings menu floats under the gear, above the page, as on the
         // viewer: its regions ride one layer up, over the same pixels.
         app.input.z = 1;
-        crate::settings::menu(app);
+        crate::settings::menu_below(app, crate::settings::layout::MENU_OFFSET_Y / fit);
         app.input.z = 0;
     });
     app.clay
@@ -496,6 +505,24 @@ fn icon(
     crate::ui::ui_scope(app, id, &decl, |_| {});
 }
 
+/// Whether the hero's plane renders at its full bitmap size into an
+/// offscreen framebuffer, drawn scaled with linear filtering as the browser
+/// shrinks the canvas (h10-fit's item 2; the planner's expected winner), or
+/// paints vector-direct under the root scale. Flipped for the measurement
+/// run; the kept path stays.
+pub const HERO_FBO: bool = false;
+
+/// The hero plane's offscreen bitmap: the canvas bitmap at the device ratio
+/// of the design size (`useUpdateCanvas`: `max(1, round(838 · dpr)) × max(1,
+/// round(518 · dpr))`), cached on the app and re-rendered every welcome
+/// frame (the loop moves). `nvglu` already flips the image for sampling, so
+/// the composite blit reads straight.
+pub struct HeroPlaneCache {
+    pub width: i32,
+    pub height: i32,
+    pub fb: mv_nvg::Framebuffer,
+}
+
 /// The hero's boxed content: the border box inside its 1 px border, as the
 /// plane's own `canvas_content` does. `page.rs` shares it for the hero paint.
 pub(crate) fn hero_content(border: &clay::BoundingBox) -> clay::BoundingBox {
@@ -505,6 +532,124 @@ pub(crate) fn hero_content(border: &clay::BoundingBox) -> clay::BoundingBox {
         width: border.width - 2.0 * crate::plane::CANVAS_BORDER,
         height: border.height - 2.0 * crate::plane::CANVAS_BORDER,
     }
+}
+
+/// The loop's curves through its transform with the plane's colours: the
+/// owned inputs both hero paint paths share (the state copies out first: the
+/// paint borrows the fonts and the context mutably).
+fn hero_inputs(
+    app: &App,
+    theme: &mv_theme::Theme,
+) -> (
+    crate::plane::PlaneColors,
+    Vec<crate::transform_curves::TransformedCurve>,
+    crate::plane_markers::MarkerColors,
+) {
+    let colors = crate::plane::plane_colors(theme);
+    let shown = app.welcome.shown;
+    let current = app.welcome.current;
+    let looping = crate::transform_curves::transform_curves(
+        &crate::plot::curves(&shown),
+        crate::transform_curves::Transform {
+            a: current.a,
+            b: current.b,
+            h: current.h,
+            k: current.k,
+        },
+    );
+    let mcolors = crate::plane_markers::marker_colors(theme);
+    (colors, looping, mcolors)
+}
+
+/// Renders the hero's plane into the cached offscreen bitmap, before the
+/// frame begins (a frame cannot nest inside the page's) and before any
+/// target binds: the bitmap-sized framebuffer bound, a bitmap-sized NanoVG
+/// frame begun, the background fill and the bare plane painted in design
+/// units at the device ratio, the frame ended and the default target
+/// rebound — the caller binds its own target after. Skipped unless `HERO_FBO`
+/// on the welcome route.
+pub fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
+    if !HERO_FBO || !matches!(Route::of(&app.url), Route::Welcome) {
+        return;
+    }
+    // `as` at the f32 boundary: the bitmap is whole device pixels.
+    let dpr = f64::from(density);
+    let width = (f64::from(HERO_WIDTH - 2.0 * crate::plane::CANVAS_BORDER) * dpr).round() as i32;
+    let height = (f64::from(HERO_HEIGHT - 2.0 * crate::plane::CANVAS_BORDER) * dpr).round() as i32;
+    let (width, height) = (width.max(1), height.max(1));
+    let fresh = app
+        .hero_plane
+        .as_ref()
+        .is_none_or(|cache| cache.width != width || cache.height != height);
+    if fresh {
+        if let Some(old) = app.hero_plane.take() {
+            old.fb.delete();
+        }
+        app.hero_plane = Some(HeroPlaneCache {
+            width,
+            height,
+            fb: mv_nvg::Framebuffer::create(&mut app.vg, width, height, 0),
+        });
+    }
+    let Some(cache) = app.hero_plane.as_ref() else {
+        return;
+    };
+    cache.fb.bind();
+    let (colors, looping, mcolors) = hero_inputs(app, theme);
+    // The FBO is device pixels (838*dpr x 518*dpr); the bare plane paints
+    // in design units (838 x 518), so begin the frame at the device size and
+    // scale the context by dpr before painting — the browser's own bitmap.
+    app.vg
+        .begin_frame(cache.width as f32, cache.height as f32, 1.0);
+    let content = clay::BoundingBox {
+        x: 0.0,
+        y: 0.0,
+        width: HERO_WIDTH - 2.0 * crate::plane::CANVAS_BORDER,
+        height: HERO_HEIGHT - 2.0 * crate::plane::CANVAS_BORDER,
+    };
+    app.vg.begin_path();
+    app.vg
+        .rect(0.0, 0.0, cache.width as f32, cache.height as f32);
+    app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
+    app.vg.fill();
+    app.vg.save();
+    let s = (cache.width as f32) / (HERO_WIDTH - 2.0 * crate::plane::CANVAS_BORDER);
+    app.vg.scale(s, s);
+    paint_plane_direct(app, theme, &content, &colors, &looping, &mcolors);
+    app.vg.restore();
+    app.vg.end_frame();
+    mv_nvg::Framebuffer::bind_default();
+}
+
+/// Paints the bare plane into `content`: the grid, axes and labels, then the
+/// loop's curves — the dashed original behind the solid one — with no
+/// handles, no lines and no markers, as `HeroPlane.tsx` draws them through
+/// `drawCartesianPlane` with empty extras and no legend.
+fn paint_plane_direct(
+    app: &mut App,
+    theme: &mv_theme::Theme,
+    content: &clay::BoundingBox,
+    colors: &crate::plane::PlaneColors,
+    looping: &[crate::transform_curves::TransformedCurve],
+    mcolors: &crate::plane_markers::MarkerColors,
+) {
+    crate::plane::paint_plane(
+        &mut app.fonts,
+        &mut app.vg,
+        content,
+        crate::camera::DEFAULT_CENTER,
+        crate::camera::DEFAULT_SCALE,
+        colors,
+        true,
+        looping,
+        theme.colors[mv_theme::Token::ChartLine],
+        theme.colors[mv_theme::Token::ForegroundMuted],
+        &[],
+        &[],
+        theme.colors[mv_theme::Token::Primary],
+        &[],
+        mcolors,
+    );
 }
 
 /// Paints the loop into the hero frame: the `--background` fill, the bare
@@ -525,39 +670,32 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
     app.vg.fill_color(theme.colors[mv_theme::Token::Background]);
     app.vg.fill();
     let content = hero_content(frame);
-    // The bare plane (h10-seam's split): the loop state's curves through
-    // its transform, with empty extras. The state copies out first: the
-    // paint below borrows the fonts and the context mutably.
-    let colors = crate::plane::plane_colors(theme);
-    let shown = app.welcome.shown;
-    let current = app.welcome.current;
-    let looping = crate::transform_curves::transform_curves(
-        &crate::plot::curves(&shown),
-        crate::transform_curves::Transform {
-            a: current.a,
-            b: current.b,
-            h: current.h,
-            k: current.k,
-        },
-    );
-    let mcolors = crate::plane_markers::marker_colors(theme);
-    crate::plane::paint_plane(
-        &mut app.fonts,
-        &mut app.vg,
-        &content,
-        crate::camera::DEFAULT_CENTER,
-        crate::camera::DEFAULT_SCALE,
-        &colors,
-        true,
-        &looping,
-        theme.colors[mv_theme::Token::ChartLine],
-        theme.colors[mv_theme::Token::ForegroundMuted],
-        &[],
-        &[],
-        theme.colors[mv_theme::Token::Primary],
-        &[],
-        &mcolors,
-    );
+    if HERO_FBO {
+        // The bitmap shrunk by the GPU's linear filtering, as the browser
+        // shrinks the canvas: the image already spans the bitmap, so the
+        // pattern maps it onto the content box 1:1.
+        let image = app.hero_plane.as_ref().map(|cache| cache.fb.image());
+        if let Some(image) = image {
+            let paint = app.vg.image_pattern(
+                content.x,
+                content.y,
+                content.width,
+                content.height,
+                0.0,
+                image,
+                1.0,
+            );
+            app.vg.begin_path();
+            app.vg
+                .rect(content.x, content.y, content.width, content.height);
+            app.vg.fill_paint(&paint);
+            app.vg.fill();
+        }
+    } else {
+        // The vector-direct path, measured against the bitmap one.
+        let (colors, looping, mcolors) = hero_inputs(app, theme);
+        paint_plane_direct(app, theme, &content, &colors, &looping, &mcolors);
+    }
     // The 1 px `--border` at radius 4 over the ink (the DOM's border above
     // the canvas): the command walk's border shape — the frame box inset
     // half a px, corners shrunk the same.
@@ -586,20 +724,18 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
 /// browser's compositing, which the framebuffer's linear blend would miss)
 /// and uploads one opaque image, drawn with an image pattern exactly as the
 /// transition's snapshot is. Runs after the layout so the hero's box is the
-/// laid-out one.
-pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32) {
+/// laid-out one; `fit` is the page scale (`--fit`).
+pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32, fit: f64) {
     use crate::welcome_backdrop::{
         BackdropGeometry, BackdropKey, composite_backdrop, theme_colors,
     };
-    /// The page scale (`--fit`; 1 until h10-fit wires it).
-    const FIT: f64 = 1.0;
     let Some(hero) = crate::page::element_box(app, mv_clay::id("WelcomeHero", 0)) else {
         return;
     };
     let key = BackdropKey {
         slug: theme.slug,
         pixels: app.pixels,
-        fit_bits: FIT.to_bits(),
+        fit_bits: fit.to_bits(),
     };
     let cached = app.backdrop.is_some_and(|cache| cache.key == key);
     if !cached {
@@ -616,7 +752,7 @@ pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32) {
                 hero.height.into(),
             ],
             viewport: [app.size[0].into(), app.size[1].into()],
-            fit: FIT,
+            fit,
             dpr: density.into(),
         };
         let image = composite_backdrop(&geom, &theme_colors(theme));
@@ -955,6 +1091,121 @@ mod layout_tests {
     /// The layout slack: boxes within half a CSS pixel of the reference's.
     const SLACK: f32 = 0.5;
 
+    /// Lays out the shrunk page headlessly at `window` with `pixels` backing
+    /// pixels and returns the fit. Takes the app by `&mut`: the measure
+    /// closure keeps its address after `init_clay`, so a laid-out app never
+    /// moves (the h8-points-field rule).
+    fn layout_fit_app(app: &mut crate::app::App, window: [f32; 2], pixels: [i32; 2]) -> f32 {
+        assert!(mv_text::init(&mut app.fonts));
+        crate::ui::init_clay(app);
+        app.size = window;
+        app.pixels = pixels;
+        // `as` at the f64/f32 boundary: the layout is f32 throughout.
+        let fit = crate::fit::current_fit(app.size, app.pixels) as f32;
+        let _commands = layout_welcome(app, window, fit);
+        fit
+    }
+
+    /// Checks every part's screen box sits inside the window (the port never
+    /// scrolls: no scrollable container exists).
+    fn check_inside(
+        app: &crate::app::App,
+        fit: f32,
+        window: [f32; 2],
+        parts: &[(mv_sys::clay::ElementId, &str)],
+    ) {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        for (id, name) in parts {
+            let data = clay.get_element_data(*id);
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let (left, top, right, bottom) = (
+                b.x * fit,
+                b.y * fit,
+                (b.x + b.width) * fit,
+                (b.y + b.height) * fit,
+            );
+            assert!(
+                left >= 0.0 && top >= 0.0 && right <= window[0] && bottom <= window[1],
+                "{name}: [{left}, {top}, {right}, {bottom}] outside {window:?}"
+            );
+        }
+    }
+
+    /// Checks the laid-out design boxes against the fixture's shot, scaled
+    /// by the fit into screen px. The fixture runs the states at density 2,
+    /// so the fit here is the density-2 fit of the same window (equal to the
+    /// dpr-1 fit wherever the paper rounding agrees).
+    fn check_against(
+        app: &crate::app::App,
+        fit: f32,
+        state: &str,
+        parts: &[(mv_sys::clay::ElementId, &str)],
+    ) {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot = crate::fixture::fixture_shot(&fixture, state).expect("fit shot in fixture");
+        for (id, name) in parts {
+            let data = clay.get_element_data(*id);
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got * fit - want).abs() <= SLACK,
+                    "{name}[{i}]: the port lays out {}, the reference {want}",
+                    got * fit
+                );
+            }
+        }
+    }
+
+    /// Checks the laid-out design boxes against the fixture's shot, scaled
+    /// by the fit into screen px, and that every screen box sits inside the
+    /// window (the port never scrolls: no scrollable container exists).
+    fn check_fit_boxes(
+        app: &crate::app::App,
+        fit: f32,
+        window: [f32; 2],
+        state: &str,
+        parts: &[(mv_sys::clay::ElementId, &str)],
+    ) {
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        let shot = crate::fixture::fixture_shot(&fixture, state).expect("fit shot in fixture");
+        for (id, name) in parts {
+            let data = clay.get_element_data(*id);
+            assert!(data.found, "{name}: no such element");
+            let b = data.boundingBox;
+            let want = crate::fixture::fixture_box(&shot.webkit, name).expect("box in fixture");
+            for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                .iter()
+                .zip(want.iter())
+                .enumerate()
+            {
+                assert!(
+                    (got * fit - want).abs() <= SLACK,
+                    "{name}[{i}]: the port lays out {}, the reference {want}",
+                    got * fit
+                );
+            }
+            let (left, top, right, bottom) = (
+                b.x * fit,
+                b.y * fit,
+                (b.x + b.width) * fit,
+                (b.y + b.height) * fit,
+            );
+            assert!(
+                left >= 0.0 && top >= 0.0 && right <= window[0] && bottom <= window[1],
+                "{name}: [{left}, {top}, {right}, {bottom}] outside {window:?}"
+            );
+        }
+    }
+
     /// The welcome page's boxes match the reference's, in CSS pixels: the
     /// top row, the intro column and the hero's plane at the design size.
     #[test]
@@ -999,5 +1250,138 @@ mod layout_tests {
                 );
             }
         }
+    }
+
+    /// The 1024 × 640 vitest case at dpr 1: fit 0.70, the title's box 67.2
+    /// tall, every part (mark, gear, title, button, hint, plane) inside the
+    /// window, the plane 588 × 364, nothing scrolling (the port never
+    /// scrolls: the page has no scrollable container). The paper rounding
+    /// refines 0.70 to 0.71 at density 2, so the fixture half runs on a
+    /// second layout at the density-2 fit.
+    #[test]
+    fn fit_1024x640_shows_the_whole_page_smaller() {
+        let parts = [
+            (mv_clay::id("WelcomeMark", 0), "mark"),
+            (mv_clay::id(crate::top_bar::GEAR_ID, 0), "gear"),
+            (mv_clay::id("WelcomeTitle", 0), "title"),
+            (mv_clay::id("WelcomeCta", 0), "cta"),
+            (mv_clay::id("WelcomeHint", 0), "hint"),
+            (mv_clay::id("WelcomeHeroPlane", 0), "hero_plane"),
+        ];
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        let fit = layout_fit_app(&mut app, [1024.0, 640.0], [1024, 640]);
+        assert!((fit - 0.70).abs() < 1e-6, "fit is {fit}");
+        check_inside(&app, fit, [1024.0, 640.0], &parts);
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let title = clay
+            .get_element_data(mv_clay::id("WelcomeTitle", 0))
+            .boundingBox;
+        assert!(
+            (title.height * fit - 67.2).abs() <= SLACK,
+            "title reads {}, want 67.2",
+            title.height * fit
+        );
+        let plane = clay
+            .get_element_data(mv_clay::id("WelcomeHeroPlane", 0))
+            .boundingBox;
+        assert!(
+            (plane.width * fit - 588.0).abs() <= SLACK
+                && (plane.height * fit - 364.0).abs() <= SLACK,
+            "plane reads {} × {}, want 588 × 364",
+            plane.width * fit,
+            plane.height * fit
+        );
+        let mut probe = crate::fixture::headless_app();
+        let fit = layout_fit_app(&mut probe, [1024.0, 640.0], [2048, 1280]);
+        assert!((fit - 0.71).abs() < 1e-6, "fit is {fit}");
+        check_against(&probe, fit, "welcome-fit-1024x640", &parts);
+    }
+
+    /// The 1280 × 1000 vitest case at dpr 1: the plane 739.2 × 457.6 with
+    /// its centre at y 500, the gear's top 21.12 and right inset 28.16. The
+    /// paper rounding agrees at density 2 (0.88), so the one layout checks
+    /// the fixture too.
+    #[test]
+    fn fit_1280x1000_sets_the_size_by_width() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        let fit = layout_fit_app(&mut app, [1280.0, 1000.0], [1280, 1000]);
+        assert!((fit - 0.88).abs() < 1e-6, "fit is {fit}");
+        check_fit_boxes(
+            &app,
+            fit,
+            [1280.0, 1000.0],
+            "welcome-fit-1280x1000",
+            &[
+                (mv_clay::id("WelcomeMark", 0), "mark"),
+                (mv_clay::id(crate::top_bar::GEAR_ID, 0), "gear"),
+                (mv_clay::id("WelcomeTitle", 0), "title"),
+                (mv_clay::id("WelcomeCta", 0), "cta"),
+                (mv_clay::id("WelcomeHint", 0), "hint"),
+                (mv_clay::id("WelcomeHeroPlane", 0), "hero_plane"),
+            ],
+        );
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let plane = clay
+            .get_element_data(mv_clay::id("WelcomeHeroPlane", 0))
+            .boundingBox;
+        assert!(
+            (plane.width * fit - 739.2).abs() <= 0.05 && (plane.height * fit - 457.6).abs() <= 0.05,
+            "plane reads {} × {}, want 739.2 × 457.6",
+            plane.width * fit,
+            plane.height * fit
+        );
+        assert!(
+            ((plane.y * fit + (plane.y + plane.height) * fit) / 2.0 - 500.0).abs() <= SLACK,
+            "plane centres at y {}",
+            (plane.y * fit + (plane.y + plane.height) * fit) / 2.0
+        );
+        let gear = clay
+            .get_element_data(mv_clay::id(crate::top_bar::GEAR_ID, 0))
+            .boundingBox;
+        assert!(
+            (gear.y * fit - 21.12).abs() <= 0.05,
+            "gear top {}",
+            gear.y * fit
+        );
+        assert!(
+            (1280.0 - (gear.x + gear.width) * fit - 28.16).abs() <= 0.05,
+            "gear right inset {}",
+            1280.0 - (gear.x + gear.width) * fit
+        );
+    }
+
+    /// The 1280 × 800 vitest case at dpr 1: the plane narrower than 840,
+    /// with (plane.width / 840) · 50 · dpr within 0.005 of a whole number.
+    /// The paper rounding agrees at density 2 (0.88), so the one layout
+    /// checks the fixture too.
+    #[test]
+    fn fit_1280x800_keeps_the_paper_on_the_plane() {
+        let _guard = mv_clay::tests_lock();
+        let mut app = crate::fixture::headless_app();
+        let fit = layout_fit_app(&mut app, [1280.0, 800.0], [1280, 800]);
+        assert!((fit - 0.88).abs() < 1e-6, "fit is {fit}");
+        check_fit_boxes(
+            &app,
+            fit,
+            [1280.0, 800.0],
+            "welcome-fit-1280x800",
+            &[
+                (mv_clay::id("WelcomeHeroPlane", 0), "hero_plane"),
+                (mv_clay::id("WelcomeTitle", 0), "title"),
+            ],
+        );
+        let clay = app.clay.as_ref().expect("clay context initialised");
+        let plane = clay
+            .get_element_data(mv_clay::id("WelcomeHeroPlane", 0))
+            .boundingBox;
+        let screen = plane.width * fit;
+        assert!(screen < 840.0, "plane reads {screen} wide");
+        let per_unit = (screen / 840.0) * 50.0 * 1.0;
+        assert!(
+            (per_unit - per_unit.round()).abs() <= 0.005,
+            "paper step reads {per_unit} device px"
+        );
     }
 }

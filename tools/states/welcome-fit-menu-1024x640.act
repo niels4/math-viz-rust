@@ -1,0 +1,14 @@
+# welcome-fit-menu-1024x640 (h10-fit): the gear clicked at its zoomed centre
+# (987, 31) in a 1024 x 640 window; the menu at natural size under it, inside
+# the window. Dark Arctic Ice, reduced motion.
+route welcome
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 987 31
+wait 500
+shot welcome-fit-menu-1024x640

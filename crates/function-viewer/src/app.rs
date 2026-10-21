@@ -195,6 +195,12 @@ pub struct App {
     ///
     /// Appended at the end (fields are never reordered).
     pub welcome: crate::welcome_step::WelcomeState,
+    /// The hero plane's offscreen bitmap at the device ratio (h10-fit;
+    /// `welcome.rs` owns the composite, `page.rs` paints it; `None` until
+    /// the first welcome frame).
+    ///
+    /// Appended at the end (fields are never reordered).
+    pub hero_plane: Option<crate::welcome::HeroPlaneCache>,
 }
 
 impl App {
@@ -373,6 +379,7 @@ impl App {
             slider_edit: false,
             backdrop: None,
             welcome: crate::welcome_step::WelcomeState::fresh(),
+            hero_plane: None,
         }
     }
 }
