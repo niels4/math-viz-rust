@@ -1212,6 +1212,41 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
   run (`MV_PANIC_AT_FRAME=1`, hero-hover) crashes on both surfaces, 16 of 16 each, so the
   sweep sees a crash.
 
+## fix-viewer-size phase 1 (2026-10-21)
+
+- The viewer's content row takes the window's share, as math-viz2's grid does
+  (`grid-template-rows: max-content minmax(0, 1fr)`, `height: 100dvh` at
+  `c6754e7`): the sidebar is the Panel scroll container, with Clay's clip
+  (`horizontal: false, vertical: true`, the scroller's `childOffset`) on the
+  sidebar's element. A Clay clip container does NOT take its content's size as
+  its minimum along the clipped axis, which is exactly what lets the row shrink
+  to the window; the probe needed no fallback to an explicit
+  `app.size[1] - 112.0`. The element's id is `SCROLLER_IDS[Panel]` ("Panel"),
+  so `page::SIDEBAR_ID` now names the scroller and the readers below ask for
+  the same element.
+- Clay's border takes no layout space (the browser's `border-box` does): the
+  sidebar's padding is its CSS padding plus its 1 px border, and the scroll
+  container's border is 1.0, so the client height is the box less 2.
+- The paints the port makes over the sidebar's content after the Clay commands
+  (the readout's two lines, the rows' rings and chevrons, the slider, Reset
+  all's focus ring, the Points card's rows) are scissored to the sidebar's
+  padding box; the floats outside it (the ruler, the tips) keep their paint.
+  A scissor is set with `vg.save()` / `vg.scissor` / `vg.restore()` around the
+  passes, since NanoVG's `nvgScissor` is not part of the saved state.
+- The reference's own numbers, measured at `c6754e7` and confirmed by the
+  port's layout test: the header is (16, 16, W - 32, 64), the content row is
+  H - 112 tall from y = 96, the sidebar is (16, 96, 400, H - 112) with a client
+  height of H - 114, and the canvas is (432, 96, W - 448, H - 112). The
+  sidebar's content is 735 CSS px tall at every size, so it scrolls whenever
+  H < 849; the port's Panel maxima are the reference's (209 at 1024 x 640, 249
+  at 800 x 600, 0 at 1920 x 1200).
+- The reference's page never scrolls (`100dvh`): the Page scroller stays
+  inactive, and the port's own `views.json` route, camera, shown transform and
+  cursor lines equal the reference's DOM read at the three sizes.
+- The port's sidebar content height is 736.5 where the reference's flex column
+  reads 735: a half pixel, with no pixel out of place (the cards lay out from
+  the top, so the last visible card sits where the reference's does).
+
 ## h10-fit (2026-10-20)
 
 - Kept path: direct vector drawing under the root fit scale (`HERO_FBO = false`).

@@ -24,7 +24,12 @@ pub const SIDEBAR_WIDTH: f32 = 400.0;
 pub const SIDEBAR_RADIUS: f32 = 4.0;
 
 /// The page's sidebar box, for the settings menu's later use and tests.
-pub const SIDEBAR_ID: &str = "Sidebar";
+///
+/// The sidebar is the Panel scroll container (fix-viewer-size): the element's
+/// name is the scroller's, `scroll::SCROLLER_IDS[Scroller::Panel]`, so the
+/// clip's container and the box the readers below ask for are one element.
+/// The test at the end of this file pins the two names together.
+pub const SIDEBAR_ID: &str = "Panel";
 
 /// The plane's two handles: the shift diamond at the live h, k, then the
 /// scale square at the unit point of the shown transform, in that order so
@@ -130,6 +135,13 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
             width: app.size[0],
             height: app.size[1],
         });
+    // The sidebar is the Panel scroll container and the page never scrolls
+    // (`100dvh`, `minmax(0, 1fr)` in `FunctionViewer.module.css`; the
+    // sidebar's `overflow: auto` in `SideBar.module.css`). The clip on the
+    // sidebar keeps Clay from taking its content's height as the row's
+    // minimum, so the row takes the window's share (fix-viewer-size).
+    crate::scroll::scroll_container(app, crate::scroll::Scroller::Page, false, 0.0);
+    crate::scroll::scroll_container(app, crate::scroll::Scroller::Panel, true, 1.0);
     app.clay
         .as_mut()
         .expect("clay context initialised")
@@ -180,11 +192,24 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
                 width: mv_clay::border_outside(1),
             };
             side.cornerRadius = crate::ui::corner_radius_all(SIDEBAR_RADIUS);
+            // The sidebar's `overflow: auto` (fix-viewer-size): a clip on the
+            // vertical axis, with the scroll container's offset as the child
+            // offset. Clay's clip container does not take its content's size
+            // as its minimum along the clipped axis, which is what lets the
+            // row shrink to the window's share.
+            side.clip = clay::ClipElementConfig {
+                horizontal: false,
+                vertical: true,
+                childOffset: crate::scroll::scrolled(app, crate::scroll::Scroller::Panel),
+            };
             crate::ui::ui_scope(app, mv_clay::id(SIDEBAR_ID, 0), &side, |app| {
                 // The sidebar's cards (h3's Function card; h4's Transform
-                // card joins it here).
+                // card joins it here). The regions under the clip take the
+                // scroller's box, as the first port's panel did.
+                app.input.clip = Some(crate::scroll::Scroller::Panel);
                 let current = *app.func_param.get();
                 crate::sidebar::sidebar(app, current);
+                app.input.clip = None;
             });
             let mut body = crate::ui::empty_decl();
             body.layout.sizing = clay::Sizing {
@@ -212,11 +237,17 @@ pub fn layout_page(app: &mut App) -> Vec<clay::RenderCommand> {
         // The scrub ruler floats under its row while a box scrubs (h5-ruler).
         crate::ruler::layout_open_drag(app);
     });
-    app.clay
+    let commands = app
+        .clay
         .as_mut()
         .expect("clay context initialised")
         .end_layout()
-        .to_vec()
+        .to_vec();
+    // The layout the Clay commands above came from is still current, so the
+    // scroll container's extent and the offset's clamp are read from it now
+    // (fix-viewer-size). The offset does not move at rest.
+    crate::scroll::update_scroll(app);
+    commands
 }
 
 /// The canvas's border box, once laid out.
@@ -227,6 +258,25 @@ fn plane_box(app: &App) -> Option<clay::BoundingBox> {
         .expect("clay context initialised")
         .get_element_data(mv_clay::id(crate::plane::PLANE_ID, 0));
     data.found.then_some(data.boundingBox)
+}
+
+/// The sidebar's padding box: the box its content is clipped to, inside its
+/// 1 px border (fix-viewer-size). The browser's `overflow: auto` clips the
+/// content at the padding box, and the paints the port makes over the
+/// sidebar's content after the Clay commands are scissored to it, so none of
+/// them paints past the row's bottom.
+fn sidebar_content_box(app: &App) -> Option<clay::BoundingBox> {
+    let data = app
+        .clay
+        .as_ref()
+        .expect("clay context initialised")
+        .get_element_data(mv_clay::id(SIDEBAR_ID, 0));
+    data.found.then(|| {
+        crate::scroll::grow_box(
+            data.boundingBox,
+            -crate::scroll::scroll_border(app, crate::scroll::Scroller::Panel),
+        )
+    })
 }
 
 /// Declares the overlay button's kept region: the pointer shows over it, the
@@ -572,6 +622,17 @@ fn draw_viewer(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Tim
     // The rows' swatches, then the gear's hover border and focus ring.
     crate::settings::paint_swatches(app);
     crate::settings::paint_chrome(app);
+    // The paints over the sidebar's content are clipped to the sidebar's
+    // padding box, as the browser's `overflow: auto` clips them (the
+    // reference's sidebar box is the scroll container, so its content stops
+    // at the row's bottom; fix-viewer-size). The floats outside it (the
+    // ruler, the tips) keep their paint; none of this milestone's states
+    // scrubs or shows a tip.
+    let sidebar_clip = sidebar_content_box(app);
+    if let Some(clip) = sidebar_clip {
+        app.vg.save();
+        app.vg.scissor(clip.x, clip.y, clip.width, clip.height);
+    }
     // The readout's two lines, scaled to fit where the equation is long.
     crate::readout::paint_readout(app);
     // The transform rows' inset rings, focus rings and chevrons (h4-rows),
@@ -584,6 +645,9 @@ fn draw_viewer(app: &mut App, theme: &mv_theme::Theme, now: crate::app_loop::Tim
     // The Points card's rows (h8-points-row): the marks, letters, badge,
     // roles and readouts, over the rows beneath like the ruler's tape.
     crate::points_section::paint_points(app);
+    if sidebar_clip.is_some() {
+        app.vg.restore();
+    }
     // The scrub ruler's tape under a dragged box (h5-ruler): over the rows
     // beneath, as the positioned tape stacks in the DOM.
     crate::ruler::paint_open_drag(app);
@@ -900,5 +964,98 @@ mod tests {
         // The plane's rule after it: the open hand, as the reference.
         crate::plane_input::plane_cursor(&mut app);
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
+    }
+
+    /// The viewer's layout at the three window sizes of fix-viewer-size: the
+    /// header, the sidebar and the canvas against the reference's WebKit
+    /// boxes in `testdata/page.json` (the reference at `c6754e7`), within the
+    /// plan's 0.5 CSS px. The sidebar's client height (its box less the 1 px
+    /// border on each side, as the browser's `clientHeight` reads) against the
+    /// fixture's scroll record, where the reference's content overflows.
+    #[test]
+    fn viewer_boxes_match_fixture_at_the_fit_sizes() {
+        const SLACK: f32 = 0.5;
+        let _guard = mv_clay::tests_lock();
+        let fixture = crate::fixture::page_fixture().expect("page fixture parses");
+        for shot in [
+            "viewer-fit-1024x640",
+            "viewer-fit-800x600",
+            "viewer-fit-1920x1200",
+        ] {
+            let mut app = crate::fixture::headless_app();
+            assert!(mv_text::init(&mut app.fonts));
+            crate::ui::init_clay(&mut app);
+            let size = crate::fixture::fixture_shot(&fixture, shot)
+                .expect("shot in fixture")
+                .size;
+            app.size = size;
+            app.pixels = [size[0] as i32 * 2, size[1] as i32 * 2];
+            app.url = crate::url::Url::new("#function-viewer");
+            let _commands = crate::page::layout_page(&mut app);
+            let clay = app.clay.as_ref().expect("clay context initialised");
+            for (id, name) in [
+                ("TopBar", "header"),
+                (crate::page::SIDEBAR_ID, "sidebar"),
+                (crate::plane::PLANE_ID, "canvas"),
+            ] {
+                let data = clay.get_element_data(mv_clay::id(id, 0));
+                assert!(data.found, "{shot} {name}: no such element");
+                let b = data.boundingBox;
+                let want = crate::fixture::fixture_box(
+                    &crate::fixture::fixture_shot(&fixture, shot)
+                        .expect("shot in fixture")
+                        .webkit,
+                    name,
+                )
+                .expect("box in fixture");
+                for (i, (got, want)) in [b.x, b.y, b.width, b.height]
+                    .iter()
+                    .zip(want.iter())
+                    .enumerate()
+                {
+                    assert!(
+                        (got - want).abs() <= SLACK,
+                        "{shot} {name}[{i}]: laid out {got}, reference {want}"
+                    );
+                }
+            }
+            // The Panel's client height: the sidebar's box less the 1 px
+            // border on each side, as the browser's `clientHeight` reads.
+            // The reference records the triple only where its content
+            // overflows; where it fits, the client height is the same
+            // measure and the port's scroll container has no room to move.
+            let sidebar = clay
+                .get_element_data(mv_clay::id(crate::page::SIDEBAR_ID, 0))
+                .boundingBox;
+            let border = crate::scroll::scroll_border(&app, crate::scroll::Scroller::Panel);
+            let client = sidebar.height - 2.0 * border;
+            let measures = crate::fixture::fixture_shot(&fixture, shot)
+                .expect("shot in fixture")
+                .webkit;
+            if let Some(record) = measures.scroll.get("sidebar") {
+                assert!(
+                    (client - record.client).abs() <= SLACK,
+                    "{shot} sidebar client height {client}, reference {}",
+                    record.client
+                );
+                assert!(
+                    (app.scroll[crate::scroll::Scroller::Panel].max
+                        - (record.height - record.client))
+                        .abs()
+                        <= SLACK,
+                    "{shot} sidebar scroll range {}, reference {}",
+                    app.scroll[crate::scroll::Scroller::Panel].max,
+                    record.height - record.client
+                );
+            } else {
+                assert_eq!(
+                    app.scroll[crate::scroll::Scroller::Panel].max,
+                    0.0,
+                    "{shot}: the reference's sidebar content fits, the port's scrolls"
+                );
+            }
+            crate::ui::release_clay(&mut app);
+            mv_text::destroy(&mut app.fonts);
+        }
     }
 }
