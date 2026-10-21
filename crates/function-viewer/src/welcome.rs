@@ -44,7 +44,7 @@ pub(crate) const VIEWER_ROUTE: &str = "function-viewer";
 /// viewer, any other route the welcome page (the template's not-found page
 /// is never in the port).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Route {
+pub(crate) enum Route {
     Welcome,
     FunctionViewer,
 }
@@ -121,9 +121,9 @@ pub(crate) const HINT_PARAMS: [crate::state::TransformParam; 4] = [
 /// (Chromium: 1 px `rgb(0, 95, 204)` at a 1 px offset; Firefox draws its own
 /// 1 px ring in the link's ink instead, a recorded engine quirk; WebKit
 /// never shows it, skipping the link on Tab, the known quirk).
-pub const CTA_RING_WIDTH: f32 = 1.0;
-pub const CTA_RING_OFFSET: f32 = 1.0;
-pub const CTA_RING_INK: mv_nvg::Color = [0.0, 95.0 / 255.0, 204.0 / 255.0, 1.0];
+pub(crate) const CTA_RING_WIDTH: f32 = 1.0;
+pub(crate) const CTA_RING_OFFSET: f32 = 1.0;
+pub(crate) const CTA_RING_INK: mv_nvg::Color = [0.0, 95.0 / 255.0, 204.0 / 255.0, 1.0];
 
 /// Lays out the welcome page in `app`'s Clay context against `size` at `fit`
 /// and returns the frame's render commands. The layout runs in design units:
@@ -137,7 +137,7 @@ pub const CTA_RING_INK: mv_nvg::Color = [0.0, 95.0 / 255.0, 204.0 / 255.0, 1.0];
 /// natural size (`[popover] { zoom: calc(1 / var(--fit)) }`) with its 8
 /// screen px gap laid out as 8 / fit. The caller opens the layout first and
 /// ends it after.
-pub fn layout_welcome(app: &mut App, size: [f32; 2], fit: f32) -> Vec<clay::RenderCommand> {
+pub(crate) fn layout_welcome(app: &mut App, size: [f32; 2], fit: f32) -> Vec<clay::RenderCommand> {
     let frame = [size[0] / fit, size[1] / fit];
     app.clay
         .as_mut()
@@ -522,14 +522,14 @@ fn icon(
 /// shrinks the canvas (h10-fit's item 2; the planner's expected winner), or
 /// paints vector-direct under the root scale. Flipped for the measurement
 /// run; the kept path stays.
-pub const HERO_FBO: bool = false;
+pub(crate) const HERO_FBO: bool = false;
 
 /// The hero plane's offscreen bitmap: the canvas bitmap at the device ratio
 /// of the design size (`useUpdateCanvas`: `max(1, round(838 · dpr)) × max(1,
 /// round(518 · dpr))`), cached on the app and re-rendered every welcome
 /// frame (the loop moves). `nvglu` already flips the image for sampling, so
 /// the composite blit reads straight.
-pub struct HeroPlaneCache {
+pub(crate) struct HeroPlaneCache {
     pub width: i32,
     pub height: i32,
     pub fb: mv_nvg::Framebuffer,
@@ -580,7 +580,7 @@ fn hero_inputs(
 /// units at the device ratio, the frame ended and the default target
 /// rebound — the caller binds its own target after. Skipped unless `HERO_FBO`
 /// on the welcome route.
-pub fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
+pub(crate) fn render_hero_plane(app: &mut App, theme: &mv_theme::Theme, density: f32) {
     if !HERO_FBO || !matches!(Route::of(&app.url), Route::Welcome) {
         return;
     }
@@ -670,7 +670,7 @@ fn paint_plane_direct(
 /// markers), the 1 px `--border` at radius 4, and the rounded cutouts — as
 /// `HeroPlane.tsx` draws them through `drawCartesianPlane` with empty extras
 /// and no legend.
-pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::BoundingBox, density: f32) {
+pub(crate) fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::BoundingBox, density: f32) {
     // The frame's background fill, under the ink (the DOM's canvas element
     // above its own background).
     app.vg.begin_path();
@@ -737,7 +737,7 @@ pub fn paint_hero(app: &mut App, theme: &mv_theme::Theme, frame: &clay::Bounding
 /// and uploads one opaque image, drawn with an image pattern exactly as the
 /// transition's snapshot is. Runs after the layout so the hero's box is the
 /// laid-out one; `fit` is the page scale (`--fit`).
-pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32, fit: f64) {
+pub(crate) fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32, fit: f64) {
     use crate::welcome_backdrop::{
         BackdropGeometry, BackdropKey, composite_backdrop, theme_colors,
     };
@@ -801,7 +801,7 @@ pub fn paint_backdrop(app: &mut App, theme: &mv_theme::Theme, density: f32, fit:
 /// its second enter. Without the synchronous enter a shot on the click's
 /// turn photographs the old route on the web (h10-loop's mount shot), while
 /// natively the same turn already draws the new one.
-pub fn navigate(app: &mut App, route: &str, query: &str) {
+pub(crate) fn navigate(app: &mut App, route: &str, query: &str) {
     let hash = if query.is_empty() {
         route.to_string()
     } else {
@@ -837,7 +837,7 @@ pub fn navigate(app: &mut App, route: &str, query: &str) {
 /// focus lists, jumps, `p_dragging`, `q_x`) keep their values, as jotai's
 /// do. Entering the welcome page closes its menu (h10-loop restarts its
 /// loop clock).
-pub fn enter_route(app: &mut App) {
+pub(crate) fn enter_route(app: &mut App) {
     match Route::of(&app.url) {
         Route::FunctionViewer => {
             crate::settings::close_menu(app);
@@ -885,7 +885,7 @@ pub fn enter_route(app: &mut App) {
 
 /// Routes a click on the welcome route: the release whose down-hit and
 /// up-hit agree on the button navigates, as the anchor would.
-pub fn click(app: &mut App, down: Hit) {
+pub(crate) fn click(app: &mut App, down: Hit) {
     let up = app.input.hover;
     if down != up {
         return;
@@ -899,7 +899,7 @@ pub fn click(app: &mut App, down: Hit) {
 /// settings menu walks its own stops): Tab walks the gear and the link, and
 /// Enter on the link navigates. Returns whether the key was
 /// consumed.
-pub fn welcome_key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
+pub(crate) fn welcome_key(app: &mut App, event: &crate::input::KeyEvent) -> bool {
     use sdl3::keyboard::Keycode;
     if !event.down || event.repeat {
         return false;

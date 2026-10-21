@@ -4,7 +4,6 @@ states are listed in tools/states/milestones.toml; the judgment is a person read
 images."""
 
 import json
-import re
 import time
 import tomllib
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
@@ -71,8 +70,14 @@ def state_exists(name: str) -> bool:
 
 
 def is_milestone(name: str) -> bool:
-    """A milestone's name, as milestones.toml keys them: H0, H1."""
-    return re.fullmatch(r"[MmHh]\d+[a-z]?", name) is not None
+    """A milestone's name, as milestones.toml keys them: H0, H1, FIXCURSOR.
+
+    Every key of the manifest counts, not only the history ones: a milestone
+    that is not a stretch of the history (FIXCURSOR) is a group of states
+    all the same, and `tools/run states FIXCURSOR` must find it.
+    """
+    manifest = tomllib.loads((STATES / "milestones.toml").read_text())
+    return name.upper() in {key.upper() for key in manifest}
 
 
 def milestone_states(milestone: str) -> list[str]:

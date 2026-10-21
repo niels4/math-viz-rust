@@ -329,6 +329,19 @@ impl WelcomeClock {
         self.elapsed += dt;
     }
 
+    /// Forgets the last frame's stamp, so the next [`step`](Self::step) adds
+    /// [`FIRST_FRAME_MS`] again.
+    ///
+    /// The hook's `last` lives in the effect, and the effect is keyed on
+    /// `animate`: every time the animation turns off and on again, the
+    /// effect restarts with `last === null` and the first frame adds
+    /// `firstFrameMs`. The port's clock is one state that outlives the
+    /// effect, so the still path drops the stamp to stand for the effect's
+    /// restart. The elapsed time is the hook's `useState` and stays.
+    pub fn forget_stamp(&mut self) {
+        self.last = None;
+    }
+
     /// The shown state: the tour at the elapsed time, or the still when
     /// animation is off (`canAnimate`, from the reduced-motion setting).
     #[must_use]

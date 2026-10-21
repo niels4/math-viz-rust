@@ -200,7 +200,7 @@ pub struct App {
     /// the first welcome frame).
     ///
     /// Appended at the end (fields are never reordered).
-    pub hero_plane: Option<crate::welcome::HeroPlaneCache>,
+    pub(crate) hero_plane: Option<crate::welcome::HeroPlaneCache>,
 }
 
 impl App {

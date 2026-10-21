@@ -1,8 +1,14 @@
-# hero-click-fit-1024x640 (h11-hero): the hero's screen centre in the shrunk
-# page (1024 x 640, fit 0.71 at density 2), read from page.json's
-# welcome-fit-1024x640 hero_plane box (369.999, 135.399, 596.400, 369.200 CSS
-# px): its centre is (668, 320). The click navigates to #function-viewer with
-# an empty query, as the click at fit 1 does.
+# hero-click-fit-1024x640 (h11-hero): a click on the hero under the fit.
+# The click is at the hero's DESIGN centre: page.json's welcome-fit-1024x640
+# hero_plane box (369.999, 135.399, 596.400, 369.200 CSS px) is the screen
+# box of the shrunk page, so its centre (668, 320) is where the design box's
+# centre lands on screen. The port's hit test divides the pointer by the fit
+# (0.71) before it tests the region, so (668, 320) resolves to the design
+# centre (941, 450): the state exercises the fit inverse, not the rendered
+# screen centre (which the review found the port draws larger than the
+# reference's at this size — fix-viewer-size's finding). The click lands
+# inside the region on both sides and navigates to #function-viewer with an
+# empty query, as the click at fit 1 does.
 route welcome
 size 1024 640
 density 2

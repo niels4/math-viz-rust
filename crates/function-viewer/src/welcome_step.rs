@@ -109,6 +109,14 @@ pub fn welcome_step(app: &mut App, now: Time) -> bool {
         state.entered = false;
         state.hold = false;
         state.step_at = None;
+        // The hook's effect is keyed on `animate`: the animation turning off
+        // cancels it, and turning on again starts a new one with
+        // `last === null`, so the first frame after it adds `firstFrameMs`.
+        // The port's clock outlives that effect, so the still path drops
+        // the stamp here; without it the first frame after the motion comes
+        // back would add `min(now - stale_last, 50)` = 50 ms and the tour
+        // would sit a third of a frame ahead of the reference for good.
+        state.clock.forget_stamp();
         return false;
     }
     // The entering turn draws the mount (`loopAt(0)` = rest, as the
@@ -320,5 +328,43 @@ mod tests {
         assert!(animating(&app));
         app.reduced_motion = true;
         assert!(!animating(&app));
+    }
+
+    #[test]
+    fn the_motion_coming_back_mid_stay_restarts_the_clock() {
+        // The hook's effect is keyed on `animate` (`useWelcomeLoop.ts`):
+        // turning the motion off cancels it, turning it on again starts a
+        // new one with `last === null`, so the first frame adds
+        // `firstFrameMs` (16.67 ms), not `min(now - stale_last, 50)`.
+        let mut app = welcome_app();
+        app.welcome = WelcomeState::fresh_entered(false);
+        assert!(welcome_step(&mut app, at(0)));
+        let mut now = 0;
+        for _ in 0..10 {
+            now += 16 * MS;
+            assert!(welcome_step(&mut app, now));
+        }
+        let elapsed = app.welcome.clock.elapsed();
+        assert!(elapsed > 0.0);
+
+        // The motion goes off: the page rests on the still and the clock's
+        // stamp is dropped.
+        app.reduced_motion = true;
+        now += 5000 * MS;
+        assert!(!welcome_step(&mut app, now));
+        assert_eq!(app.welcome.current, WELCOME_STILL);
+        let stilled = app.welcome.clock.elapsed();
+        assert_eq!(stilled, elapsed);
+
+        // It comes back: the first frame adds `firstFrameMs` again, so the
+        // tour does not jump a capped 50 ms ahead of the reference.
+        app.reduced_motion = false;
+        now += 16 * MS;
+        assert!(welcome_step(&mut app, now));
+        let after = app.welcome.clock.elapsed();
+        assert!(
+            (after - stilled - crate::plot::FIRST_FRAME_MS).abs() < 1e-9,
+            "the first frame after the motion returns adds firstFrameMs, not the capped gap"
+        );
     }
 }
