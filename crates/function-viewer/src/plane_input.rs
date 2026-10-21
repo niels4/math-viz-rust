@@ -1289,4 +1289,55 @@ mod tests {
         assert_eq!(app.camera.center, [0.0, 0.0]);
         assert_eq!(app.url.query(), "func=x2&a=2&h=1&k=-3&p=5");
     }
+
+    /// Ported from `CartesianPlane.test.tsx` ("drags a point instead of the
+    /// plane, with an open hand over it and a closed one while held").
+    #[test]
+    fn drags_a_point_instead_of_the_plane_with_an_open_hand_over_it_and_a_closed_one_while_held() {
+        let mut app = headless_app();
+        declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
+        seed_view(&mut app, "func=x&p=2");
+        // P sits at plane (2, 2) = (500, 200) px.
+        let p_px = [500.0_f32, 200.0_f32];
+        handle_input(&mut app, pointer_to(p_px), 16 * MS);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
+        // P is under the pointer, so Q is suppressed.
+        assert_eq!(app.state.q_x, None);
+
+        handle_input(&mut app, left_button(p_px, true), 0);
+        assert!(app.dragging);
+        assert_eq!(app.input.cursor, crate::input::Cursor::Grabbing);
+        assert!(app.state.p_dragging);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+
+        // +40 px horizontally: p follows the pointer, quantized.
+        let mut t = 0i64;
+        for i in 1..=5 {
+            t += 16;
+            handle_input(
+                &mut app,
+                pointer_to([p_px[0] + 8.0 * i as f32, p_px[1]]),
+                t * MS,
+            );
+            frame(&mut app, t);
+        }
+        assert!(
+            (app.p_param.get() - 2.8).abs() < 1e-9,
+            "p = {}",
+            app.p_param.get()
+        );
+        assert!(app.state.p_dragging);
+        assert_eq!(app.camera.center, [0.0, 0.0]);
+        assert_eq!(app.state.q_x, None);
+
+        t += 16;
+        handle_input(
+            &mut app,
+            left_button([p_px[0] + 40.0, p_px[1]], false),
+            t * MS,
+        );
+        assert!(!app.dragging);
+        assert!(!app.state.p_dragging);
+        assert_eq!(app.url.query(), "func=x&p=2.8");
+    }
 }
