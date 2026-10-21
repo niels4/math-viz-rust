@@ -1,0 +1,18 @@
+# hero-click-fit-1024x640 (h11-hero): the hero's screen centre in the shrunk
+# page (1024 x 640, fit 0.71 at density 2), read from page.json's
+# welcome-fit-1024x640 hero_plane box (369.999, 135.399, 596.400, 369.200 CSS
+# px): its centre is (668, 320). The click navigates to #function-viewer with
+# an empty query, as the click at fit 1 does.
+route welcome
+size 1024 640
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+reduced-motion on
+wait 2000
+click 668 320
+wait 2000
+move 511 34
+wait 300
+shot hero-click-fit-1024x640

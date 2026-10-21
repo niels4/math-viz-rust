@@ -1141,7 +1141,21 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
 - Hero link: region over `WelcomeHeroPlane` (box 840x520), HitKind::WelcomeHero appended, Cursor::Pointer, never a focus stop (tabIndex -1). click() navigates on WelcomeHero too. welcome_key unchanged. The region follows CTA's path under the fit.
 - Cursor: pointer (reference computes pointer in Chromium/Firefox, auto in WebKit; shows hand). Added to fix-cursor census.
 - Test: opens_the_function_viewer_from_the_animated_graph.
-- Ref-against-ref: welcome-default on ref-h11 vs ref-h10 in WebKit: 0 flat pixels apart outside welcome_dev_link's box (inline anchor round a block canvas makes no line box); count inside box is (f).
+- Ref-against-ref proof (2026-10-20, phase 2): `welcome-default` on ref-h11 (c6754e7) and on
+  ref-h10 (68e1c7b) in WebKit, threshold 0: 2866 changed pixels in all, of which 165 flat
+  (judge's rule) and every one of them inside `welcome_dev_link`'s box (652.25, 844,
+  135.375 x 16 CSS); 0 flat pixels apart outside it. The one changed pixel outside the box
+  (device 1492, 1720, CSS 746, 860) is the link's last glyph row, a 1-level AA edge on the
+  text (14,23,26 -> 15,24,27): category (a), not a moved box. So the count inside the box
+  is (f) (the dev-pages link the port carries by ruling) and nothing else of the welcome
+  page moved at c6754e7.
+- The hero's screen centre under the fit: page.json's `welcome-fit-1024x640` `hero_plane`
+  box (369.999, 135.399, 596.400, 369.200 CSS) centres at (668.2, 320.0); the click at
+  (668, 320) navigates (route function-viewer, url empty), the region hit-tested through
+  `fit::design_pos` like the CTA's.
+- Sweep H11: 9 states x 16 offsets = 288 runs (native + web-WebKit), 0 crashes; the panic
+  run (`MV_PANIC_AT_FRAME=1`, hero-hover) crashes on both surfaces, 16 of 16 each, so the
+  sweep sees a crash.
 
 ## h10-fit (2026-10-20)
 
