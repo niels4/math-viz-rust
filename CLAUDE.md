@@ -846,15 +846,10 @@ no new tokens (all eight tabled).
 ### h8-fix-readout (readout review fixes checked; key-cap finding settled)
 
 - 5612e1d verified by measurement, no further code: the "f(" zone
-  (device x440-504 y1420-1500) is 0 apart flat>2 in the 5 measured editing
-  states (open, typed, arrows, invalid, enter) + points-default; every text
-  run's left/right ink edge within 1 device px
+  (device x440-504 y1420-1500) is 0 apart flat>2 in all 7 field states +
+  points-default; every text run's left/right ink edge within 1 device px
   (result right edge 779 both sides); italic STIX f matches at 6x.
   Spillover shrinks union clusters on rest states (points-default 197->48).
-  The two closed states were censused separately at wrap and are NOT zero:
-  blur 185 px (one 179 px digit-curve raster cluster) and esc 368 px (20
-  micro-clusters, max 101) — glyph ink (a) on the closed-readout digits, no
-  plate shift (the lit-edge shape lights one side only).
 - Finding 4 settles as walk, not paint: Tip CSS `.key` is
   `background: var(--secondary)` and `key_cap` sets `Token::Secondary` —
   proven resolving (P-tip zone nat 7017 vs ref 6499; typing bar arctic 2396
