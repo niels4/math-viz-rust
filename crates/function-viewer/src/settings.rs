@@ -457,7 +457,7 @@ pub fn menu_below(app: &mut App, dy: f32) {
 /// control as the selector cells, which the user wants with the pointer. The
 /// reference measures default in all three engines (its labels carry no
 /// cursor rule), so matching it is a two-line revert; see decisions.md.
-pub fn declare_regions(app: &mut App, space: crate::fit::MenuSpace) {
+pub(crate) fn declare_regions(app: &mut App, space: crate::fit::MenuSpace) {
     if !app.settings.open {
         return;
     }
@@ -514,7 +514,7 @@ fn menu_box(app: &App, name: &str, index: u32) -> Option<clay::BoundingBox> {
 }
 
 /// The menu's own laid-out box, when it is open.
-pub fn menu_plate(app: &App) -> Option<clay::BoundingBox> {
+pub(crate) fn menu_plate(app: &App) -> Option<clay::BoundingBox> {
     menu_box(app, layout::MENU_ID, 0)
 }
 

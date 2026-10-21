@@ -22,8 +22,6 @@ pub const TOP_SIDE: f64 = 32.0;
 /// The top row's height in design px.
 pub const TOP_HEIGHT: f64 = 40.0;
 
-/// The settings menu's width in design px.
-pub const MENU_WIDTH: f64 = 304.0;
 /// The menu's gap below the gear's box in screen px.
 pub const MENU_GAP: f64 = 8.0;
 
@@ -77,25 +75,29 @@ pub fn menu_anchor(window_width: f64, fit: f64) -> (f64, f64) {
 /// source for both, so a pointer over a drawn cell hits that cell at every
 /// fit.
 #[derive(Clone, Copy, Debug)]
-pub struct MenuSpace {
+pub(crate) struct MenuSpace {
     /// The menu's move from the frame's design space to the screen, in screen px.
-    pub offset: [f32; 2],
+    pub(crate) offset: [f32; 2],
     /// The frame's scale: the design space is the screen's, divided by it.
-    pub scale: f32,
+    pub(crate) scale: f32,
 }
 
 impl MenuSpace {
     /// The viewer route's space: no move and no scale, the menu where Clay
     /// laid it out.
-    pub const IDENTITY: Self = Self {
+    pub(crate) const IDENTITY: Self = Self {
         offset: [0.0, 0.0],
         scale: 1.0,
     };
 
     /// The box a menu element's design box is drawn at, in screen px: the
     /// menu keeps its natural size, so only the move applies.
+    ///
+    /// A test helper: the drawing translates by `offset` and the hit test
+    /// maps through `region`, so no production path needs the box.
+    #[cfg(test)]
     #[must_use]
-    pub fn drawn(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
+    pub(crate) fn drawn(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
         clay::BoundingBox {
             x: box_.x + self.offset[0],
             y: box_.y + self.offset[1],
@@ -109,7 +111,7 @@ impl MenuSpace {
     /// scale, because the pointer arrives in the design space (the root
     /// scale's inverse).
     #[must_use]
-    pub fn region(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
+    pub(crate) fn region(&self, box_: clay::BoundingBox) -> clay::BoundingBox {
         clay::BoundingBox {
             x: (box_.x + self.offset[0]) / self.scale,
             y: (box_.y + self.offset[1]) / self.scale,
@@ -124,14 +126,14 @@ impl MenuSpace {
 ///
 /// `plate` is the menu's laid-out box in the frame's design space.
 #[must_use]
-pub fn menu_space(window_width: f64, fit: f64, plate: clay::BoundingBox) -> MenuSpace {
+pub(crate) fn menu_space(window_width: f64, fit: f64, plate: clay::BoundingBox) -> MenuSpace {
     let (right, top) = menu_anchor(window_width, fit);
     MenuSpace {
         // `as` at the f64/f32 boundary: the layout is f32 throughout.
-        offset: [
-            right as f32 - MENU_WIDTH as f32 - plate.x,
-            top as f32 - plate.y,
-        ],
+        // The menu's width is the plate's own laid-out width, the same
+        // number the layout sizes the menu with (`settings::layout::
+        // MENU_WIDTH`), so there is no second constant to drift.
+        offset: [right as f32 - plate.width - plate.x, top as f32 - plate.y],
         scale: fit as f32,
     }
 }
@@ -182,8 +184,8 @@ pub fn design_pos(app: &App, pos: [f32; 2]) -> [f32; 2] {
 #[cfg(test)]
 mod tests {
     use super::{
-        MENU_GAP, MENU_WIDTH, TOP_OFFSET, TOP_SIDE, current_fit, design_pos, frame_size,
-        menu_anchor, screen_to_design, zoomed,
+        MENU_GAP, TOP_OFFSET, TOP_SIDE, current_fit, design_pos, frame_size, menu_anchor,
+        screen_to_design, zoomed,
     };
 
     const EPS: f64 = 1e-9;
@@ -247,8 +249,9 @@ mod tests {
         let (right, top) = menu_anchor(1024.0, 0.70);
         assert!(close(right, 1024.0 - 32.0 * 0.70));
         assert!(close(top, 64.0 * 0.70 + MENU_GAP));
-        // The 304-wide menu stays inside a 1024 window.
-        assert!(right - MENU_WIDTH >= 0.0);
+        // The 304-wide menu stays inside a 1024 window (the layout's own
+        // width constant, the one the menu is sized with).
+        assert!(right - f64::from(crate::settings::layout::MENU_WIDTH) >= 0.0);
         assert!(right <= 1024.0);
     }
 
