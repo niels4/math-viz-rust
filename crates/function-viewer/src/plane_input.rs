@@ -1100,7 +1100,7 @@ mod tests {
     fn hovering_the_diamond_lights_h_and_k() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
         let diamond = handle_px(&app, 0);
         assert_eq!(diamond, [450.0, 450.0]);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
@@ -1116,7 +1116,7 @@ mod tests {
         // while a and b light and h and k drop.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
         let diamond = handle_px(&app, 0);
         let square = handle_px(&app, 1);
         handle_input(&mut app, pointer_to(diamond), 16 * MS);
@@ -1184,7 +1184,7 @@ mod tests {
     fn dragging_the_diamond_sets_h_and_k_coarse_with_no_pan() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         assert!(app.dragging);
@@ -1235,7 +1235,7 @@ mod tests {
     fn dragging_the_square_sets_a_and_b() {
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
         let square = handle_px(&app, 1);
         assert_eq!(square, [500.0, 350.0]);
         handle_input(&mut app, left_button(square, true), 0);
@@ -1275,7 +1275,7 @@ mod tests {
         // retargets the moves): the values follow, the camera never moves.
         let mut app = headless_app();
         declare_plane(&mut app, [0.0, 0.0], [800.0, 600.0]);
-        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5");
+        seed_view(&mut app, "func=x2&a=2&h=1&k=-3&p=5"); // reseeded +p=5 in phase B; no collision under x or x2 default (phase 2 removes once h11-default merges)
         let diamond = handle_px(&app, 0);
         handle_input(&mut app, left_button(diamond, true), 0);
         handle_input(&mut app, pointer_to([950.0, 450.0]), 16 * MS);
