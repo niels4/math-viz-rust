@@ -1,0 +1,26 @@
+# p-drag-out (h11-p-drag): P dragged past the canvas's right edge (1423) and
+# past the 1440 viewport's edge out to x=1500 and held: P keeps following
+# (the canvas's pointer capture retargets the moves on every target; p=11.44
+# in WebKit and Chromium), the camera unchanged, the closed hand with P's
+# drop line out. Ends held; the release past the edge still ends the drag
+# (probed: the modes cleared, the cursor pan), but its hover state is
+# lag-divergent by construction, so no release read belongs to this state.
+# Firefox's past-edge coordinates are broken by the engine (h7-fix-capture):
+# it delivers garbage coordinates for the move, so the reference reads
+# p=-18.56 there and the port must equal the reference, not WebKit.
+# Behaviour (read on ref-h11 at c6754e7): cursor grab-active; the p line
+# 11.44 in WebKit and Chromium, -18.56 in Firefox.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1028 290
+wait 200
+down
+wait 150
+move 1500 290 over 160
+wait 300
+shot p-drag-out
+up

@@ -1,0 +1,22 @@
+# p-drag-release (h11-p-drag): p-drag's drag and then the release: the url
+# line p=3 (flushed at once), P's drop line gone, the slider thumb at rest.
+# The cursor reads pan, not grab-hover: the drag moved P to plane (3, 9),
+# above the view, so the pointer left P's 48 px box (the spec expected the
+# open hand; the reference reads the crosshair).
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# cursor pan; the p line 3; the url line p=3.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1038 290
+wait 200
+down
+wait 150
+move 1088 290 over 160
+wait 300
+up
+wait 600
+shot p-drag-release

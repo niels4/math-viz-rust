@@ -1,7 +1,8 @@
 # rows-lit-ab-hover (H7): the pointer on the scale square (unit (2,-1) at
 # page (1028,540)) lights the a and b rows; no rulers. Approached from empty
-# plane, never from the diamond: a direct diamond-to-square jump leaves the
-# reference's hovering false (cursor pan) while a and b stay lit.
+# plane, never from the diamond. (ea29aa9 dropped the old note: a direct
+# diamond-to-square jump now leaves hovering true, cursor grab-hover, while a
+# and b stay lit.)
 size 1440 900
 density 2
 scheme dark

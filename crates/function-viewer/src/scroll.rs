@@ -57,6 +57,11 @@ pub fn scroll_container(app: &mut App, s: Scroller, active: bool, border: f32) {
     app.scroll[s].border = border;
 }
 
+/// A container's border's pixels, inside its box: the clip's inset.
+pub fn scroll_border(app: &App, s: Scroller) -> f32 {
+    app.scroll[s].border
+}
+
 /// Replays the layout to learn each container's extent and keep its offset
 /// within it. True when an offset moved.
 ///

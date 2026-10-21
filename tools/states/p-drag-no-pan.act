@@ -1,0 +1,19 @@
+# p-drag-no-pan (h11-p-drag): a drag of P never pans the camera: the camera
+# line before the drag and after it are equal (handle-drag-no-pan's shape).
+# The drag is +150 px right in 5 px steps (30 steps, every one hits), held.
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# cursor grab-active; the p line 5; the camera line unchanged.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 1028 290
+wait 200
+down
+wait 150
+move 1178 290 over 480
+wait 300
+shot p-drag-no-pan
+up
