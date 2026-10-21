@@ -772,6 +772,74 @@ mod tests {
         assert_eq!(hit_test(&grid, &[], &[], [250.0, 100.0]), None);
     }
 
+    /// A draggable marker (P) is hit within its 48 px box (half 24).
+    #[test]
+    fn a_point_inside_p_s_48_px_box_hits_point_p() {
+        let grid = grid_400x300();
+        let marker = PlotMarker {
+            point: PlotPoint { x: 1.0, y: 1.0 },
+            ink: mv_theme::Token::PointP,
+            shape: MarkerShape::Bullseye,
+            label: None,
+            drop_lines: false,
+            guide: false,
+            draggable: true,
+        };
+        // center is (250, 100); 23 px off still inside (half 24).
+        assert_eq!(
+            hit_test(
+                &grid,
+                &[],
+                std::slice::from_ref(&marker),
+                [250.0 + 23.0, 100.0]
+            ),
+            Some(HitTarget::Marker(0))
+        );
+        // 25 px off misses.
+        assert_eq!(hit_test(&grid, &[], &[marker], [250.0 + 25.0, 100.0]), None);
+    }
+
+    /// A handle still wins away from P.
+    #[test]
+    fn a_handle_wins_away_from_p() {
+        let grid = grid_400x300();
+        let marker = PlotMarker {
+            point: PlotPoint { x: 0.0, y: 0.0 },
+            ink: mv_theme::Token::PointP,
+            shape: MarkerShape::Bullseye,
+            label: None,
+            drop_lines: false,
+            guide: false,
+            draggable: true,
+        };
+        // marker at (0,0) plane = (200,150) px, well outside its 24 px box
+        // from the handle at (1,1); the handle's edge still hits.
+        assert_eq!(
+            hit_test(&grid, &[shift_handle()], &[marker], [260.0, 100.0]),
+            Some(HitTarget::Handle(0))
+        );
+    }
+
+    /// P wins where it coincides with a handle (last-index rule).
+    #[test]
+    fn p_wins_where_it_coincides_with_a_handle() {
+        let grid = grid_400x300();
+        let marker = PlotMarker {
+            point: PlotPoint { x: 1.0, y: 1.0 },
+            ink: mv_theme::Token::PointP,
+            shape: MarkerShape::Bullseye,
+            label: None,
+            drop_lines: false,
+            guide: false,
+            draggable: true,
+        };
+        // both at (1,1) plane = (250,100) px; marker tested after handles -> Marker wins.
+        assert_eq!(
+            hit_test(&grid, &[shift_handle()], &[marker], [250.0, 100.0]),
+            Some(HitTarget::Marker(0))
+        );
+    }
+
     /// A marker with P's ink at plane units, unset shape and nothing riding
     /// on it (the vitest draws `{ point, ink: "ordinal05" }`).
     fn plain_marker(x: f64, y: f64) -> PlotMarker {
