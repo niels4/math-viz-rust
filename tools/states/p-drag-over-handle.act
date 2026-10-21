@@ -1,0 +1,30 @@
+# p-drag-over-handle (h11-p-drag): with h=2&k=4 the shift diamond sits at
+# plane (2, 4), where P is: the marker beats the coincident handle (the
+# hit test's last-index rule), so the hover there is the open hand with
+# nothing lit (P has no onHover handler, so the diamond's hover never
+# fires), and a drag there moves p and leaves h and k alone (no ruler out).
+# The press is on the diamond's centre (1028, 290).
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# the hover shot cursor grab-hover, the lit line empty, the url line
+# h=2&k=4; the held shot cursor grab-active, the p line 3, the url line
+# h=2&k=4&p=3; after the release cursor pan, the url line h=2&k=4&p=3.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+query h=2&k=4
+wait 500
+move 1029 291
+wait 800
+move 1028 290
+wait 500
+shot p-drag-over-handle-hover
+down
+wait 150
+move 1078 290 over 160
+wait 300
+shot p-drag-over-handle-held
+up
+wait 600
+shot p-drag-over-handle

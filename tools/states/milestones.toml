@@ -35,3 +35,6 @@ H10 = ["welcome-route", "welcome-default", "welcome-default-tron-cyan", "welcome
 # selector cells the user asked for, overturnable) and the default restored
 # on leave.
 FIXCURSOR = ["cursor-cells-hover", "cursor-cells-leave", "cursor-menu-cell", "cursor-menu-leave", "cursor-cta"]
+# H11 at c6754e7: h11-p-drag's P states (the point P dragged on the graph,
+# 7686c89) and h11-hero's hero states; the merge unions the two lines.
+H11 = ["p-hover", "p-hover-box", "p-hover-move", "p-drag", "p-drag-release", "p-drag-no-pan", "p-drag-out", "p-drag-over-handle", "p-drag-quantized"]

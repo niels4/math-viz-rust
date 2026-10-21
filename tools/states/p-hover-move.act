@@ -1,0 +1,18 @@
+# p-hover-move (h11-p-drag): the pointer from the shift diamond (the origin,
+# CSS (928, 490) at the default x²) straight onto P in ONE move. P has no
+# onHover handler (7686c89), so nothing is lit, and the cursor is the open
+# hand (grab-hover) because the hovered index is P (ea29aa9's derived
+# hovering). A stepped move would re-hover the plane on the way.
+# Behaviour (read on ref-h11 at c6754e7, WebKit/Chromium/Firefox alike):
+# cursor grab-hover; the lit line empty; no q line.
+size 1440 900
+density 2
+scheme dark
+mode dark
+theme arctic-ice
+wait 500
+move 928 490
+wait 300
+move 1028 290
+wait 300
+shot p-hover-move
