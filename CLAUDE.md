@@ -1232,7 +1232,10 @@ t0a owns this paragraph. This repo is built by many parallel milestones under th
   all's focus ring, the Points card's rows) are scissored to the sidebar's
   padding box; the floats outside it (the ruler, the tips) keep their paint.
   A scissor is set with `vg.save()` / `vg.scissor` / `vg.restore()` around the
-  passes, since NanoVG's `nvgScissor` is not part of the saved state.
+  passes. NanoVG's scissor IS part of the saved state (`NVGstate` holds it,
+  `nvgSave`/`nvgRestore` copy the whole state), so the pair is belt-and-braces,
+  not the reason the scissor is undone: the `restore()` brings back the state
+  the `save()` took, scissor included.
 - The reference's own numbers, measured at `c6754e7` and confirmed by the
   port's layout test: the header is (16, 16, W - 32, 64), the content row is
   H - 112 tall from y = 96, the sidebar is (16, 96, 400, H - 112) with a client

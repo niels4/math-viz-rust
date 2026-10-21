@@ -21,10 +21,18 @@ pub enum Scroller {
     Panel,
 }
 
-/// Clay element ids of the page and panel scroll containers. Ported from
+/// The page scroll container's Clay element id. Ported from `SCROLLER_IDS`.
+pub const PAGE_ID: &str = "Page";
+
+/// The panel scroll container's Clay element id: the sidebar's own element
+/// (fix-viewer-size), which `page::SIDEBAR_ID` points at. Ported from
 /// `SCROLLER_IDS`.
+pub const PANEL_ID: &str = "Panel";
+
+/// Clay element ids of the page and panel scroll containers. Ported from
+/// `SCROLLER_IDS`; the array is in the enum's own order.
 pub const SCROLLER_IDS: enum_map::EnumMap<Scroller, &'static str> =
-    enum_map::EnumMap::from_array(["Page", "Panel"]);
+    enum_map::EnumMap::from_array([PAGE_ID, PANEL_ID]);
 
 /// A scroll container as the last layout left it. Ported from `Scroll`.
 #[derive(Clone, Copy, Debug)]
@@ -55,11 +63,6 @@ pub fn scrolled(app: &App, s: Scroller) -> [f32; 2] {
 pub fn scroll_container(app: &mut App, s: Scroller, active: bool, border: f32) {
     app.scroll[s].active = active;
     app.scroll[s].border = border;
-}
-
-/// A container's border's pixels, inside its box: the clip's inset.
-pub fn scroll_border(app: &App, s: Scroller) -> f32 {
-    app.scroll[s].border
 }
 
 /// Replays the layout to learn each container's extent and keep its offset

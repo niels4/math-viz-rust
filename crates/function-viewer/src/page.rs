@@ -28,8 +28,9 @@ pub const SIDEBAR_RADIUS: f32 = 4.0;
 /// The sidebar is the Panel scroll container (fix-viewer-size): the element's
 /// name is the scroller's, `scroll::SCROLLER_IDS[Scroller::Panel]`, so the
 /// clip's container and the box the readers below ask for are one element.
-/// The test at the end of this file pins the two names together.
-pub const SIDEBAR_ID: &str = "Panel";
+/// The scroller's table owns the name; this constant only points at it, so
+/// the two cannot drift.
+pub const SIDEBAR_ID: &str = crate::scroll::PANEL_ID;
 
 /// The plane's two handles: the shift diamond at the live h, k, then the
 /// scale square at the unit point of the shown transform, in that order so
@@ -280,7 +281,7 @@ fn sidebar_content_box(app: &App) -> Option<clay::BoundingBox> {
     data.found.then(|| {
         crate::scroll::grow_box(
             data.boundingBox,
-            -crate::scroll::scroll_border(app, crate::scroll::Scroller::Panel),
+            -app.scroll[crate::scroll::Scroller::Panel].border,
         )
     })
 }
@@ -970,6 +971,18 @@ mod tests {
         assert_eq!(app.input.cursor, crate::input::Cursor::Grab);
     }
 
+    /// The sidebar's element is the Panel scroll container: one name, owned
+    /// by the scroller's table, and the constant that points at it (fix-
+    /// viewer-size phase 2's fix-forward: the two readers of the same
+    /// element must not drift apart).
+    #[test]
+    fn the_sidebar_is_the_panel_scroll_container() {
+        assert_eq!(
+            crate::page::SIDEBAR_ID,
+            crate::scroll::SCROLLER_IDS[crate::scroll::Scroller::Panel]
+        );
+    }
+
     /// The viewer's layout at the three window sizes of fix-viewer-size: the
     /// header, the sidebar and the canvas against the reference's WebKit
     /// boxes in `testdata/page.json` (the reference at `c6754e7`), within the
@@ -1031,7 +1044,7 @@ mod tests {
             let sidebar = clay
                 .get_element_data(mv_clay::id(crate::page::SIDEBAR_ID, 0))
                 .boundingBox;
-            let border = crate::scroll::scroll_border(&app, crate::scroll::Scroller::Panel);
+            let border = app.scroll[crate::scroll::Scroller::Panel].border;
             let client = sidebar.height - 2.0 * border;
             let measures = crate::fixture::fixture_shot(&fixture, shot)
                 .expect("shot in fixture")
